@@ -9,14 +9,17 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@cred/neopop-web": "^1.0.0",
     "next": "16.3.4",
     "react": "19.2.8",
-    "react-dom": "19.2.8"
+    "react-dom": "19.2.8",
+    "styled-components": "^6.5.3"
   },
   "devDependencies": {
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/styled-components": "^5.1.36",
     "eslint": "^9",
     "eslint-config-next": "16.3.4",
     "typescript": "^5"
