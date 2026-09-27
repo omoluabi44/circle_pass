@@ -25,6 +25,8 @@ jobs:
           context: .
           push: true
           tags: omoluabi44/circlepass-frontend:latest
+          build-args: |
+            NEXT_PUBLIC_API_URL=https://api.thecirclepass.com/api
 
   build-and-push-backend:
     name: Build & Push Backend Image
