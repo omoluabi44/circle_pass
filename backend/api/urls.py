@@ -23,7 +23,7 @@ from .views_attendee import AttendeeProfileView, AttendeeDashboardView
 from .views_discount import EventDiscountListCreateView, EventDiscountDetailView, EventDiscountValidateView
 from .views_announcement import EventAnnouncementListCreateView
 from .views_newsletter import NewsletterSubscribeView
-from .views_upload import PresignedUrlView
+from .views_upload import PresignedUrlView, LocalFileUploadView
 
 from .views_admin import (
     AdminOverviewView, AdminUserViewSet, AdminOrganizerVerificationViewSet,
@@ -105,6 +105,9 @@ urlpatterns = [
     
     # Newsletter
     path('newsletter/subscribe/', NewsletterSubscribeView.as_view(), name='newsletter_subscribe'),
+    
+    # File Upload (local fallback — used when S3 is not configured)
+    path('upload/local/', LocalFileUploadView.as_view(), name='local_file_upload'),
     
     # Find Ticket (public)
     path('tickets/', TicketViewSet.as_view({'get': 'list'}), name='tickets'),

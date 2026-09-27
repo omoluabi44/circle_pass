@@ -152,7 +152,7 @@ export default function CreateEventPage() {
       payload.append('has_onsite_services', String(formData.has_onsite_services));
       
       if (formData.cover_image) {
-        const coverImageUrl = await uploadToS3(formData.cover_image as File, 'event_covers');
+        const coverImageUrl = await uploadToS3(formData.cover_image as File, 'event_covers', session.accessToken as string);
         payload.append('cover_image', coverImageUrl);
       }
       

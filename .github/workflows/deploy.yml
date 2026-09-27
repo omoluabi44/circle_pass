@@ -70,6 +70,12 @@ jobs:
             # Setup env file
             echo "${{ secrets.BACKEND_ENV_FILE }}" > backend/.env
             
+            # Stop any pre-existing host web servers blocking port 80
+            sudo systemctl stop apache2 || true
+            sudo systemctl stop nginx || true
+            sudo systemctl disable apache2 || true
+            sudo systemctl disable nginx || true
+            
             # Restart containers
             sudo docker-compose down
             sudo docker system prune -af --volumes

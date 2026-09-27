@@ -69,11 +69,11 @@ WSGI_APPLICATION = 'circlepass_backend.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'circlepass_db',
-        'USER': 'circlepass_user',
-        'PASSWORD': 'Mr_engineer44',
-        'HOST': 'localhost',
-        'PORT': '3306',
+        'NAME': os.environ.get('DB_NAME', 'circlepass_db'),
+        'USER': os.environ.get('DB_USER', 'circlepass_user'),
+        'PASSWORD': os.environ.get('DB_PASSWORD', 'Mr_engineer44'),
+        'HOST': os.environ.get('DB_HOST', 'localhost'),
+        'PORT': os.environ.get('DB_PORT', '3306'),
     }
 }
 
