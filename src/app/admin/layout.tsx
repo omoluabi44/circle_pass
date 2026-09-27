@@ -2,10 +2,10 @@ import Link from "next/link";
 import { RoleSwitcher } from "@/components/ui/RoleSwitcher";
 import { 
   Activity, ShieldAlert, Users, CreditCard, Settings, FileText, 
-  Calendar, Ticket, Banknote, ScanLine, BarChart3, Mail, HeartHandshake, ShieldCheck, LogOut
+  Calendar, Ticket, Banknote, ScanLine, BarChart3, Mail, HeartHandshake, ShieldCheck
 } from "lucide-react";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
-import { signOut } from "next-auth/react";
+import { AdminSignOutButton } from "@/components/ui/AdminSignOutButton";
 
 export default function AdminLayout({
   children,
@@ -117,10 +117,7 @@ export default function AdminLayout({
             <span className="text-xs font-medium text-muted-foreground">Theme</span>
             <ThemeToggle />
           </div>
-          <button onClick={() => signOut({ callbackUrl: '/login' })} className="flex w-full items-center gap-3 px-3 py-2.5 hover:bg-destructive/10 rounded-xl text-destructive text-sm font-bold transition-colors">
-            <LogOut className="w-5 h-5" />
-            Sign Out
-          </button>
+          <AdminSignOutButton />
         </div>
       </aside>
       

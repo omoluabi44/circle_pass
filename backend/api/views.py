@@ -115,7 +115,7 @@ class PublicOrganizerProfileView(APIView):
                 'slug': e.slug,
                 'title': e.title,
                 'start_time': e.start_time,
-                'cover_image': e.cover_image.url if e.cover_image else None,
+                'cover_image': (e.cover_image.url if hasattr(e.cover_image, 'url') else str(e.cover_image)) if e.cover_image else None,
             }
             # For simplicity we treat events starting after now as upcoming
             if e.start_time and e.start_time > now:

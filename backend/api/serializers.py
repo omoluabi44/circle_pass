@@ -310,7 +310,15 @@ class TicketSerializer(serializers.ModelSerializer):
         # If it's already an absolute URL, return it directly
         if cover.startswith(('http://', 'https://')):
             return cover
-        # Otherwise build an absolute URI from the request
+            
+        # Ensure it has the /media/ prefix if it's a relative path
+        if not cover.startswith('/'):
+            if not cover.startswith('media/'):
+                cover = f'/media/{cover}'
+            else:
+                cover = f'/{cover}'
+                
+        # Build an absolute URI from the request
         request = self.context.get('request')
         if request:
             return request.build_absolute_uri(cover)
