@@ -59,10 +59,10 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           port: 22
           script: |
-            if [ ! -d "/var/www/circlepass" ]; then
-              git clone https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git /var/www/circlepass
+            if [ ! -d "~/circlepass" ]; then
+              git clone https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git ~/circlepass
             fi
-            cd /var/www/circlepass
+            cd ~/circlepass
             git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
             git fetch --all
             git reset --hard origin/main
