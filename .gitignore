@@ -50,3 +50,21 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Ignore large media files and PDFs
+*.mkv
+*.mp4
+*.pdf
+*.docx
+
+# Ignore Terraform state and AWS keys
+*.pem
+*.tfstate
+*.tfstate.backup
+.terraform/
+.terraform.lock.hcl
+
+# Python venv
+venv/
+backend/venv/
+__pycache__/

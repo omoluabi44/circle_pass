@@ -10,9 +10,21 @@
   },
   "dependencies": {
     "@cred/neopop-web": "^1.0.0",
+    "@paystack/inline-js": "^2.25.0",
+    "@tailwindcss/postcss": "^4.3.3",
+    "@types/js-cookie": "^3.0.6",
+    "@types/qrcode.react": "^1.0.5",
+    "framer-motion": "^13.3.0",
+    "html5-qrcode": "^2.3.8",
+    "js-cookie": "^3.0.8",
+    "lucide-react": "^1.45.0",
     "next": "16.3.4",
+    "next-auth": "^4.24.15",
+    "next-themes": "^0.4.6",
+    "qrcode.react": "^4.2.0",
     "react": "19.2.8",
     "react-dom": "19.2.8",
+    "react-hot-toast": "^2.6.1",
     "styled-components": "^6.5.3"
   },
   "devDependencies": {
@@ -20,8 +32,11 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@types/styled-components": "^5.1.36",
+    "autoprefixer": "^10.5.6",
     "eslint": "^9",
     "eslint-config-next": "16.3.4",
+    "postcss": "^8.5.28",
+    "tailwindcss": "^4.3.3",
     "typescript": "^5"
   }
 }
