@@ -287,7 +287,7 @@ class TicketSerializer(serializers.ModelSerializer):
     event_start_time = serializers.DateTimeField(source='order.event.start_time', read_only=True)
     event_end_time = serializers.DateTimeField(source='order.event.end_time', read_only=True)
     event_image = serializers.SerializerMethodField()
-    event_venue = serializers.CharField(source='order.event.venue.name', read_only=True)
+    event_venue = serializers.SerializerMethodField()
 
     class Meta:
         model = Ticket
@@ -297,14 +297,24 @@ class TicketSerializer(serializers.ModelSerializer):
             'attendee_name', 'attendee_email', 'status', 'qr_token',
             'issued_at', 'created_at',
         )
+
+    def get_event_venue(self, obj):
+        venue = obj.order.event.venue
+        return venue.name if venue else None
         
     def get_event_image(self, obj):
-        if obj.order.event.cover_image:
-            request = self.context.get('request')
-            if request:
-                return request.build_absolute_uri(obj.order.event.cover_image.url)
-            return obj.order.event.cover_image.url
-        return None
+        cover = obj.order.event.cover_image
+        if not cover:
+            return None
+        # cover_image is a URLField (plain string), not a FileField
+        # If it's already an absolute URL, return it directly
+        if cover.startswith(('http://', 'https://')):
+            return cover
+        # Otherwise build an absolute URI from the request
+        request = self.context.get('request')
+        if request:
+            return request.build_absolute_uri(cover)
+        return cover
 
 
 # ==========================================

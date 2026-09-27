@@ -140,7 +140,14 @@ export default function EventDetailsPage() {
       <div className="relative w-full h-[70vh] lg:h-screen bg-muted overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent z-10" />
         <Image 
-          src={event.cover_image || `https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&q=80&w=2000`} 
+          src={(() => {
+            const img = event.cover_image;
+            if (!img) return `https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&q=80&w=2000`;
+            if (img.startsWith('http')) return img;
+            // Django ImageField without request context returns "event_covers/..." instead of "/media/event_covers/..."
+            const mediaPath = img.startsWith('/media/') ? img : (img.startsWith('/') ? `/media${img}` : `/media/${img}`);
+            return `http://127.0.0.1:8000${mediaPath}`;
+          })()} 
           alt={event.title}
           fill
           className="object-cover"

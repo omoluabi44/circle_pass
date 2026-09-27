@@ -48,6 +48,9 @@ export function DiscoverySection() {
             } else if (imageUrl.startsWith('/media/')) {
               const baseUrl = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://127.0.0.1:8000';
               imageUrl = `${baseUrl}${imageUrl}`;
+            } else if (!imageUrl.startsWith('http') && !imageUrl.startsWith('/')) {
+              const baseUrl = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://127.0.0.1:8000';
+              imageUrl = `${baseUrl}/media/${imageUrl}`;
             }
           }
 

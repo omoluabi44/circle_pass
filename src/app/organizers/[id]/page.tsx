@@ -45,6 +45,9 @@ export default function OrganizerProfilePage() {
           } else if (url.startsWith('/media/')) {
             const baseUrl = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://127.0.0.1:8000';
             return `${baseUrl}${url}`;
+          } else if (!url.startsWith('http') && !url.startsWith('/')) {
+            const baseUrl = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://127.0.0.1:8000';
+            return `${baseUrl}/media/${url}`;
           }
           return url;
         };

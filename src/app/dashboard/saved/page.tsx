@@ -64,8 +64,10 @@ export default function SavedEventsPage() {
                           ? event.cover_image.startsWith('http://localhost:')
                             ? event.cover_image.replace('http://localhost:', 'http://127.0.0.1:')
                             : event.cover_image.startsWith('/media/')
-                              ? `${API_URL}${event.cover_image}`
-                              : event.cover_image
+                              ? `${API_URL?.replace('/api', '') || 'http://127.0.0.1:8000'}${event.cover_image}`
+                              : !event.cover_image.startsWith('http') && !event.cover_image.startsWith('/')
+                                ? `${API_URL?.replace('/api', '') || 'http://127.0.0.1:8000'}/media/${event.cover_image}`
+                                : event.cover_image
                           : event.cover_image
                       } 
                       alt={event.title} 
