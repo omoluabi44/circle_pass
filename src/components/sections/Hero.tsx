@@ -41,11 +41,11 @@ export function Hero() {
             if (el) { el.defaultMuted = true; el.muted = true; } 
           }}
           src="/video1.mp4"
-          poster="/hero_event_pass.jpg"
+          preload="auto"
           className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ease-in-out ${
-            activeVideo === 0 ? 'opacity-100' : 'opacity-0'
+            activeVideo === 0 ? 'opacity-100 z-10' : 'opacity-0 z-0'
           }`}
-          autoPlay={activeVideo === 0}
+          autoPlay
           muted
           playsInline
           loop={false}
@@ -57,11 +57,11 @@ export function Hero() {
             if (el) { el.defaultMuted = true; el.muted = true; }
           }}
           src="/video2.mp4"
-          poster="/hero_event_pass.jpg"
+          preload="auto"
           className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ease-in-out ${
-            activeVideo === 1 ? 'opacity-100' : 'opacity-0'
+            activeVideo === 1 ? 'opacity-100 z-10' : 'opacity-0 z-0'
           }`}
-          autoPlay={activeVideo === 1}
+          autoPlay
           muted
           playsInline
           loop={false}

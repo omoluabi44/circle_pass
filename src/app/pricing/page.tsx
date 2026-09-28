@@ -8,12 +8,7 @@ export const metadata = {
 
 export default function PricingPage() {
   return (
-    <main 
-      className="min-h-screen pb-20 relative bg-cover bg-center bg-no-repeat"
-      style={{ backgroundImage: 'url("/circlepass_bg.png")' }}
-    >
-      <div className="absolute inset-0 bg-white/90 dark:bg-black/90 z-0 pointer-events-none" />
-      <div className="relative z-10">
+    <main className="min-h-screen bg-background pb-20">
       {/* Hero Section */}
       <section className="pt-24 pb-16 px-4 max-w-7xl mx-auto text-center">
         <h1 className="text-4xl md:text-5xl font-bold font-logo text-primary mb-6">
@@ -182,7 +177,7 @@ export default function PricingPage() {
             There's no monthly subscription or setup fee to use CirclePass. You pay the CirclePass service fee when you sell paid tickets.
           </p>
           <p className="text-sm text-muted-foreground italic">
-            *Payment processing fees are inclusive.
+            Payment processing fees are inclusive.
           </p>
         </div>
       </section>
@@ -219,7 +214,6 @@ export default function PricingPage() {
           </div>
         </div>
       </section>
-      </div>
     </main>
   );
 }

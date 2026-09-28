@@ -14,7 +14,7 @@ export function Features() {
         
         {/* Header */}
         <div className="text-center mb-16 md:mb-20">
-          <h3 className="text-primary font-bold tracking-[0.15em] text-sm md:text-sm uppercase mb-3">
+          <h3 className="text-primary font-bold tracking-widest text-xl md:text-2xl uppercase mb-3">
             WHY CIRCLEPASS?
           </h3>
           <h2 className="text-3xl md:text-5xl font-extrabold text-[#0B1021] leading-tight tracking-tight">

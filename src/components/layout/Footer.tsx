@@ -46,33 +46,35 @@ export function Footer() {
             </div>
           </div>
           
-          <div className="space-y-4">
-            <h4 className="font-semibold text-lg text-foreground">Explore</h4>
-            <ul className="space-y-2 text-sm text-muted-foreground">
-              <li><Link href="#" className="hover:text-primary transition-colors">Browse events</Link></li>
-              <li><Link href="#" className="hover:text-primary transition-colors">E-voting</Link></li>
-              <li><Link href="#" className="hover:text-primary transition-colors">Nominations</Link></li>
-              <li><Link href="/pricing" className="hover:text-primary transition-colors">Pricing</Link></li>
-              <li><Link href="/blog" className="hover:text-primary transition-colors">Blog</Link></li>
-            </ul>
-          </div>
+          <div className="md:col-span-3 grid grid-cols-3 gap-2 sm:gap-4 md:gap-8 mt-6 md:mt-0">
+            <div className="space-y-3 md:space-y-4">
+              <h4 className="font-semibold text-[13px] sm:text-base md:text-lg text-foreground">Explore</h4>
+              <ul className="space-y-2 text-[11px] sm:text-xs md:text-sm text-muted-foreground">
+                <li><Link href="#" className="hover:text-primary transition-colors">Browse events</Link></li>
+                <li><Link href="#" className="hover:text-primary transition-colors">E-voting</Link></li>
+                <li><Link href="#" className="hover:text-primary transition-colors">Nominations</Link></li>
+                <li><Link href="/pricing" className="hover:text-primary transition-colors">Pricing</Link></li>
+                <li><Link href="/blog" className="hover:text-primary transition-colors">Blog</Link></li>
+              </ul>
+            </div>
 
-          <div className="space-y-4">
-            <h4 className="font-semibold text-lg text-foreground">Organisers</h4>
-            <ul className="space-y-2 text-sm text-muted-foreground">
-              <li><Link href="/organizer" className="hover:text-primary transition-colors">For organisers</Link></li>
-              <li><Link href="/organizer/events/create" className="hover:text-primary transition-colors">Create event</Link></li>
-            </ul>
-          </div>
+            <div className="space-y-3 md:space-y-4">
+              <h4 className="font-semibold text-[13px] sm:text-base md:text-lg text-foreground">Organisers</h4>
+              <ul className="space-y-2 text-[11px] sm:text-xs md:text-sm text-muted-foreground">
+                <li><Link href="/organizer" className="hover:text-primary transition-colors">For organisers</Link></li>
+                <li><Link href="/organizer/events/create" className="hover:text-primary transition-colors">Create event</Link></li>
+              </ul>
+            </div>
 
-          <div className="space-y-4">
-            <h4 className="font-semibold text-lg text-foreground">Company</h4>
-            <ul className="space-y-2 text-sm text-muted-foreground">
-              <li><Link href="/about" className="hover:text-primary transition-colors">About</Link></li>
-              <li><Link href="/how-it-works" className="hover:text-primary transition-colors">How it works</Link></li>
-              <li><Link href="#" className="hover:text-primary transition-colors">FAQ</Link></li>
-              <li><Link href="/about" className="hover:text-primary transition-colors">Contact</Link></li>
-            </ul>
+            <div className="space-y-3 md:space-y-4">
+              <h4 className="font-semibold text-[13px] sm:text-base md:text-lg text-foreground">Company</h4>
+              <ul className="space-y-2 text-[11px] sm:text-xs md:text-sm text-muted-foreground">
+                <li><Link href="/about" className="hover:text-primary transition-colors">About</Link></li>
+                <li><Link href="/how-it-works" className="hover:text-primary transition-colors">How it works</Link></li>
+                <li><Link href="#" className="hover:text-primary transition-colors">FAQ</Link></li>
+                <li><Link href="/about" className="hover:text-primary transition-colors">Contact</Link></li>
+              </ul>
+            </div>
           </div>
         </div>
         <div className="container mx-auto px-4 mt-12 pt-8 border-t border-black/10 text-sm text-muted-foreground text-center flex flex-col md:flex-row justify-between items-center gap-4">

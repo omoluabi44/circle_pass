@@ -41,10 +41,10 @@ export function Navbar() {
                 </button>
                 <div className="absolute top-full left-0 mt-2 w-48 bg-background border border-border rounded-xl shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all">
                   <Link href="/voting" className="block px-4 py-3 text-sm text-foreground hover:bg-secondary hover:text-primary rounded-t-xl transition-colors border-b border-border">
-                    1. Voting
+                    Voting
                   </Link>
                   <Link href="/nominations" className="block px-4 py-3 text-sm text-foreground hover:bg-secondary hover:text-primary rounded-b-xl transition-colors">
-                    2. Nominations
+                    Nominations
                   </Link>
                 </div>
               </div>
