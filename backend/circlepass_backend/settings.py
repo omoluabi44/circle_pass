@@ -119,7 +119,7 @@ DJOSER = {
         'current_user': 'api.serializers.UserSerializer',
     }
 }
-DOMAIN = 'localhost:3000'
+DOMAIN = os.environ.get('FRONTEND_DOMAIN', 'thecirclepass.com')
 SITE_NAME = 'CirclePass'
 
 AUTHENTICATION_BACKENDS = (
