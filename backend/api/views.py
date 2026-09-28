@@ -47,7 +47,7 @@ class CustomUserViewSet(UserViewSet):
             user = User.objects.get(id=response.data['id'])
             uid = utils.encode_uid(user.pk)
             token = default_token_generator.make_token(user)
-            activation_url = f"http://localhost:3000/verify-email/{uid}/{token}"
+            activation_url = f"https://thecirclepass.com/verify-email/{uid}/{token}"
             response.data['activation_url'] = activation_url
         return response
 
@@ -60,7 +60,7 @@ class CustomUserViewSet(UserViewSet):
             user = User.objects.get(email=email)
             uid = utils.encode_uid(user.pk)
             token = default_token_generator.make_token(user)
-            activation_url = f"http://localhost:3000/verify-email/{uid}/{token}"
+            activation_url = f"https://thecirclepass.com/verify-email/{uid}/{token}"
             return Response({"message": "Activation resent", "activation_url": activation_url}, status=status.HTTP_200_OK)
         return response
 
@@ -73,7 +73,7 @@ class CustomUserViewSet(UserViewSet):
                 user = User.objects.get(email=email)
                 uid = utils.encode_uid(user.pk)
                 token = default_token_generator.make_token(user)
-                reset_url = f"http://localhost:3000/reset-password/{uid}/{token}"
+                reset_url = f"https://thecirclepass.com/reset-password/{uid}/{token}"
                 return Response({"message": "Password reset sent", "reset_url": reset_url}, status=status.HTTP_200_OK)
             except User.DoesNotExist:
                 # Djoser handles this gracefully, but just in case
