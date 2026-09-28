@@ -1,6 +1,7 @@
 import NextAuth, { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import GoogleProvider from "next-auth/providers/google";
+import { API_URL } from "@/lib/api/config";
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -18,7 +19,7 @@ export const authOptions: NextAuthOptions = {
         if (!credentials?.email || !credentials?.password) return null;
 
         try {
-          const res = await fetch(`http://127.0.0.1:8000/api/auth/jwt/create/`, {
+          const res = await fetch(`${API_URL}/auth/jwt/create/`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email: credentials.email, password: credentials.password }),
@@ -33,7 +34,7 @@ export const authOptions: NextAuthOptions = {
           const tokens = await res.json();
           
           // Fetch user details with the token
-          const userRes = await fetch(`http://127.0.0.1:8000/api/auth/users/me/`, {
+          const userRes = await fetch(`${API_URL}/auth/users/me/`, {
             headers: { 'Authorization': `Bearer ${tokens.access}` }
           });
           
@@ -64,7 +65,7 @@ export const authOptions: NextAuthOptions = {
       if (account?.provider === "google" && profile) {
         // Exchange Google email/profile for Django token
         try {
-          const res = await fetch(`http://127.0.0.1:8000/api/auth/google/`, {
+          const res = await fetch(`${API_URL}/auth/google/`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
