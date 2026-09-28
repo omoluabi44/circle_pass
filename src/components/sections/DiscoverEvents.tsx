@@ -116,7 +116,7 @@ export function DiscoverEvents() {
   const professionalCategories = [
     { name: "Tech", sub: "Conferences & Meetups", img: "/image-folders/tech/IMG_4478.JPG", icon: Briefcase },
     { name: "Conference", sub: "Industry summits & networking", img: "/image-folders/conference/IMG_4477.JPG", icon: Briefcase },
-    { name: "Seminar", sub: "Workshops & expert talks", img: "/image-folders/seminar/IMG_4479.jpg", icon: Briefcase },
+    { name: "Seminar", sub: "Workshops & expert talks", img: "/image-folders/seminar/IMG_4479.JPG", icon: Briefcase },
   ];
 
   return (

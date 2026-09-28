@@ -65,12 +65,16 @@ export const authOptions: NextAuthOptions = {
       if (account?.provider === "google" && profile) {
         // Exchange Google email/profile for Django token
         try {
+          const { cookies } = await import("next/headers");
+          const selectedRole = cookies().get('oauth_role')?.value || 'ATTENDEE';
+          
           const res = await fetch(`${API_URL}/auth/google/`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               email: profile.email,
-              name: profile.name
+              name: profile.name,
+              role: selectedRole
             })
           });
           if (res.ok) {

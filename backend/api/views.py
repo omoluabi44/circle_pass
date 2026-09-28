@@ -16,12 +16,17 @@ from rest_framework.permissions import AllowAny
 @permission_classes([AllowAny])
 def google_auth(request):
     email = request.data.get('email')
+    role = request.data.get('role', 'ATTENDEE')
+    
+    if role not in ['ATTENDEE', 'ORGANIZER']:
+        role = 'ATTENDEE'
+        
     if not email:
         return Response({"detail": "Email is required"}, status=status.HTTP_400_BAD_REQUEST)
     
     user, created = User.objects.get_or_create(email=email, defaults={
         'username': email.split('@')[0],
-        'role': 'ATTENDEE',
+        'role': role,
         'is_active': True
     })
     
