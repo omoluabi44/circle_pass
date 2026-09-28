@@ -31,7 +31,7 @@ export default function EventDetailsPage() {
     // Fetch event details
     const fetchEvent = async () => {
       try {
-        const res = await fetch(`${API_URL}/events/?slug=${slug}`);
+        const res = await fetch(`${API_URL}/events/?slug=${slug}`, { cache: 'no-store' });
         if (!res.ok) throw new Error("Event not found");
         const data = await res.json();
         

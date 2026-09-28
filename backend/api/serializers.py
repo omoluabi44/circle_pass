@@ -138,7 +138,7 @@ class EventCreateUpdateSerializer(serializers.ModelSerializer):
             'id', 'category', 'category_name', 'venue', 'venue_name', 'title', 'description', 'cover_image', 'capacity',
             'event_type', 'country', 'state', 'city', 'organizer_contact', 'emergency_contact', 
             'age_restriction', 'dress_code', 'lineup', 'personalized_dp_enabled', 'sales_paused', 'waitlist_enabled',
-            'is_online', 'absorb_fees', 'start_time', 'end_time', 'ticket_types',
+            'is_online', 'status', 'absorb_fees', 'start_time', 'end_time', 'ticket_types',
         )
 
     def to_internal_value(self, data):
