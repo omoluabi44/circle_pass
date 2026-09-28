@@ -59,6 +59,13 @@ class CheckoutView(APIView):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
+        # Block checkout if organizer has paused sales
+        if event.sales_paused:
+            return Response(
+                {'detail': 'Ticket sales are currently paused for this event.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
         # Resolve attendee profile (if authenticated)
         attendee = None
         if request.user.is_authenticated:

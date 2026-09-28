@@ -325,7 +325,16 @@ export default function EventDetailsPage() {
                       const isSoldOut = totalCapacity > 0 && totalSold >= totalCapacity;
                       const waitlistEnabled = event.waitlist_enabled;
                       
-                      if (isSoldOut && waitlistEnabled) {
+                      if (event.sales_paused) {
+                        return (
+                          <button 
+                            disabled
+                            className="w-full py-4 bg-muted text-muted-foreground rounded-xl font-bold text-lg cursor-not-allowed flex items-center justify-center gap-2"
+                          >
+                            <span className="relative z-10">Sales Paused</span>
+                          </button>
+                        );
+                      } else if (isSoldOut && waitlistEnabled) {
                         return (
                           <button 
                             onClick={() => setIsCheckoutOpen(true)}
