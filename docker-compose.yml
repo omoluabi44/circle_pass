@@ -27,13 +27,11 @@ services:
     restart: always
     expose:
       - "3000"
+    env_file:
+      - .env
     environment:
       - NODE_ENV=production
-      - NEXTAUTH_SECRET=uD9x#K7^mP2!qR5vT8*bN4@fW1$yH6&c
-      - NEXTAUTH_URL=https://thecirclepass.com
       - NEXT_PUBLIC_API_URL=https://api.thecirclepass.com/api
-      - GOOGLE_CLIENT_ID=placeholder_id
-      - GOOGLE_CLIENT_SECRET=placeholder_secret
     logging:
       driver: "json-file"
       options:
