@@ -5,14 +5,12 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import Cookies from "js-cookie";
 import { InteractiveExperience } from "@/components/ui/InteractiveExperience";
 
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState("ATTENDEE");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
@@ -64,43 +62,6 @@ export default function LoginPage() {
           <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
             {error && <p className="text-destructive text-sm bg-destructive/10 p-3 rounded-lg border border-destructive/20">{error}</p>}
             
-            {/* Role Selection Boxes for Google Auth */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-              <button
-                type="button"
-                onClick={() => setRole("ATTENDEE")}
-                className={`p-4 rounded-2xl border-2 text-left transition-all ${
-                  role === "ATTENDEE" 
-                    ? "border-primary bg-primary/5 shadow-sm" 
-                    : "border-border bg-background hover:border-primary/50 hover:bg-secondary/50"
-                }`}
-              >
-                <div className="flex justify-center mb-3">
-                  <div className={`p-2 rounded-full ${role === "ATTENDEE" ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground"}`}>
-                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
-                  </div>
-                </div>
-                <h3 className="font-bold text-center text-foreground mb-1 text-sm">Attendee</h3>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setRole("ORGANIZER")}
-                className={`p-4 rounded-2xl border-2 text-left transition-all ${
-                  role === "ORGANIZER" 
-                    ? "border-primary bg-primary/5 shadow-sm" 
-                    : "border-border bg-background hover:border-primary/50 hover:bg-secondary/50"
-                }`}
-              >
-                <div className="flex justify-center mb-3">
-                  <div className={`p-2 rounded-full ${role === "ORGANIZER" ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground"}`}>
-                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
-                  </div>
-                </div>
-                <h3 className="font-bold text-center text-foreground mb-1 text-sm">Organizer</h3>
-              </button>
-            </div>
-
             <div className="space-y-4">
               <div>
                 <label className="sr-only">Email address</label>
@@ -148,10 +109,7 @@ export default function LoginPage() {
 
           <div className="mt-6">
             <button
-              onClick={() => {
-                Cookies.set('oauth_role', role);
-                signIn("google", { callbackUrl: "/dashboard" });
-              }}
+              onClick={() => signIn("google", { callbackUrl: "/dashboard" })}
               className="flex w-full justify-center items-center gap-3 rounded-xl border border-border bg-background px-4 py-3.5 text-sm font-bold text-foreground hover:bg-secondary focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 transition-colors shadow-sm"
             >
               <svg className="w-5 h-5" viewBox="0 0 24 24">
