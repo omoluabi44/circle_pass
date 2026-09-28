@@ -29,6 +29,8 @@ services:
       - "3000"
     environment:
       - NODE_ENV=production
+      - NEXTAUTH_SECRET=uD9x#K7^mP2!qR5vT8*bN4@fW1$yH6&c
+      - NEXTAUTH_URL=https://thecirclepass.com
     logging:
       driver: "json-file"
       options:
