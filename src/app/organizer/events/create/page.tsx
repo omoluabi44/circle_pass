@@ -162,7 +162,7 @@ export default function CreateEventPage() {
       
       if (submitAfterSave) {
         await submitEvent(session.accessToken as string, event.id);
-        toast.success("Event created and submitted for review!");
+        toast.success("Event created and published successfully!");
       } else {
         toast.success("Event saved as draft successfully!");
       }

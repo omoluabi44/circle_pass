@@ -301,19 +301,23 @@ class EventViewSet(viewsets.ModelViewSet):
         
         if event.status not in ['DRAFT', 'CHANGES_REQUIRED']:
             return Response(
-                {"detail": "Only events in DRAFT or CHANGES_REQUIRED can be submitted."},
+                {"detail": "Only events in DRAFT or CHANGES_REQUIRED can be published."},
                 status=status.HTTP_400_BAD_REQUEST
             )
             
-        event.status = 'SUBMITTED'
+        # Basic validation before publishing
+        if not event.title or not event.start_time or not event.end_time:
+            return Response(
+                {"detail": "All required fields must be filled before publishing."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+            
+        event.status = 'PUBLISHED'
         event.save(update_fields=['status'])
         
-        # Run rule-based screening synchronously
-        new_status = screen_event(event.id)
-        
         return Response({
-            "detail": "Event submitted for review.",
-            "status": new_status
+            "detail": "Event published successfully.",
+            "status": "PUBLISHED"
         }, status=status.HTTP_200_OK)
 
     @action(detail=True, methods=['get'], permission_classes=[IsOrganizerOrAdmin])
