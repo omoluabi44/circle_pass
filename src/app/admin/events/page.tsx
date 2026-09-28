@@ -29,7 +29,7 @@ export default async function AdminEventsPage({ searchParams }: { searchParams: 
 
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-8">
-      <header className="flex justify-between items-end">
+      <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
         <div>
           <h1 className="text-3xl font-bold mb-2">Event Management</h1>
           <p className="text-muted-foreground">Manage all events, pending reviews, and publications from this central hub.</p>
@@ -62,7 +62,7 @@ export default async function AdminEventsPage({ searchParams }: { searchParams: 
         </Link>
       </div>
 
-      <div className="bg-background border border-border rounded-xl shadow-sm overflow-hidden">
+      <div className="bg-background border border-border rounded-xl shadow-sm overflow-hidden overflow-x-auto">
         {filteredEvents.length === 0 ? (
           <div className="p-8 text-center text-muted-foreground">No events found for this filter.</div>
         ) : (

@@ -114,6 +114,51 @@ export default function RegisterPage() {
               </div>
             )}
             
+            {/* Role Selection Boxes */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+              {/* Attendee Box */}
+              <button
+                type="button"
+                onClick={() => setRole("ATTENDEE")}
+                className={`p-4 rounded-2xl border-2 text-left transition-all ${
+                  role === "ATTENDEE" 
+                    ? "border-primary bg-primary/5 shadow-sm" 
+                    : "border-border bg-background hover:border-primary/50 hover:bg-secondary/50"
+                }`}
+              >
+                <div className="flex justify-center mb-3">
+                  <div className={`p-2 rounded-full ${role === "ATTENDEE" ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground"}`}>
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                  </div>
+                </div>
+                <h3 className="font-bold text-center text-foreground mb-1 text-sm">Attendee</h3>
+                <p className="text-xs text-muted-foreground text-center leading-relaxed">
+                  Discover events, get your pass & experience more.
+                </p>
+              </button>
+
+              {/* Organizer Box */}
+              <button
+                type="button"
+                onClick={() => setRole("ORGANIZER")}
+                className={`p-4 rounded-2xl border-2 text-left transition-all ${
+                  role === "ORGANIZER" 
+                    ? "border-primary bg-primary/5 shadow-sm" 
+                    : "border-border bg-background hover:border-primary/50 hover:bg-secondary/50"
+                }`}
+              >
+                <div className="flex justify-center mb-3">
+                  <div className={`p-2 rounded-full ${role === "ORGANIZER" ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground"}`}>
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+                  </div>
+                </div>
+                <h3 className="font-bold text-center text-foreground mb-1 text-sm">Organizer</h3>
+                <p className="text-xs text-muted-foreground text-center leading-relaxed">
+                  Create your events, sell tickets & manage everything in one place.
+                </p>
+              </button>
+            </div>
+
             <div className="space-y-4">
               <div>
                 <label className="sr-only">Username</label>
@@ -147,17 +192,6 @@ export default function RegisterPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                 />
-              </div>
-              <div>
-                <label className="sr-only">Role</label>
-                <select
-                  className="block w-full rounded-xl border border-border bg-secondary/50 px-4 py-3.5 text-foreground focus:border-primary focus:bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all sm:text-sm appearance-none cursor-pointer"
-                  value={role}
-                  onChange={(e) => setRole(e.target.value)}
-                >
-                  <option value="ATTENDEE">I want to attend events</option>
-                  <option value="ORGANIZER">I want to organize events</option>
-                </select>
               </div>
             </div>
 

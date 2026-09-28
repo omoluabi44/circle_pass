@@ -34,7 +34,7 @@ export default async function EventsPage() {
 
   return (
     <div className="p-8 max-w-6xl mx-auto flex flex-col">
-      <header className="mb-8 flex justify-between items-center">
+      <header className="mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold text-foreground capitalize">Events</h1>
           <p className="text-muted-foreground mt-2">Manage your events and track their status.</p>
@@ -56,7 +56,7 @@ export default async function EventsPage() {
           </p>
         </div>
       ) : (
-        <div className="bg-background rounded-xl shadow-sm border border-border overflow-hidden">
+        <div className="bg-background rounded-xl shadow-sm border border-border overflow-hidden overflow-x-auto">
           <table className="w-full text-left">
             <thead className="bg-secondary border-b border-border">
               <tr>

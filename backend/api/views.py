@@ -115,8 +115,13 @@ class PublicOrganizerProfileView(APIView):
                 'slug': e.slug,
                 'title': e.title,
                 'start_time': e.start_time,
-                'cover_image': (e.cover_image.url if hasattr(e.cover_image, 'url') else str(e.cover_image)) if e.cover_image else None,
             }
+            cover = (e.cover_image.url if hasattr(e.cover_image, 'url') else str(e.cover_image)) if e.cover_image else None
+            if cover and not cover.startswith(('http://', 'https://')):
+                if not cover.startswith('/'):
+                    cover = '/media/' + cover if not cover.startswith('media/') else '/' + cover
+                cover = request.build_absolute_uri(cover)
+            event_data['cover_image'] = cover
             # For simplicity we treat events starting after now as upcoming
             if e.start_time and e.start_time > now:
                 event_data['status'] = 'upcoming'

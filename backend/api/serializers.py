@@ -99,6 +99,30 @@ class EventSerializer(serializers.ModelSerializer):
             'sales_paused', 'waitlist_enabled'
         )
 
+    cover_image = serializers.SerializerMethodField()
+
+    def get_cover_image(self, obj):
+        cover = obj.cover_image
+        if not cover:
+            return None
+        if cover.startswith(('http://', 'https://')):
+            return cover
+            
+        # Ensure it has the /media/ prefix if it's a relative path
+        if not cover.startswith('/'):
+            if not cover.startswith('media/'):
+                cover = f'/media/{cover}'
+            else:
+                cover = f'/{cover}'
+                
+        request = self.context.get('request')
+        if request:
+            return request.build_absolute_uri(cover)
+        
+        # Fallback if no request context
+        from django.conf import settings
+        return f"http://127.0.0.1:8000{cover}"
+
 
 class EventCreateUpdateSerializer(serializers.ModelSerializer):
     ticket_types = TicketTypeCreateSerializer(many=True, required=False)

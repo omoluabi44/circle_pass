@@ -73,20 +73,6 @@ export function LiveVotingNominations() {
               </div>
             </div>
 
-            {/* Center: Mockup */}
-            <div className="flex-1 w-full max-w-md mx-auto mt-8 lg:mt-0">
-              <div className="bg-secondary rounded-3xl border border-border p-8 shadow-xl relative aspect-[4/5] flex flex-col justify-center">
-                <div className="w-full bg-card rounded-2xl border border-border shadow-sm p-6 space-y-6">
-                  <div className="w-1/2 h-5 bg-muted rounded-full"></div>
-                  <div className="space-y-5">
-                    <div className="flex items-center gap-4"><div className="w-5 h-5 rounded-full border-4 border-primary flex items-center justify-center p-1"><div className="w-full h-full bg-primary rounded-full"></div></div><div className="w-3/4 h-4 bg-muted rounded-full"></div></div>
-                    <div className="flex items-center gap-4"><div className="w-5 h-5 rounded-full border-2 border-border"></div><div className="w-2/3 h-4 bg-muted rounded-full"></div></div>
-                    <div className="flex items-center gap-4"><div className="w-5 h-5 rounded-full border-2 border-border"></div><div className="w-1/2 h-4 bg-muted rounded-full"></div></div>
-                  </div>
-                  <div className="w-full h-12 bg-primary/20 rounded-xl mt-4"></div>
-                </div>
-              </div>
-            </div>
           </div>
         ) : (
           /* ── NOMINATION VIEW ── */
@@ -121,29 +107,6 @@ export function LiveVotingNominations() {
               </div>
             </div>
 
-            {/* Right: Nomination Mockup */}
-            <div className="flex-1 w-full max-w-md mx-auto mt-8 lg:mt-0">
-              <div className="bg-secondary rounded-3xl border border-border p-8 shadow-xl relative aspect-[4/5] flex flex-col justify-center">
-                <div className="w-full bg-card rounded-2xl border border-border shadow-sm p-6 space-y-5">
-                  <div className="w-2/3 h-5 bg-muted rounded-full"></div>
-                  <div className="space-y-4">
-                    <div className="bg-muted/50 rounded-xl p-4 border border-border/50">
-                      <div className="w-1/2 h-3 bg-muted rounded-full mb-3"></div>
-                      <div className="w-full h-10 bg-muted rounded-lg"></div>
-                    </div>
-                    <div className="bg-muted/50 rounded-xl p-4 border border-border/50">
-                      <div className="w-1/3 h-3 bg-muted rounded-full mb-3"></div>
-                      <div className="w-full h-10 bg-muted rounded-lg"></div>
-                    </div>
-                    <div className="bg-muted/50 rounded-xl p-4 border border-border/50">
-                      <div className="w-2/5 h-3 bg-muted rounded-full mb-3"></div>
-                      <div className="w-full h-20 bg-muted rounded-lg"></div>
-                    </div>
-                  </div>
-                  <div className="w-full h-12 bg-primary/20 rounded-xl"></div>
-                </div>
-              </div>
-            </div>
           </div>
         )}
       </div>

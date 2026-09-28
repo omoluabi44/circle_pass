@@ -1,8 +1,108 @@
 "use client";
 
-import Image from 'next/image';
+import { useRef, useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { Music, Mic, Trophy, Sparkles, Wine, Briefcase } from 'lucide-react';
+import { Music, Mic, Trophy, Sparkles, Wine, Briefcase, ChevronLeft, ChevronRight } from 'lucide-react';
+
+// ─── Horizontal scroll carousel wrapper ───
+function HorizontalCarousel({ children }: { children: React.ReactNode }) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+
+  const checkScroll = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    setCanScrollLeft(el.scrollLeft > 2);
+    setCanScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 2);
+  }, []);
+
+  useEffect(() => {
+    checkScroll();
+    const el = scrollRef.current;
+    if (!el) return;
+    el.addEventListener('scroll', checkScroll, { passive: true });
+    window.addEventListener('resize', checkScroll);
+    return () => {
+      el.removeEventListener('scroll', checkScroll);
+      window.removeEventListener('resize', checkScroll);
+    };
+  }, [checkScroll]);
+
+  const scroll = (dir: 'left' | 'right') => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const amount = el.clientWidth * 0.75;
+    el.scrollBy({ left: dir === 'left' ? -amount : amount, behavior: 'smooth' });
+  };
+
+  return (
+    <div className="relative group/carousel">
+      {/* Left arrow */}
+      {canScrollLeft && (
+        <button
+          onClick={() => scroll('left')}
+          className="absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-black/60 hover:bg-black/80 text-white rounded-full p-2 shadow-lg backdrop-blur-sm transition-all opacity-0 group-hover/carousel:opacity-100 -translate-x-1/2 md:translate-x-0"
+          aria-label="Scroll left"
+        >
+          <ChevronLeft className="w-5 h-5" />
+        </button>
+      )}
+
+      {/* Scrollable track */}
+      <div
+        ref={scrollRef}
+        className="flex gap-4 md:gap-6 overflow-x-auto scroll-smooth snap-x snap-mandatory pb-2 hide-scrollbar"
+      >
+        {children}
+      </div>
+
+      {/* Right arrow */}
+      {canScrollRight && (
+        <button
+          onClick={() => scroll('right')}
+          className="absolute right-0 top-1/2 -translate-y-1/2 z-10 bg-black/60 hover:bg-black/80 text-white rounded-full p-2 shadow-lg backdrop-blur-sm transition-all opacity-0 group-hover/carousel:opacity-100 translate-x-1/2 md:translate-x-0"
+          aria-label="Scroll right"
+        >
+          <ChevronRight className="w-5 h-5" />
+        </button>
+      )}
+    </div>
+  );
+}
+
+// ─── Single category card ───
+function CategoryCard({ cat }: { cat: { name: string; sub: string; img: string; icon: React.ComponentType<{ className?: string }> } }) {
+  const Icon = cat.icon;
+  return (
+    <div className="shrink-0 snap-start w-[160px] sm:w-[180px] md:w-[220px] lg:w-[260px]">
+      <Link
+        href="#"
+        className="group relative block w-full aspect-[3/4] rounded-[24px] overflow-hidden bg-muted border border-border hover:border-primary/50 transition-all duration-300 shadow-sm hover:shadow-xl"
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={cat.img}
+          alt={cat.name}
+          className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+        />
+        {/* Bottom Gradient overlay */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
+
+        {/* Content block */}
+        <div className="absolute bottom-0 left-0 right-0 p-2 md:p-3">
+          <div className="bg-black/50 backdrop-blur-xl rounded-lg p-2 md:p-3 border border-primary-foreground/10 group-hover:border-primary/30 transition-colors">
+            <div className="flex items-center gap-1.5 mb-0.5">
+              <Icon className="w-3.5 h-3.5 md:w-4 md:h-4 text-primary" />
+              <h3 className="font-semibold text-sm md:text-base text-primary-foreground">{cat.name}</h3>
+            </div>
+            <p className="text-muted-foreground text-[10px] md:text-xs font-medium">{cat.sub}</p>
+          </div>
+        </div>
+      </Link>
+    </div>
+  );
+}
 
 export function DiscoverEvents() {
   const partyCategories = [
@@ -27,44 +127,18 @@ export function DiscoverEvents() {
         <div className="container mx-auto max-w-7xl">
 
           {/* Header */}
-          <div className="flex items-center justify-between mb-8">
-            <h2 className="text-xl md:text-2xl font-bold tracking-tight bg-primary/10 text-primary px-3 py-1.5 rounded-lg">
+          <div className="mb-8">
+            <h2 className="inline-block text-xl md:text-2xl font-bold tracking-tight bg-primary/10 text-primary px-3 py-1.5 rounded-lg">
               Turn Up the Volume
             </h2>
-            <Link href="#" className="text-primary hover:text-primary/80 font-medium text-sm md:text-base flex items-center gap-1 transition-colors">
-              View All <span>&rarr;</span>
-            </Link>
           </div>
 
-          {/* Grid */}
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-6">
-            {partyCategories.map((cat, index) => {
-              const Icon = cat.icon;
-              return (
-                <Link href="#" key={index} className="group relative w-full aspect-[3/4] rounded-[24px] overflow-hidden bg-foreground border border-border hover:border-primary/50 transition-all duration-300 block shadow-sm hover:shadow-xl">
-                  <Image
-                    src={cat.img}
-                    alt={cat.name}
-                    fill
-                    className="object-cover group-hover:scale-105 transition-transform duration-700 opacity-90 group-hover:opacity-100"
-                  />
-                  {/* Bottom Gradient overlay */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent"></div>
-
-                  {/* Content block */}
-                  <div className="absolute bottom-0 left-0 right-0 p-3 md:p-4">
-                    <div className="bg-black/50 backdrop-blur-xl rounded-xl p-3 md:p-4 border border-primary-foreground/10 group-hover:border-primary/30 transition-colors">
-                      <div className="flex items-center gap-2 mb-1">
-                        <Icon className="w-4 h-4 md:w-5 md:h-5 text-primary" />
-                        <h3 className="font-semibold text-base md:text-lg text-primary-foreground">{cat.name}</h3>
-                      </div>
-                      <p className="text-muted-foreground text-xs font-medium">{cat.sub}</p>
-                    </div>
-                  </div>
-                </Link>
-              );
-            })}
-          </div>
+          {/* Horizontal Carousel */}
+          <HorizontalCarousel>
+            {partyCategories.map((cat, index) => (
+              <CategoryCard key={index} cat={cat} />
+            ))}
+          </HorizontalCarousel>
         </div>
       </div>
 
@@ -73,44 +147,18 @@ export function DiscoverEvents() {
         <div className="container mx-auto max-w-7xl">
 
           {/* Header */}
-          <div className="flex items-center justify-between mb-8">
-            <h2 className="text-xl md:text-2xl font-bold tracking-tight bg-primary/10 text-primary px-3 py-1.5 rounded-lg">
+          <div className="mb-8">
+            <h2 className="inline-block text-xl md:text-2xl font-bold tracking-tight bg-primary/10 text-primary px-3 py-1.5 rounded-lg">
               Business and Professional Events
             </h2>
-            <Link href="#" className="text-primary hover:text-primary/80 font-medium text-sm md:text-base flex items-center gap-1 transition-colors">
-              View All <span>&rarr;</span>
-            </Link>
           </div>
 
-          {/* Grid */}
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-6">
-            {professionalCategories.map((cat, index) => {
-              const Icon = cat.icon;
-              return (
-                <Link href="#" key={index} className="group relative w-full aspect-[3/4] rounded-[24px] overflow-hidden bg-foreground border border-border hover:border-primary/50 transition-all duration-300 block shadow-sm hover:shadow-xl">
-                  <Image
-                    src={cat.img}
-                    alt={cat.name}
-                    fill
-                    className="object-cover group-hover:scale-105 transition-transform duration-700 opacity-90 group-hover:opacity-100"
-                  />
-                  {/* Bottom Gradient overlay */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent"></div>
-
-                  {/* Content block */}
-                  <div className="absolute bottom-0 left-0 right-0 p-3 md:p-4">
-                    <div className="bg-black/50 backdrop-blur-xl rounded-xl p-3 md:p-4 border border-primary-foreground/10 group-hover:border-primary/30 transition-colors">
-                      <div className="flex items-center gap-2 mb-1">
-                        <Icon className="w-4 h-4 md:w-5 md:h-5 text-primary" />
-                        <h3 className="font-semibold text-base md:text-lg text-primary-foreground">{cat.name}</h3>
-                      </div>
-                      <p className="text-muted-foreground text-xs font-medium">{cat.sub}</p>
-                    </div>
-                  </div>
-                </Link>
-              );
-            })}
-          </div>
+          {/* Horizontal Carousel */}
+          <HorizontalCarousel>
+            {professionalCategories.map((cat, index) => (
+              <CategoryCard key={index} cat={cat} />
+            ))}
+          </HorizontalCarousel>
         </div>
       </div>
 

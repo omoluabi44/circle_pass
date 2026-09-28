@@ -79,33 +79,3 @@ class PresignedUrlView(APIView):
             
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
-class LocalFileUploadView(APIView):
-    """
-    Simple local file upload endpoint. Saves the file to Django's MEDIA_ROOT
-    and returns an absolute URL. Used when AWS S3 is not configured.
-    """
-    permission_classes = [IsAuthenticated]
-    parser_classes = [MultiPartParser, FormParser]
-
-    def post(self, request):
-        file_obj = request.FILES.get('file')
-        if not file_obj:
-            return Response({'error': 'No file provided.'}, status=status.HTTP_400_BAD_REQUEST)
-
-        folder = request.data.get('folder', 'uploads')
-        if folder not in ['event_covers', 'organizer_logos', 'uploads']:
-            folder = 'uploads'
-
-        ext = os.path.splitext(file_obj.name)[1]
-        unique_filename = f"{uuid.uuid4().hex}{ext}"
-        file_path = f"{folder}/{unique_filename}"
-
-        # Save to MEDIA_ROOT using Django's default_storage
-        saved_path = default_storage.save(file_path, ContentFile(file_obj.read()))
-
-        # Build an absolute URL
-        file_url = request.build_absolute_uri(settings.MEDIA_URL + saved_path)
-
-        return Response({'file_url': file_url})

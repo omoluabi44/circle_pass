@@ -63,12 +63,11 @@ class AttendeeDashboardView(APIView):
             
             image_url = None
             if ev.cover_image:
-                try:
-                    # If it's a FileField/ImageField
-                    image_url = request.build_absolute_uri(ev.cover_image.url)
-                except AttributeError:
-                    # If it's just a string path or full URL
-                    image_url = request.build_absolute_uri(str(ev.cover_image))
+                cover_str = str(ev.cover_image)
+                if not cover_str.startswith(('http://', 'https://')):
+                    if not cover_str.startswith('/'):
+                        cover_str = '/media/' + cover_str if not cover_str.startswith('media/') else '/' + cover_str
+                image_url = request.build_absolute_uri(cover_str)
 
             next_event_data = {
                 "ticket_id": next_ticket.qr_token or next_ticket.id,
@@ -92,10 +91,11 @@ class AttendeeDashboardView(APIView):
         for ev in suggested:
             img = None
             if ev.cover_image:
-                try:
-                    img = request.build_absolute_uri(ev.cover_image.url)
-                except AttributeError:
-                    img = request.build_absolute_uri(str(ev.cover_image))
+                cover_str = str(ev.cover_image)
+                if not cover_str.startswith(('http://', 'https://')):
+                    if not cover_str.startswith('/'):
+                        cover_str = '/media/' + cover_str if not cover_str.startswith('media/') else '/' + cover_str
+                img = request.build_absolute_uri(cover_str)
             suggested_data.append({
                 "id": ev.id,
                 "slug": ev.slug,

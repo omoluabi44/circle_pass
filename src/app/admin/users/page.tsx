@@ -30,7 +30,7 @@ export default async function AdminUsersPage() {
       <div className="space-y-8">
         <section>
           <h2 className="text-xl font-bold mb-4">Organizer Verifications</h2>
-          <div className="bg-background border border-border rounded-xl shadow-sm overflow-hidden">
+          <div className="bg-background border border-border rounded-xl shadow-sm overflow-hidden overflow-x-auto">
             {verifications.length === 0 ? (
               <div className="p-4 text-muted-foreground text-sm">No verifications found.</div>
             ) : (
@@ -83,7 +83,7 @@ export default async function AdminUsersPage() {
 
         <section>
           <h2 className="text-xl font-bold mb-4">All Users</h2>
-          <div className="bg-background border border-border rounded-xl shadow-sm overflow-hidden">
+          <div className="bg-background border border-border rounded-xl shadow-sm overflow-hidden overflow-x-auto">
             <table className="w-full text-sm text-left">
               <thead className="bg-muted text-muted-foreground font-bold text-xs uppercase tracking-wider">
                 <tr>

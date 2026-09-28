@@ -36,24 +36,32 @@ export function Hero() {
       <div className="absolute inset-0 z-0 bg-black">
         <div className="absolute inset-0 bg-black/60 z-10" /> {/* Overlay to make text readable */}
         <video
-          ref={(el) => { videoRefs.current[0] = el; }}
+          ref={(el) => { 
+            videoRefs.current[0] = el; 
+            if (el) { el.defaultMuted = true; el.muted = true; } 
+          }}
           src="/video1.mp4"
           poster="/hero_event_pass.jpg"
           className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ease-in-out ${
             activeVideo === 0 ? 'opacity-100' : 'opacity-0'
           }`}
+          autoPlay={activeVideo === 0}
           muted
           playsInline
           loop={false}
           onEnded={handleVideoEnd}
         />
         <video
-          ref={(el) => { videoRefs.current[1] = el; }}
+          ref={(el) => { 
+            videoRefs.current[1] = el; 
+            if (el) { el.defaultMuted = true; el.muted = true; }
+          }}
           src="/video2.mp4"
           poster="/hero_event_pass.jpg"
           className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ease-in-out ${
             activeVideo === 1 ? 'opacity-100' : 'opacity-0'
           }`}
+          autoPlay={activeVideo === 1}
           muted
           playsInline
           loop={false}

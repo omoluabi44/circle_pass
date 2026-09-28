@@ -9,6 +9,7 @@ import { useCart } from '@/context/CartContext';
 
 export function Navbar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isMobileVotingOpen, setIsMobileVotingOpen] = useState(false);
   const { cartItemsCount } = useCart();
   const { data: session, status } = useSession();
 
@@ -110,32 +111,45 @@ export function Navbar() {
           <nav className="flex flex-col space-y-2">
             {navLinks.map((link) => (
               link.label === 'E-Voting' ? (
-                <div key={link.label} className="flex flex-col">
-                  <div className="text-base font-medium px-4 py-3 text-muted-foreground">
-                    {link.label}
-                  </div>
-                  <div className="pl-8 flex flex-col space-y-2">
-                    <Link
-                      href="/voting"
-                      className="text-sm font-medium px-4 py-2 rounded-lg hover:bg-secondary text-foreground"
-                      onClick={() => setIsMobileMenuOpen(false)}
+                <div key={link.label} className="flex flex-col border-b border-border">
+                  <button 
+                    onClick={() => setIsMobileVotingOpen(!isMobileVotingOpen)}
+                    className="flex items-center justify-between w-full text-base font-medium px-2 py-4 text-foreground hover:text-primary transition-colors"
+                  >
+                    <span>{link.label}</span>
+                    <svg 
+                      className={`w-4 h-4 text-primary transition-transform duration-200 ${isMobileVotingOpen ? 'rotate-180' : ''}`} 
+                      fill="none" viewBox="0 0 24 24" stroke="currentColor"
                     >
-                      1. Voting
-                    </Link>
-                    <Link
-                      href="/nominations"
-                      className="text-sm font-medium px-4 py-2 rounded-lg hover:bg-secondary text-foreground"
-                      onClick={() => setIsMobileMenuOpen(false)}
-                    >
-                      2. Nominations
-                    </Link>
-                  </div>
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+                  
+                  {/* Dropdown Items */}
+                  {isMobileVotingOpen && (
+                    <div className="flex flex-col bg-secondary/20 rounded-xl mb-3 overflow-hidden">
+                      <Link
+                        href="/voting"
+                        className="text-sm font-medium px-6 py-3.5 border-b border-border/40 text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors"
+                        onClick={() => setIsMobileMenuOpen(false)}
+                      >
+                        Voting
+                      </Link>
+                      <Link
+                        href="/nominations"
+                        className="text-sm font-medium px-6 py-3.5 text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors"
+                        onClick={() => setIsMobileMenuOpen(false)}
+                      >
+                        Nominations
+                      </Link>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <Link
                   key={link.label}
                   href={link.href}
-                  className="text-base font-medium px-4 py-3 rounded-lg hover:bg-secondary text-foreground"
+                  className="text-base font-medium px-2 py-4 border-b border-border text-foreground hover:text-primary transition-colors block"
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
                   {link.label}
