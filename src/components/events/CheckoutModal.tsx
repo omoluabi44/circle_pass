@@ -3,7 +3,7 @@
 import React, { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Ticket, Minus, Plus, AlertCircle, CheckCircle2 } from "lucide-react";
-import { useSession } from "next-auth/react";
+import { useSession, signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { checkout } from "@/lib/api/checkout";
 import { API_URL } from "@/lib/api/config";
@@ -49,11 +49,72 @@ export default function CheckoutModal({ isOpen, onClose, event }: CheckoutModalP
   const [successData, setSuccessData] = useState<any>(null);
   const router = useRouter();
 
+  // Sign-up / Login state
+  const [signupData, setSignupData] = useState({ username: '', email: '', password: '', phone_number: '' });
+  const [signupError, setSignupError] = useState('');
+  const [isSigningUp, setIsSigningUp] = useState(false);
+  const [showLogin, setShowLogin] = useState(false);
+  const [loginData, setLoginData] = useState({ email: '', password: '' });
+
+  const handleSignUp = async () => {
+    const { username, email, password, phone_number } = signupData;
+    if (!username || !email || !password || !phone_number) {
+      setSignupError("Please fill in all fields.");
+      return;
+    }
+    setSignupError('');
+    setIsSigningUp(true);
+
+    try {
+      const regRes = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, email, password, phone_number, role: "ATTENDEE" }),
+      });
+      const regData = await regRes.json();
+      if (!regRes.ok) throw new Error(regData.error || "Registration failed");
+
+      const loginRes = await signIn("credentials", {
+        email,
+        password,
+        redirect: false,
+      });
+      if (loginRes?.error) {
+        throw new Error("Account created! Please verify your email, then log in to complete checkout.");
+      }
+    } catch (err: any) {
+      setSignupError(err.message || "Something went wrong.");
+    } finally {
+      setIsSigningUp(false);
+    }
+  };
+
+  const handleLogin = async () => {
+    const { email, password } = loginData;
+    if (!email || !password) {
+      setSignupError("Please fill in all fields.");
+      return;
+    }
+    setSignupError('');
+    setIsSigningUp(true);
+
+    try {
+      const res = await signIn("credentials", { email, password, redirect: false });
+      if (res?.error) {
+        throw new Error("Invalid email or password.");
+      }
+    } catch (err: any) {
+      setSignupError(err.message);
+    } finally {
+      setIsSigningUp(false);
+    }
+  };
+
   // Timer logic
   const [timeLeft, setTimeLeft] = useState(600); // 10 minutes
   
   React.useEffect(() => {
-    if (!isOpen || success || isWaitlistActive) return;
+    if (!isOpen || success || isWaitlistActive || !session) return;
     const interval = setInterval(() => {
       setTimeLeft((prev) => {
         if (prev <= 1) {
@@ -298,7 +359,97 @@ export default function CheckoutModal({ isOpen, onClose, event }: CheckoutModalP
                 </div>
               )}
 
-              {success ? (
+              {!session ? (
+                showLogin ? (
+                  <div className="space-y-4">
+                    <div className="text-center mb-6">
+                      <h3 className="text-lg font-bold text-foreground">Log In</h3>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Sign in to continue with your purchase
+                      </p>
+                    </div>
+
+                    {signupError && (
+                      <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-sm flex items-start gap-3">
+                        <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
+                        <p>{signupError}</p>
+                      </div>
+                    )}
+
+                    <input type="email" placeholder="Email address" required
+                      value={loginData.email}
+                      onChange={(e) => setLoginData(prev => ({...prev, email: e.target.value}))}
+                      className="w-full px-4 py-3 rounded-xl border border-border bg-secondary/50 outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
+                    />
+                    <input type="password" placeholder="Password" required
+                      value={loginData.password}
+                      onChange={(e) => setLoginData(prev => ({...prev, password: e.target.value}))}
+                      className="w-full px-4 py-3 rounded-xl border border-border bg-secondary/50 outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
+                    />
+
+                    <button onClick={handleLogin} disabled={isSigningUp}
+                      className="w-full py-3.5 bg-primary text-primary-foreground rounded-xl font-bold shadow-sm hover:bg-primary/90 transition-colors disabled:opacity-50">
+                      {isSigningUp ? "Signing in..." : "Continue to Tickets"}
+                    </button>
+
+                    <p className="text-center text-sm text-muted-foreground">
+                      Don't have an account?{" "}
+                      <button onClick={() => setShowLogin(false)} className="text-primary font-bold hover:underline">
+                        Sign up
+                      </button>
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="text-center mb-6">
+                      <h3 className="text-lg font-bold text-foreground">Quick Sign Up</h3>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Create an account to continue with your purchase
+                      </p>
+                    </div>
+
+                    {signupError && (
+                      <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-sm flex items-start gap-3">
+                        <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
+                        <p>{signupError}</p>
+                      </div>
+                    )}
+
+                    <input type="text" placeholder="Username" required
+                      value={signupData.username}
+                      onChange={(e) => setSignupData(prev => ({...prev, username: e.target.value}))}
+                      className="w-full px-4 py-3 rounded-xl border border-border bg-secondary/50 outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
+                    />
+                    <input type="email" placeholder="Email address" required
+                      value={signupData.email}
+                      onChange={(e) => setSignupData(prev => ({...prev, email: e.target.value}))}
+                      className="w-full px-4 py-3 rounded-xl border border-border bg-secondary/50 outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
+                    />
+                    <input type="password" placeholder="Password" required
+                      value={signupData.password}
+                      onChange={(e) => setSignupData(prev => ({...prev, password: e.target.value}))}
+                      className="w-full px-4 py-3 rounded-xl border border-border bg-secondary/50 outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
+                    />
+                    <input type="tel" placeholder="Phone number" required
+                      value={signupData.phone_number}
+                      onChange={(e) => setSignupData(prev => ({...prev, phone_number: e.target.value}))}
+                      className="w-full px-4 py-3 rounded-xl border border-border bg-secondary/50 outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
+                    />
+
+                    <button onClick={handleSignUp} disabled={isSigningUp}
+                      className="w-full py-3.5 bg-primary text-primary-foreground rounded-xl font-bold shadow-sm hover:bg-primary/90 transition-colors disabled:opacity-50">
+                      {isSigningUp ? "Creating account..." : "Continue to Tickets"}
+                    </button>
+
+                    <p className="text-center text-sm text-muted-foreground">
+                      Already have an account?{" "}
+                      <button onClick={() => setShowLogin(true)} className="text-primary font-bold hover:underline">
+                        Log in
+                      </button>
+                    </p>
+                  </div>
+                )
+              ) : success ? (
                 <div className="flex flex-col items-center justify-center py-8 text-center">
                   <motion.div
                     initial={{ scale: 0 }}
@@ -433,7 +584,7 @@ export default function CheckoutModal({ isOpen, onClose, event }: CheckoutModalP
             </div>
 
             {/* Footer Summary */}
-            {!success && !isWaitlistActive && (
+            {session && !success && !isWaitlistActive && (
               <div className="p-4 sm:p-6 border-t border-border bg-card">
                 
                 {/* Discount Code Section */}

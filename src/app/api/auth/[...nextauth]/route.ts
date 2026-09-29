@@ -50,6 +50,7 @@ export const authOptions: NextAuthOptions = {
             name: user.username,
             email: user.email,
             role: user.role,
+            isEmailVerified: user.is_email_verified ?? user.is_active ?? true,
             accessToken: tokens.access,
             refreshToken: tokens.refresh,
           };
@@ -89,6 +90,7 @@ export const authOptions: NextAuthOptions = {
       } else if (user) {
         // Initial credentials sign-in
         token.role = user.role;
+        token.isEmailVerified = user.isEmailVerified;
         token.accessToken = user.accessToken;
         token.refreshToken = user.refreshToken;
       }
@@ -97,6 +99,7 @@ export const authOptions: NextAuthOptions = {
     async session({ session, token }) {
       if (token && session.user) {
         session.user.role = token.role as string;
+        session.user.isEmailVerified = token.isEmailVerified as boolean;
         session.accessToken = token.accessToken as string;
       }
       return session;

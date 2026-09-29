@@ -1,4 +1,4 @@
-import { QrCode, Lock, CheckCircle, Info } from "lucide-react";
+import { QrCode, Lock, CheckCircle, Info, Mail } from "lucide-react";
 import Link from "next/link";
 import { getSession } from "@/lib/auth";
 import { getTicketById } from "@/lib/api/tickets";
@@ -18,6 +18,34 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
     ticket = await getTicketById(session.accessToken, id);
   } catch (error) {
     console.error("Failed to fetch ticket:", error);
+  }
+
+  // Check email verification
+  const isEmailVerified = (session.user as any)?.isEmailVerified;
+
+  if (isEmailVerified === false) {
+    return (
+      <div className="p-8 max-w-2xl mx-auto text-center py-20">
+        <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center text-primary mx-auto mb-6">
+          <Mail className="w-10 h-10" />
+        </div>
+        <h1 className="text-2xl font-bold mb-4">Verify Your Email</h1>
+        <p className="text-muted-foreground mb-2">
+          You need to verify your email address before you can view your digital ticket.
+        </p>
+        <p className="text-muted-foreground mb-8 text-sm">
+          Check your inbox for a verification link from CirclePass.
+        </p>
+        <div className="space-y-4">
+          <Link href="/verify-email" className="block w-full max-w-xs mx-auto bg-primary text-primary-foreground px-6 py-3 rounded-lg font-medium hover:bg-primary/90 transition-colors">
+            Check Verification Status
+          </Link>
+          <Link href="/dashboard/tickets" className="text-primary hover:underline text-sm font-medium">
+            &larr; Back to Tickets
+          </Link>
+        </div>
+      </div>
+    );
   }
 
   if (!ticket) {
