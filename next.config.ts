@@ -18,6 +18,14 @@ const nextConfig: NextConfig = {
         hostname: "127.0.0.1",
         port: "8000",
       },
+      {
+        protocol: "https",
+        hostname: "circlepass-files.s3.us-east-1.amazonaws.com",
+      },
+      {
+        protocol: "https",
+        hostname: "*.amazonaws.com",
+      },
     ],
   },
   eslint: {
