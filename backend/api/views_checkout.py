@@ -223,8 +223,11 @@ class CheckoutView(APIView):
                     )
                     
                 # Queue check for sold out
-                from .tasks import check_sold_out_and_notify
-                check_sold_out_and_notify.delay(event.id)
+                try:
+                    from .tasks import check_sold_out_and_notify
+                    check_sold_out_and_notify.delay(event.id)
+                except Exception as e:
+                    logger.warning("Failed to queue sold-out check for event %s: %s", event.id, e)
 
                 # ============================================
                 # FREE TICKET PATH: Issue tickets immediately
@@ -278,10 +281,13 @@ class CheckoutView(APIView):
                 payment.save(update_fields=['provider_data'])
 
                 # Queue abandoned cart emails
-                from .tasks import send_abandoned_cart_email
-                send_abandoned_cart_email.apply_async((order.id, '1hr'), countdown=3600) # 1 hour
-                send_abandoned_cart_email.apply_async((order.id, '24hr'), countdown=86400) # 24 hours
-                send_abandoned_cart_email.apply_async((order.id, '7days'), countdown=604800) # 7 days
+                try:
+                    from .tasks import send_abandoned_cart_email
+                    send_abandoned_cart_email.apply_async((order.id, '1hr'), countdown=3600) # 1 hour
+                    send_abandoned_cart_email.apply_async((order.id, '24hr'), countdown=86400) # 24 hours
+                    send_abandoned_cart_email.apply_async((order.id, '7days'), countdown=604800) # 7 days
+                except Exception as e:
+                    logger.warning("Failed to queue abandoned cart emails for order %s: %s", order.id, e)
 
                 return Response({
                     'detail': 'Order created. Proceed to payment.',

@@ -48,6 +48,44 @@ services:
       - ./backend/.env
     environment:
       - PYTHONUNBUFFERED=1
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    depends_on:
+      - redis
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  redis:
+    image: redis:alpine
+    container_name: circlepass_redis
+    restart: always
+    expose:
+      - "6379"
+    ports:
+      - "6379:6379"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  celery_worker:
+    image: omoluabi44/circlepass-backend:latest
+    container_name: circlepass_celery_worker
+    restart: always
+    command: celery -A circlepass_backend worker --loglevel=info
+    env_file:
+      - ./backend/.env
+    environment:
+      - PYTHONUNBUFFERED=1
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    depends_on:
+      - redis
+      - backend
     logging:
       driver: "json-file"
       options:
