@@ -58,7 +58,7 @@ export default function AboutUsPage() {
       <section className="max-w-7xl mx-auto px-4 grid grid-cols-1 md:grid-cols-2 gap-12 items-center py-24 border-t border-border/50">
         <div className="bg-secondary/30 rounded-3xl aspect-[4/3] flex items-center justify-center border border-border overflow-hidden relative">
           <Image 
-            src="/image-folders/event-images/photo_2026-09-17_16-13-29.jpg" 
+            src="/image-folders/why circlepass.PNG" 
             alt="Event crowd" 
             fill
             className="object-cover opacity-80"
