@@ -6,6 +6,7 @@ import { useSession } from "next-auth/react";
 import Image from "next/image";
 import { API_URL } from "@/lib/api/config";
 import { uploadToS3 } from "@/utils/s3Upload";
+import { toast } from "react-hot-toast";
 
 function BusinessDetailsForm() {
   const { data: session } = useSession();
@@ -80,7 +81,7 @@ function BusinessDetailsForm() {
         data.append(key, val);
       });
       if (logoFile) {
-        const logoUrl = await uploadToS3(logoFile, 'organizer_logos');
+        const logoUrl = await uploadToS3(logoFile, 'organizer_logos', token);
         data.append('logo', logoUrl);
       }
 
@@ -92,11 +93,15 @@ function BusinessDetailsForm() {
         body: data
       });
 
-      if (!res.ok) throw new Error("Failed to update profile");
-      alert("Profile updated successfully!");
-    } catch (err) {
+      if (!res.ok) {
+        let errData;
+        try { errData = await res.json(); } catch(e) {}
+        throw new Error(errData?.error || errData?.detail || errData?.message || "Failed to update profile");
+      }
+      toast.success("Profile updated successfully!");
+    } catch (err: any) {
       console.error(err);
-      alert("An error occurred while saving.");
+      toast.error(err.message || "An error occurred while saving.");
     } finally {
       setSaving(false);
     }
@@ -195,7 +200,7 @@ function VerificationTab() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!cacFile || !idFile) {
-      alert("Please upload both documents.");
+      toast.error("Please upload both documents.");
       return;
     }
 
@@ -208,10 +213,10 @@ function VerificationTab() {
 
       const data = await submitVerification(token, formData);
       setStatus(data.status);
-      alert("Verification documents submitted successfully.");
-    } catch (err) {
+      toast.success("Verification documents submitted successfully.");
+    } catch (err: any) {
       console.error(err);
-      alert("Failed to submit verification.");
+      toast.error(err.message || "Failed to submit verification.");
     } finally {
       setSubmitting(false);
     }
@@ -401,13 +406,12 @@ function PayoutSettingsTab() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.account_name) {
-      alert("Please ensure your account name is resolved.");
+      toast.error("Please ensure your account name is resolved.");
       return;
     }
     setSaving(true);
     try {
       const token = (session as any)?.accessToken;
-      // We store bank_code in formData.bank_name for the endpoint, but let's send both
       const selectedBank = banks.find(b => b.code === formData.bank_name);
       
       const res = await fetch(`${API_URL}/organizer/wallet/`, {
@@ -424,11 +428,15 @@ function PayoutSettingsTab() {
         })
       });
 
-      if (!res.ok) throw new Error("Failed to save bank details");
-      alert("Bank details updated successfully!");
-    } catch (err) {
+      if (!res.ok) {
+        let errData;
+        try { errData = await res.json(); } catch(e) {}
+        throw new Error(errData?.error || errData?.detail || errData?.message || "Failed to save bank details");
+      }
+      toast.success("Bank details updated successfully!");
+    } catch (err: any) {
       console.error(err);
-      alert("An error occurred.");
+      toast.error(err.message || "An error occurred.");
     } finally {
       setSaving(false);
     }
