@@ -62,7 +62,7 @@ export function Navbar() {
         </nav>
 
         {/* CTAs and Mobile Menu Toggle */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-1 sm:gap-3">
           
           <ThemeToggle />
           
@@ -92,14 +92,14 @@ export function Navbar() {
           )}
 
           {status === 'authenticated' && (session?.user as any)?.role !== 'ADMIN' && (
-            <Link href="/organizer/events/create" className="text-sm font-medium bg-primary text-primary-foreground px-5 py-2.5 rounded-full hover:bg-primary/90 transition-all shadow-md hover:shadow-lg">
+            <Link href="/organizer/events/create" className="hidden sm:inline-flex text-sm font-medium bg-primary text-primary-foreground px-5 py-2.5 rounded-full hover:bg-primary/90 transition-all shadow-md hover:shadow-lg">
               Create Event
             </Link>
           )}
 
           {/* Mobile Menu Button */}
           <button
-            className="md:hidden p-2 text-muted-foreground hover:bg-muted rounded-lg transition-colors"
+            className="md:hidden p-2 text-muted-foreground hover:bg-muted rounded-lg transition-colors ml-1"
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
             aria-label="Toggle menu"
           >
@@ -170,6 +170,15 @@ export function Navbar() {
                 >
                   Dashboard
                 </Link>
+                {(session?.user as any)?.role !== 'ADMIN' && (
+                  <Link
+                    href="/organizer/events/create"
+                    className="sm:hidden text-base font-medium px-4 py-3 rounded-lg hover:bg-secondary text-foreground"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    Create Event
+                  </Link>
+                )}
                 <button
                   onClick={() => { signOut(); setIsMobileMenuOpen(false); }}
                   className="sm:hidden text-left text-base font-medium px-4 py-3 rounded-lg hover:bg-destructive/10 text-destructive"
