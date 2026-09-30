@@ -239,6 +239,36 @@ class EventViewSet(viewsets.ModelViewSet):
             is_online_bool = is_online.lower() == 'true'
             qs = qs.filter(is_online=is_online_bool)
 
+        location = self.request.query_params.get('location', None)
+        if location and location.lower() != 'any':
+            qs = qs.filter(venue__location__icontains=location)
+            
+        date_param = self.request.query_params.get('date', None)
+        if date_param and date_param.lower() != 'any':
+            from django.utils import timezone
+            import datetime
+            now = timezone.now()
+            
+            if date_param == 'today':
+                qs = qs.filter(start_time__date=now.date())
+            elif date_param == 'this_weekend':
+                weekday = now.weekday()
+                if weekday == 4:
+                    friday = now
+                elif weekday == 5:
+                    friday = now - datetime.timedelta(days=1)
+                elif weekday == 6:
+                    friday = now - datetime.timedelta(days=2)
+                else:
+                    friday = now + datetime.timedelta(days=(4 - weekday))
+                
+                friday = friday.replace(hour=0, minute=0, second=0, microsecond=0)
+                sunday = friday + datetime.timedelta(days=2)
+                sunday = sunday.replace(hour=23, minute=59, second=59, microsecond=999999)
+                qs = qs.filter(start_time__gte=friday, start_time__lte=sunday)
+            elif date_param == 'this_month':
+                qs = qs.filter(start_time__year=now.year, start_time__month=now.month)
+
         # Location-based Radius Search (Haversine formula in km)
         lat_param = self.request.query_params.get('lat', None)
         lng_param = self.request.query_params.get('lng', None)

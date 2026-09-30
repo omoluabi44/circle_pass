@@ -7,21 +7,25 @@ import { MapPin, Calendar, ChevronDown } from "lucide-react";
 
 interface DiscoverySectionProps {
   limit?: number;
+  searchParams?: Record<string, string>;
 }
 
-export function DiscoverySection({ limit }: DiscoverySectionProps = {}) {
+export function DiscoverySection({ limit, searchParams }: DiscoverySectionProps = {}) {
   const [activeTab, setActiveTab] = useState<"upcoming" | "past">("upcoming");
   const [activeFilter, setActiveFilter] = useState("ALL");
   const [events, setEvents] = useState<any[]>([]);
   const [filters, setFilters] = useState<string[]>(["ALL"]);
   const [isLoading, setIsLoading] = useState(true);
+  
+  const paramsStr = JSON.stringify(searchParams || {});
 
   useEffect(() => {
     async function fetchData() {
       try {
+        const parsedParams = JSON.parse(paramsStr);
         const { getPublicEvents, getCategories } = await import('@/lib/api/events');
         const [eventsData, categoriesData] = await Promise.all([
-          getPublicEvents(),
+          getPublicEvents(parsedParams),
           getCategories()
         ]);
         
@@ -81,7 +85,7 @@ export function DiscoverySection({ limit }: DiscoverySectionProps = {}) {
       }
     }
     fetchData();
-  }, []);
+  }, [paramsStr]);
 
   const filteredEvents = events.filter(e => {
     if (e.status !== activeTab) return false;
