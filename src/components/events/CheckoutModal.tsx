@@ -262,6 +262,7 @@ export default function CheckoutModal({ isOpen, onClose, event }: CheckoutModalP
       if (response.payment_required && (response as any).paystack?.access_code) {
         initializePaystack({
           accessCode: (response as any).paystack.access_code,
+          reference: (response as any).paystack.reference,
           onSuccess: (verificationResult) => {
             setSuccessData({ ...verificationResult, isGuest: true, guestEmail: email });
             setSuccess(true);
@@ -327,6 +328,7 @@ export default function CheckoutModal({ isOpen, onClose, event }: CheckoutModalP
       if (response.payment_required && (response as any).paystack?.access_code) {
         initializePaystack({
           accessCode: (response as any).paystack.access_code,
+          reference: (response as any).paystack.reference,
           onSuccess: (verificationResult) => {
             setSuccessData(verificationResult);
             setSuccess(true);
