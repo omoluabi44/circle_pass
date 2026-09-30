@@ -10,8 +10,6 @@ import {
   Users,
   Bell,
   Ticket,
-  ChevronLeft,
-  ChevronRight,
 } from "lucide-react";
 import Image from "next/image";
 
@@ -26,7 +24,7 @@ const events = [
     avatars: 4,
   },
   {
-    title: "Abuja Food Fest",
+    title: "Back In the 90s",
     date: "12 Nov, 2026",
     venue: "Central Park",
     going: "+850 going",
@@ -520,7 +518,7 @@ export function InteractiveExperience() {
         style={{ rotate: "-3deg" }}
       />
 
-      {/* ───── Event Card: Abuja Food Fest (bottom-left, small) ───── */}
+      {/* ───── Event Card: Back In the 90s (bottom-left, small) ───── */}
       <EventCard
         event={events[1]}
         mouseX={mx}
@@ -690,32 +688,6 @@ export function InteractiveExperience() {
         </p>
       </div>
 
-      {/* ───── Bottom navigation dots & arrows ───── */}
-      <div className="absolute bottom-5 left-0 right-0 z-20 flex items-center justify-center gap-6">
-        {/* Dots */}
-        <div className="flex items-center gap-2">
-          <div className="w-6 h-1.5 rounded-full bg-white/80" />
-          <div className="w-1.5 h-1.5 rounded-full bg-white/30" />
-          <div className="w-1.5 h-1.5 rounded-full bg-white/30" />
-          <div className="w-1.5 h-1.5 rounded-full bg-white/30" />
-        </div>
-
-        {/* Nav arrows */}
-        <div className="flex items-center gap-2">
-          <button
-            className="w-8 h-8 rounded-full border border-white/20 flex items-center justify-center hover:bg-white/10 transition-colors"
-            aria-label="Previous"
-          >
-            <ChevronLeft className="w-4 h-4 text-white/60" />
-          </button>
-          <button
-            className="w-8 h-8 rounded-full border border-white/20 flex items-center justify-center hover:bg-white/10 transition-colors"
-            aria-label="Next"
-          >
-            <ChevronRight className="w-4 h-4 text-white/60" />
-          </button>
-        </div>
-      </div>
     </div>
   );
 }
