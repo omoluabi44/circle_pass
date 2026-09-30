@@ -5,6 +5,7 @@ import { useSession } from "next-auth/react";
 import Image from "next/image";
 import { UploadCloud, Loader2, X } from "lucide-react";
 import { uploadToS3 } from "@/utils/s3Upload";
+import { toast } from "react-hot-toast";
 
 interface OrganizerProfile {
   id?: number;
@@ -19,7 +20,6 @@ export function ProfileForm() {
   const [profile, setProfile] = useState<OrganizerProfile>({ company_name: "", website: "", bio: "" });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState("");
   const [uploadingImage, setUploadingImage] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -54,18 +54,18 @@ export function ProfileForm() {
     if (!file) return;
 
     if (file.size > 5 * 1024 * 1024) {
-      setMessage("Image size must be less than 5MB");
+      toast.error("Image size must be less than 5MB");
       return;
     }
 
     try {
       setUploadingImage(true);
-      setMessage("");
       const imageUrl = await uploadToS3(file, 'organizer_logos', session?.accessToken);
       setProfile((prev) => ({ ...prev, logo: imageUrl }));
+      toast.success("Image uploaded successfully!");
     } catch (err: any) {
       console.error("Upload error:", err);
-      setMessage(err.message || "Failed to upload image. Please try again.");
+      toast.error(err.message || "Failed to upload image. Please try again.");
     } finally {
       setUploadingImage(false);
       if (fileInputRef.current) {
@@ -77,7 +77,6 @@ export function ProfileForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
-    setMessage("");
 
     try {
       const url = profile.id 
@@ -98,12 +97,16 @@ export function ProfileForm() {
       if (res.ok) {
         const updated = await res.json();
         setProfile(updated);
-        setMessage("Profile saved successfully!");
+        toast.success("Profile saved successfully!");
       } else {
-        setMessage("Failed to save profile.");
+        let errData;
+        try { errData = await res.json(); } catch(e) {}
+        console.error("Save profile error:", errData);
+        toast.error(errData?.error || errData?.detail || errData?.message || "Failed to save profile.");
       }
-    } catch (err) {
-      setMessage("An error occurred.");
+    } catch (err: any) {
+      console.error("Profile update error:", err);
+      toast.error(err.message || "An error occurred.");
     } finally {
       setSaving(false);
     }
@@ -115,12 +118,6 @@ export function ProfileForm() {
 
   return (
     <form className="space-y-4" onSubmit={handleSubmit}>
-      {message && (
-        <div className={`p-3 rounded text-sm ${message.includes("success") ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"}`}>
-          {message}
-        </div>
-      )}
-      
       <div>
         <label className="block text-sm font-medium text-muted-foreground mb-2">Organizer Logo</label>
         <div className="flex items-center gap-6">
