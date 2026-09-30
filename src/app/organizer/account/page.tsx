@@ -80,7 +80,7 @@ function BusinessDetailsForm() {
         data.append(key, val);
       });
       if (logoFile) {
-        const logoUrl = await uploadToS3(logoFile, 'organizer_logos', token);
+        const logoUrl = await uploadToS3(logoFile, 'organizer_logos');
         data.append('logo', logoUrl);
       }
 
