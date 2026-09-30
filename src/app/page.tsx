@@ -17,7 +17,7 @@ export default function Home() {
       <Hero />
       <DiscoverEvents />
       <TrendingEvents />
-      <DiscoverySection />
+      <DiscoverySection limit={4} />
       <PlanningVotingSplit />
       <SimpleWay />
       <EventMedia />

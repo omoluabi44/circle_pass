@@ -5,7 +5,11 @@ import Image from "next/image";
 import Link from "next/link";
 import { MapPin, Calendar, ChevronDown } from "lucide-react";
 
-export function DiscoverySection() {
+interface DiscoverySectionProps {
+  limit?: number;
+}
+
+export function DiscoverySection({ limit }: DiscoverySectionProps = {}) {
   const [activeTab, setActiveTab] = useState<"upcoming" | "past">("upcoming");
   const [activeFilter, setActiveFilter] = useState("ALL");
   const [events, setEvents] = useState<any[]>([]);
@@ -147,7 +151,7 @@ export function DiscoverySection() {
 
         {/* Grid */}
         <div className="grid md:grid-cols-2 gap-4 md:gap-5 max-w-5xl mx-auto">
-          {filteredEvents.slice(0, 3).map(event => (
+          {(limit ? filteredEvents.slice(0, limit) : filteredEvents).map(event => (
             <Link 
               href={`/events/${event.slug}`}
               key={event.id} 
@@ -197,7 +201,7 @@ export function DiscoverySection() {
         )}
 
         {/* CTA Button */}
-        {filteredEvents.length > 0 && (
+        {(limit && filteredEvents.length > limit) ? (
           <div className="flex justify-center mt-12">
             <Link 
               href="/events" 
@@ -206,7 +210,7 @@ export function DiscoverySection() {
               See All Events
             </Link>
           </div>
-        )}
+        ) : null}
       </div>
     </section>
   );
