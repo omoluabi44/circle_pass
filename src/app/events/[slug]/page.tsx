@@ -6,7 +6,6 @@ import Image from "next/image";
 import { Calendar, MapPin, Clock, Share2, Ticket, ArrowLeft, Users, Bookmark, Music2, Link as LinkIcon, MessageCircle } from "lucide-react";
 import { InstagramIcon } from "@/components/ui/InstagramIcon";
 import Link from "next/link";
-import CheckoutModal from "@/components/events/CheckoutModal";
 import { useSession } from "next-auth/react";
 import { toggleSaveEvent, toggleFollowOrganizer } from "@/lib/api/engagement";
 import { API_URL } from "@/lib/api/config";
@@ -21,7 +20,6 @@ export default function EventDetailsPage() {
   const [event, setEvent] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const [isFollowing, setIsFollowing] = useState(false);
   const [followerCount, setFollowerCount] = useState(0);
@@ -275,31 +273,6 @@ export default function EventDetailsPage() {
               </div>
             </div>
 
-            {/* You may also like section */}
-            <div className="pt-8">
-              <h2 className="text-2xl font-bold text-foreground mb-6">You may also like</h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {/* Mocked recommended events */}
-                <Link href="/events" className="group bg-card border border-border rounded-2xl overflow-hidden hover:shadow-lg transition-all">
-                  <div className="h-32 bg-muted relative">
-                    <img src="https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=500&q=80" alt="Concert" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                  </div>
-                  <div className="p-4">
-                    <h3 className="font-bold text-foreground group-hover:text-primary transition-colors line-clamp-1">Lagos Tech Fest 2026</h3>
-                    <p className="text-sm text-muted-foreground mt-1">Eko Convention Center</p>
-                  </div>
-                </Link>
-                <Link href="/events" className="group bg-card border border-border rounded-2xl overflow-hidden hover:shadow-lg transition-all">
-                  <div className="h-32 bg-muted relative">
-                    <img src="https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=500&q=80" alt="Party" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                  </div>
-                  <div className="p-4">
-                    <h3 className="font-bold text-foreground group-hover:text-primary transition-colors line-clamp-1">AfroNation Afterparty</h3>
-                    <p className="text-sm text-muted-foreground mt-1">Landmark Beach</p>
-                  </div>
-                </Link>
-              </div>
-            </div>
           </div>
 
           {/* Sticky Sidebar */}
@@ -362,14 +335,14 @@ export default function EventDetailsPage() {
                         );
                       } else {
                         return (
-                          <button 
-                            onClick={() => setIsCheckoutOpen(true)}
+                      <Link 
+                            href={`/events/${slug}/checkout`}
                             className="w-full py-4 bg-primary text-primary-foreground rounded-xl font-bold text-lg hover:bg-primary/90 transition shadow-[0_4px_14px_0_rgba(99,102,241,0.39)] flex items-center justify-center gap-2 relative overflow-hidden group"
                           >
                             <div className="absolute inset-0 w-full h-full bg-white/20 scale-x-0 group-hover:scale-x-100 origin-left transition-transform duration-300" />
                             <Ticket className="w-5 h-5 relative z-10" />
                             <span className="relative z-10">Get Tickets</span>
-                          </button>
+                          </Link>
                         );
                       }
                     })()}
@@ -461,16 +434,34 @@ export default function EventDetailsPage() {
           </div>
 
         </div>
-      </div>
 
-      {/* Checkout Modal */}
-      {isCheckoutOpen && (
-        <CheckoutModal 
-          isOpen={isCheckoutOpen}
-          onClose={() => setIsCheckoutOpen(false)}
-          event={event}
-        />
-      )}
+        {/* You may also like section */}
+        <div className="pt-12 mt-12 border-t border-border">
+          <h2 className="text-2xl font-bold text-foreground mb-6">You may also like</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {/* Mocked recommended events */}
+            <Link href="/events" className="group bg-card border border-border rounded-2xl overflow-hidden hover:shadow-lg transition-all">
+              <div className="h-40 bg-muted relative">
+                <img src="https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=500&q=80" alt="Concert" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+              </div>
+              <div className="p-4">
+                <h3 className="font-bold text-foreground group-hover:text-primary transition-colors line-clamp-1">Lagos Tech Fest 2026</h3>
+                <p className="text-sm text-muted-foreground mt-1">Eko Convention Center</p>
+              </div>
+            </Link>
+            <Link href="/events" className="group bg-card border border-border rounded-2xl overflow-hidden hover:shadow-lg transition-all">
+              <div className="h-40 bg-muted relative">
+                <img src="https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=500&q=80" alt="Party" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+              </div>
+              <div className="p-4">
+                <h3 className="font-bold text-foreground group-hover:text-primary transition-colors line-clamp-1">AfroNation Afterparty</h3>
+                <p className="text-sm text-muted-foreground mt-1">Landmark Beach</p>
+              </div>
+            </Link>
+          </div>
+        </div>
+
+      </div>
     </div>
   );
 }

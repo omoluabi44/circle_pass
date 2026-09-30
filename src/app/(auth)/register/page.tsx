@@ -7,12 +7,14 @@ import Link from "next/link";
 import Image from "next/image";
 import Cookies from "js-cookie";
 import { InteractiveExperience } from "@/components/ui/InteractiveExperience";
+import { Eye, EyeOff } from "lucide-react";
 
 export default function RegisterPage() {
   const router = useRouter();
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [role, setRole] = useState("ATTENDEE");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -183,16 +185,23 @@ export default function RegisterPage() {
                   onChange={(e) => setEmail(e.target.value)}
                 />
               </div>
-              <div>
+              <div className="relative">
                 <label className="sr-only">Password</label>
                 <input
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   required
-                  className="block w-full rounded-xl border border-border bg-secondary/50 px-4 py-3.5 text-foreground placeholder-muted-foreground focus:border-primary focus:bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all sm:text-sm"
+                  className="block w-full rounded-xl border border-border bg-secondary/50 px-4 py-3.5 pr-12 text-foreground placeholder-muted-foreground focus:border-primary focus:bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all sm:text-sm"
                   placeholder="Password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
               </div>
             </div>
 

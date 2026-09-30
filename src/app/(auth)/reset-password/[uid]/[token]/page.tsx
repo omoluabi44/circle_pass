@@ -5,11 +5,14 @@ import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 
+import { Eye, EyeOff } from "lucide-react";
+
 export default function ResetPasswordPage() {
   const params = useParams();
   const router = useRouter();
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [errorMsg, setErrorMsg] = useState("");
 
@@ -67,24 +70,42 @@ export default function ResetPasswordPage() {
         <h2 className="text-xl sm:text-2xl font-bold text-center text-primary mb-6">Create New Password</h2>
         <form className="space-y-4 w-full" onSubmit={handleSubmit}>
           {errorMsg && <p className="text-destructive text-sm text-center bg-destructive/10 p-2 rounded">{errorMsg}</p>}
-          <input 
-            type="password" 
-            value={newPassword}
-            onChange={(e) => setNewPassword(e.target.value)}
-            placeholder="New password" 
-            className="w-full border rounded px-3 py-2" 
-            required 
-            minLength={8}
-          />
-          <input 
-            type="password" 
-            value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
-            placeholder="Confirm new password" 
-            className="w-full border rounded px-3 py-2" 
-            required 
-            minLength={8}
-          />
+          <div className="relative w-full">
+            <input 
+              type={showPassword ? "text" : "password"}
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              placeholder="New password" 
+              className="w-full border rounded px-3 py-2 pr-10" 
+              required 
+              minLength={8}
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-foreground transition-colors"
+            >
+              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+            </button>
+          </div>
+          <div className="relative w-full">
+            <input 
+              type={showPassword ? "text" : "password"}
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              placeholder="Confirm new password" 
+              className="w-full border rounded px-3 py-2 pr-10" 
+              required 
+              minLength={8}
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-foreground transition-colors"
+            >
+              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+            </button>
+          </div>
           <button 
             type="submit" 
             disabled={status === "loading"}
