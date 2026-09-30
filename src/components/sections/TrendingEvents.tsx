@@ -19,7 +19,10 @@ export function TrendingEvents() {
         const data = await getPublicEvents();
         const eventsList = Array.isArray(data) ? data : (data.results || []);
         
-        const mapped = eventsList.slice(0, 3).map((e: any) => {
+        // Filter out past events
+        const upcomingEvents = eventsList.filter((e: any) => new Date(e.end_time) > new Date());
+        
+        const mapped = upcomingEvents.slice(0, 3).map((e: any) => {
           const startDate = new Date(e.start_time);
           const month = startDate.toLocaleDateString('en-US', { month: 'short' }).toUpperCase();
           const day = startDate.toLocaleDateString('en-US', { day: '2-digit' });

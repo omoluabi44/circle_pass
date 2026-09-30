@@ -114,7 +114,7 @@ DJOSER = {
     'PASSWORD_RESET_CONFIRM_URL': 'reset-password/{uid}/{token}',
     'ACTIVATION_URL': 'verify-email/{uid}/{token}',
     'EMAIL': {
-        'activation': 'email.activation.email',
+        'activation': 'djoser.email.ActivationEmail',
     },
     'SERIALIZERS': {
         'user_create': 'api.serializers.UserCreateSerializer',
@@ -139,6 +139,7 @@ PAYSTACK_PUBLIC_KEY = os.environ.get('PAYSTACK_PUBLIC_KEY', '')
 PAYSTACK_CALLBACK_URL = os.environ.get('PAYSTACK_CALLBACK_URL', 'http://localhost:3000/payment/callback')
 
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+# EMAIL_BACKEND = 'django.core.mail.backends.dummy.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True

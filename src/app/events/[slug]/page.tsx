@@ -304,6 +304,7 @@ export default function EventDetailsPage() {
                         )
                       );
                       const waitlistEnabled = Boolean(event.waitlist_enabled);
+                      const isPast = new Date() > new Date(event.end_time);
                       
                       if (event.sales_paused) {
                         return (
@@ -312,6 +313,15 @@ export default function EventDetailsPage() {
                             className="w-full py-4 bg-muted text-muted-foreground rounded-xl font-bold text-lg cursor-not-allowed flex items-center justify-center gap-2"
                           >
                             <span className="relative z-10">Sales Paused</span>
+                          </button>
+                        );
+                      } else if (isPast) {
+                        return (
+                          <button 
+                            disabled
+                            className="w-full py-4 bg-muted text-muted-foreground rounded-xl font-bold text-lg cursor-not-allowed flex items-center justify-center gap-2"
+                          >
+                            <span className="relative z-10">Event Over</span>
                           </button>
                         );
                       } else if (isSoldOut && waitlistEnabled) {
@@ -335,7 +345,7 @@ export default function EventDetailsPage() {
                         );
                       } else {
                         return (
-                      <Link 
+                          <Link 
                             href={`/events/${slug}/checkout`}
                             className="w-full py-4 bg-primary text-primary-foreground rounded-xl font-bold text-lg hover:bg-primary/90 transition shadow-[0_4px_14px_0_rgba(99,102,241,0.39)] flex items-center justify-center gap-2 relative overflow-hidden group"
                           >

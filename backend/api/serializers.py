@@ -10,9 +10,36 @@ from core.models import (
 # AUTH SERIALIZERS
 # ==========================================
 class UserCreateSerializer(BaseUserCreateSerializer):
+    phone_number = serializers.CharField(write_only=True, required=False, allow_blank=True)
+
     class Meta(BaseUserCreateSerializer.Meta):
         model = User
         fields = ('id', 'username', 'email', 'password', 'role', 'phone_number')
+
+    def validate(self, attrs):
+        phone_number = attrs.pop('phone_number', None)
+        attrs = super().validate(attrs)
+        if phone_number is not None:
+            attrs['phone_number'] = phone_number
+        return attrs
+
+    def create(self, validated_data):
+        phone_number = validated_data.pop('phone_number', '')
+        user = super().create(validated_data)
+        
+        if user.role == 'ATTENDEE':
+            from core.models import AttendeeProfile
+            profile, _ = AttendeeProfile.objects.get_or_create(user=user)
+            if phone_number:
+                profile.phone_number = phone_number
+                profile.save()
+        elif user.role == 'ORGANIZER':
+            if phone_number:
+                profile, _ = OrganizerProfile.objects.get_or_create(user=user)
+                # Organizer profile doesn't have phone_number field explicitly, maybe save in contact_email or just ignore
+                pass
+                
+        return user
 
 class UserSerializer(BaseUserSerializer):
     class Meta(BaseUserSerializer.Meta):
