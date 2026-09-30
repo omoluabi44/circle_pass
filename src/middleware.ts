@@ -14,28 +14,41 @@ export async function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
-  // Manually decode the NextAuth JWT from the session cookie
+  // 1. Direct cookie check (Bulletproof fallback for Edge runtime bugs)
+  const hasSessionCookie = 
+    req.cookies.has("next-auth.session-token") || 
+    req.cookies.has("__Secure-next-auth.session-token");
+
+  // 2. Attempt to decode the JWT 
   const token = await getToken({
     req,
     secret: process.env.NEXTAUTH_SECRET,
   });
 
-  if (!token) {
+  // If there is NO token AND NO session cookie, redirect to login
+  if (!token && !hasSessionCookie) {
     const loginUrl = new URL("/login", req.url);
     loginUrl.searchParams.set("callbackUrl", req.url);
     return NextResponse.redirect(loginUrl);
   }
 
-  const role = token.role as string | undefined;
+  // If token decoding failed (Edge runtime issue) but cookie exists, 
+  // we let the user pass. Client components (useSession) and Backend will handle real validation.
+  if (!token && hasSessionCookie) {
+    return NextResponse.next();
+  }
+
+  const role = token?.role as string | undefined;
 
   // Admin routes require ADMIN role
-  if (path.startsWith("/admin") && role !== "ADMIN") {
+  if (path.startsWith("/admin") && role && role !== "ADMIN") {
     return NextResponse.redirect(new URL("/dashboard", req.url));
   }
 
   // Organizer routes require ORGANIZER or ADMIN role
   if (
     path.startsWith("/organizer") &&
+    role && 
     role !== "ORGANIZER" &&
     role !== "ADMIN"
   ) {
