@@ -114,7 +114,7 @@ DJOSER = {
     'PASSWORD_RESET_CONFIRM_URL': 'reset-password/{uid}/{token}',
     'ACTIVATION_URL': 'verify-email/{uid}/{token}',
     'EMAIL': {
-        'activation': 'djoser.email.ActivationEmail',
+        'activation': 'api.email.CustomActivationEmail',
     },
     'SERIALIZERS': {
         'user_create': 'api.serializers.UserCreateSerializer',

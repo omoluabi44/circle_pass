@@ -328,6 +328,19 @@ export default function CheckoutPage() {
     );
   }
 
+  let imageUrl = event?.cover_image || '/image-folders/event-images/photo_2026-09-17_16-13-26.jpg';
+  if (typeof imageUrl === 'string') {
+    if (imageUrl.startsWith('http://localhost:')) {
+      imageUrl = imageUrl.replace('http://localhost:', 'http://127.0.0.1:');
+    } else if (imageUrl.startsWith('/media/')) {
+      const baseUrl = API_URL.replace('/api', '');
+      imageUrl = `${baseUrl}${imageUrl}`;
+    } else if (!imageUrl.startsWith('http') && !imageUrl.startsWith('/')) {
+      const baseUrl = API_URL.replace('/api', '');
+      imageUrl = `${baseUrl}/media/${imageUrl}`;
+    }
+  }
+
   return (
     <div className="min-h-screen bg-background py-12 px-4 sm:px-6">
       <div className="max-w-3xl mx-auto">
@@ -336,13 +349,16 @@ export default function CheckoutPage() {
         </button>
         
         <div className="bg-card rounded-2xl shadow-xl overflow-hidden border border-border">
-          {/* Header */}
-          <div className="flex items-center justify-between p-6 sm:p-8 border-b border-border bg-card/50">
-            <div className="pr-8">
-              <h1 className="text-2xl font-bold text-foreground line-clamp-1">
+          {/* Header with Background Image */}
+          <div className="relative h-48 sm:h-56 w-full bg-muted overflow-hidden">
+            <img src={imageUrl} alt={event.title} className="w-full h-full object-cover" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent"></div>
+            
+            <div className="absolute bottom-0 left-0 w-full p-6 sm:p-8">
+              <h1 className="text-2xl sm:text-3xl font-bold text-white line-clamp-2 drop-shadow-md">
                 {event.title}
               </h1>
-              <div className="text-sm text-muted-foreground mt-2 flex items-center gap-3">
+              <div className="text-sm text-gray-200 mt-3 flex items-center gap-4">
                 <span className="flex items-center gap-1.5 font-medium">
                   {guestStep && !session ? (
                     <><AlertCircle className="w-4 h-4" /> Your Details</>
@@ -351,7 +367,7 @@ export default function CheckoutPage() {
                   )}
                 </span>
                 {!isWaitlistActive && !allSoldOut && !isSalesPaused && !success && !guestStep && (
-                  <span className="flex items-center gap-1.5 text-warning font-semibold bg-warning/10 px-2 py-0.5 rounded-md">
+                  <span className="flex items-center gap-1.5 font-semibold bg-white/20 px-2.5 py-1 rounded-md backdrop-blur-sm">
                     Time left: {Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, '0')}
                   </span>
                 )}
