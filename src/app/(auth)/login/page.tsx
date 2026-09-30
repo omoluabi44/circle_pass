@@ -67,8 +67,10 @@ export default function LoginPage() {
             
             <div className="space-y-4">
               <div>
-                <label className="sr-only">Email address</label>
+                <label htmlFor="email" className="sr-only">Email address</label>
                 <input
+                  id="email"
+                  name="email"
                   type="email"
                   required
                   className="block w-full rounded-xl border border-border bg-secondary/50 px-4 py-3.5 text-foreground placeholder-muted-foreground focus:border-primary focus:bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all sm:text-sm"
@@ -78,8 +80,10 @@ export default function LoginPage() {
                 />
               </div>
               <div className="relative">
-                <label className="sr-only">Password</label>
+                <label htmlFor="password" className="sr-only">Password</label>
                 <input
+                  id="password"
+                  name="password"
                   type={showPassword ? "text" : "password"}
                   required
                   className="block w-full rounded-xl border border-border bg-secondary/50 px-4 py-3.5 pr-12 text-foreground placeholder-muted-foreground focus:border-primary focus:bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all sm:text-sm"

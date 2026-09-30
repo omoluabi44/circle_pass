@@ -1,7 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useSession } from "next-auth/react";
+import Image from "next/image";
+import { UploadCloud, Loader2, X } from "lucide-react";
+import { uploadToS3 } from "@/utils/s3Upload";
 
 interface OrganizerProfile {
   id?: number;
@@ -17,6 +20,8 @@ export function ProfileForm() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     async function fetchProfile() {
@@ -43,6 +48,31 @@ export function ProfileForm() {
     }
     fetchProfile();
   }, [session]);
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      setMessage("Image size must be less than 5MB");
+      return;
+    }
+
+    try {
+      setUploadingImage(true);
+      setMessage("");
+      const imageUrl = await uploadToS3(file, 'organizer_logos', session?.accessToken);
+      setProfile((prev) => ({ ...prev, logo: imageUrl }));
+    } catch (err: any) {
+      console.error("Upload error:", err);
+      setMessage(err.message || "Failed to upload image. Please try again.");
+    } finally {
+      setUploadingImage(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -91,6 +121,65 @@ export function ProfileForm() {
         </div>
       )}
       
+      <div>
+        <label className="block text-sm font-medium text-muted-foreground mb-2">Organizer Logo</label>
+        <div className="flex items-center gap-6">
+          <div className="relative h-24 w-24 rounded-full overflow-hidden border bg-muted flex items-center justify-center shrink-0">
+            {profile.logo ? (
+              <Image 
+                src={profile.logo} 
+                alt="Organizer Logo" 
+                fill 
+                className="object-cover"
+                unoptimized
+              />
+            ) : (
+              <UploadCloud className="h-8 w-8 text-muted-foreground/50" />
+            )}
+            
+            {uploadingImage && (
+              <div className="absolute inset-0 bg-background/50 flex items-center justify-center">
+                <Loader2 className="h-6 w-6 animate-spin text-primary" />
+              </div>
+            )}
+          </div>
+          
+          <div className="flex-1">
+            <input
+              type="file"
+              accept="image/*"
+              className="hidden"
+              ref={fileInputRef}
+              onChange={handleImageUpload}
+              disabled={uploadingImage}
+            />
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploadingImage}
+                className="border border-input bg-background hover:bg-accent hover:text-accent-foreground px-4 py-2 rounded text-sm font-medium disabled:opacity-50 transition-colors"
+              >
+                {uploadingImage ? "Uploading..." : "Change Logo"}
+              </button>
+              
+              {profile.logo && (
+                <button
+                  type="button"
+                  onClick={() => setProfile({ ...profile, logo: "" })}
+                  className="text-destructive text-sm font-medium hover:underline flex items-center gap-1"
+                >
+                  <X className="h-4 w-4" /> Remove
+                </button>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground mt-2">
+              Recommended: 500x500px or larger. Maximum size: 5MB.
+            </p>
+          </div>
+        </div>
+      </div>
+
       <div>
         <label className="block text-sm font-medium text-muted-foreground">Company Name</label>
         <input 
