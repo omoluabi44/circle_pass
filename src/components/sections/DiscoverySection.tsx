@@ -136,85 +136,135 @@ export function DiscoverySection({ limit, searchParams }: DiscoverySectionProps 
           </div>
         </div>
 
-        {/* Filters */}
-        <div className="flex flex-wrap justify-center gap-3 mb-12">
-          {filters.map(filter => (
-            <button
-              key={filter}
-              onClick={() => setActiveFilter(filter)}
-              className={`px-5 py-2 rounded-full text-[11px] font-bold tracking-wider transition-all ${
-                activeFilter === filter 
-                  ? "bg-primary text-primary-foreground shadow-md" 
-                  : "bg-transparent text-muted-foreground hover:bg-muted hover:text-foreground"
-              }`}
-            >
-              {filter}
-            </button>
-          ))}
-        </div>
+        {/* Grouped Events */}
+        <div className="space-y-16 max-w-5xl mx-auto">
+          {filters.filter(f => f !== "ALL").map(categoryName => {
+            // Find events for this category
+            const categoryEvents = events.filter(e => e.status === activeTab && e.category === categoryName);
+            
+            // If no events match this category and tab, don't render the section
+            if (categoryEvents.length === 0) return null;
 
-        {/* Grid */}
-        <div className="grid md:grid-cols-2 gap-4 md:gap-5 max-w-5xl mx-auto">
-          {(limit ? filteredEvents.slice(0, limit) : filteredEvents).map(event => (
-            <Link 
-              href={`/events/${event.slug}`}
-              key={event.id} 
-              className={`bg-card border border-border/60 rounded-[1.25rem] p-4 flex gap-4 transition-all hover:shadow-lg hover:border-border cursor-pointer group ${activeTab === "past" ? "opacity-75 hover:opacity-100 grayscale-[0.2]" : ""}`}
-            >
-              {/* Content */}
-              <div className="flex-1 flex flex-col justify-between py-1 min-w-0">
-                <div>
-                  {activeTab === "past" && (
-                    <div className="bg-muted-foreground text-white text-[9px] font-bold px-2 py-0.5 rounded-md mb-2.5 inline-block tracking-wider">
-                      ENDED
-                    </div>
-                  )}
-                  <h3 className="font-bold text-[15px] md:text-base text-foreground mb-3 leading-tight line-clamp-2 group-hover:text-primary transition-colors uppercase">
-                    {event.title}
-                  </h3>
-                  <div className="flex items-center gap-2 text-[11px] md:text-xs text-muted-foreground mb-2">
-                    <Calendar className="w-3.5 h-3.5 shrink-0 text-muted-foreground/70" />
-                    <span className="truncate">{event.date}</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-[11px] md:text-xs text-muted-foreground">
-                    <MapPin className="w-3.5 h-3.5 shrink-0 text-muted-foreground/70" />
-                    <span className="truncate">{event.location}</span>
-                  </div>
+            return (
+              <div key={categoryName} className="w-full">
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-xl md:text-2xl font-extrabold text-foreground uppercase tracking-tight">{categoryName}</h3>
                 </div>
-                <div className="mt-5 font-extrabold text-foreground text-sm">
-                  {event.price}
+                
+                {/* Horizontally scrollable container */}
+                <div className="flex overflow-x-auto gap-4 pb-6 snap-x snap-mandatory hide-scrollbar -mx-4 px-4 md:mx-0 md:px-0">
+                  {categoryEvents.map(event => (
+                    <Link 
+                      href={`/events/${event.slug}`}
+                      key={event.id} 
+                      className={`snap-start shrink-0 w-[85vw] sm:w-[400px] md:w-[450px] bg-card border border-border/60 rounded-[1.25rem] p-4 flex gap-4 transition-all hover:shadow-lg hover:border-border cursor-pointer group ${activeTab === "past" ? "opacity-75 hover:opacity-100 grayscale-[0.2]" : ""}`}
+                    >
+                      {/* Content */}
+                      <div className="flex-1 flex flex-col justify-between py-1 min-w-0">
+                        <div>
+                          {activeTab === "past" && (
+                            <div className="bg-muted-foreground text-white text-[9px] font-bold px-2 py-0.5 rounded-md mb-2.5 inline-block tracking-wider">
+                              ENDED
+                            </div>
+                          )}
+                          <h3 className="font-bold text-[15px] md:text-base text-foreground mb-3 leading-tight line-clamp-2 group-hover:text-primary transition-colors uppercase">
+                            {event.title}
+                          </h3>
+                          <div className="flex items-center gap-2 text-[11px] md:text-xs text-muted-foreground mb-2">
+                            <Calendar className="w-3.5 h-3.5 shrink-0 text-muted-foreground/70" />
+                            <span className="truncate">{event.date}</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-[11px] md:text-xs text-muted-foreground">
+                            <MapPin className="w-3.5 h-3.5 shrink-0 text-muted-foreground/70" />
+                            <span className="truncate">{event.location}</span>
+                          </div>
+                        </div>
+                        <div className="mt-5 font-extrabold text-foreground text-sm">
+                          {event.price}
+                        </div>
+                      </div>
+                      
+                      {/* Image */}
+                      <div className="w-[100px] h-[100px] md:w-[130px] md:h-[130px] shrink-0 bg-muted rounded-xl overflow-hidden relative shadow-sm">
+                        <img
+                          src={event.image}
+                          alt={event.title}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    </Link>
+                  ))}
                 </div>
               </div>
-              
-              {/* Image */}
-              <div className="w-[100px] h-[100px] md:w-[130px] md:h-[130px] shrink-0 bg-muted rounded-xl overflow-hidden relative shadow-sm">
-                <img
-                  src={event.image}
-                  alt={event.title}
-                  className="w-full h-full object-cover"
-                />
+            );
+          })}
+          
+          {/* Also handle any events that don't match the known categories */}
+          {(() => {
+            const knownCategories = filters.filter(f => f !== "ALL");
+            const uncategorizedEvents = events.filter(e => e.status === activeTab && !knownCategories.includes(e.category));
+            
+            if (uncategorizedEvents.length === 0) return null;
+
+            return (
+              <div key="OTHER" className="w-full">
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-xl md:text-2xl font-extrabold text-foreground uppercase tracking-tight">OTHER EVENTS</h3>
+                </div>
+                
+                <div className="flex overflow-x-auto gap-4 pb-6 snap-x snap-mandatory hide-scrollbar -mx-4 px-4 md:mx-0 md:px-0">
+                  {uncategorizedEvents.map(event => (
+                    <Link 
+                      href={`/events/${event.slug}`}
+                      key={event.id} 
+                      className={`snap-start shrink-0 w-[85vw] sm:w-[400px] md:w-[450px] bg-card border border-border/60 rounded-[1.25rem] p-4 flex gap-4 transition-all hover:shadow-lg hover:border-border cursor-pointer group ${activeTab === "past" ? "opacity-75 hover:opacity-100 grayscale-[0.2]" : ""}`}
+                    >
+                      {/* Content */}
+                      <div className="flex-1 flex flex-col justify-between py-1 min-w-0">
+                        <div>
+                          {activeTab === "past" && (
+                            <div className="bg-muted-foreground text-white text-[9px] font-bold px-2 py-0.5 rounded-md mb-2.5 inline-block tracking-wider">
+                              ENDED
+                            </div>
+                          )}
+                          <h3 className="font-bold text-[15px] md:text-base text-foreground mb-3 leading-tight line-clamp-2 group-hover:text-primary transition-colors uppercase">
+                            {event.title}
+                          </h3>
+                          <div className="flex items-center gap-2 text-[11px] md:text-xs text-muted-foreground mb-2">
+                            <Calendar className="w-3.5 h-3.5 shrink-0 text-muted-foreground/70" />
+                            <span className="truncate">{event.date}</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-[11px] md:text-xs text-muted-foreground">
+                            <MapPin className="w-3.5 h-3.5 shrink-0 text-muted-foreground/70" />
+                            <span className="truncate">{event.location}</span>
+                          </div>
+                        </div>
+                        <div className="mt-5 font-extrabold text-foreground text-sm">
+                          {event.price}
+                        </div>
+                      </div>
+                      
+                      {/* Image */}
+                      <div className="w-[100px] h-[100px] md:w-[130px] md:h-[130px] shrink-0 bg-muted rounded-xl overflow-hidden relative shadow-sm">
+                        <img
+                          src={event.image}
+                          alt={event.title}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    </Link>
+                  ))}
+                </div>
               </div>
-            </Link>
-          ))}
+            );
+          })()}
         </div>
         
-        {filteredEvents.length === 0 && (
+        {events.filter(e => e.status === activeTab).length === 0 && (
           <div className="text-center py-20 text-muted-foreground">
-            No events found in this category.
+            No events found.
           </div>
         )}
-
-        {/* CTA Button */}
-        {(limit && filteredEvents.length > limit) ? (
-          <div className="flex justify-center mt-12">
-            <Link 
-              href="/events" 
-              className="bg-primary text-primary-foreground font-bold py-3.5 px-8 rounded-full shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all"
-            >
-              See All Events
-            </Link>
-          </div>
-        ) : null}
       </div>
     </section>
   );

@@ -8,12 +8,14 @@ import { useParams, useRouter } from "next/navigation";
 import { checkout } from "@/lib/api/checkout";
 import { API_URL } from "@/lib/api/config";
 import { usePaystack } from "@/hooks/usePaystack";
+import { useCart } from "@/context/CartContext";
 
 export default function CheckoutPage() {
   const params = useParams();
   const slug = params.slug as string;
   const router = useRouter();
   const { data: session } = useSession();
+  const { removeFromCart } = useCart();
   
   const [event, setEvent] = useState<any>(null);
   const [loadingEvent, setLoadingEvent] = useState(true);
@@ -228,6 +230,7 @@ export default function CheckoutPage() {
           onSuccess: (verificationResult) => {
             setSuccessData({ ...verificationResult, isGuest: true, guestEmail: email });
             setSuccess(true);
+            removeFromCart(event.id);
             setIsLoading(false);
           },
           onClose: () => {
@@ -242,6 +245,7 @@ export default function CheckoutPage() {
       } else {
         setSuccessData({ ...response, isGuest: true, guestEmail: email });
         setSuccess(true);
+        removeFromCart(event.id);
         setIsLoading(false);
       }
     } catch (err: any) {
@@ -276,6 +280,7 @@ export default function CheckoutPage() {
           onSuccess: (verificationResult) => {
             setSuccessData(verificationResult);
             setSuccess(true);
+            removeFromCart(event.id);
             setIsLoading(false);
           },
           onClose: () => {
@@ -290,6 +295,7 @@ export default function CheckoutPage() {
       } else {
         setSuccessData(response);
         setSuccess(true);
+        removeFromCart(event.id);
         setIsLoading(false);
       }
     } catch (err: any) {

@@ -7,8 +7,8 @@ import { MapPin, Clock, Crown, ShoppingCart, Check } from 'lucide-react';
 import { useCart } from '@/context/CartContext';
 
 export function TrendingEvents() {
-  const { addToCart } = useCart();
-  const [addedItems, setAddedItems] = useState<number[]>([]);
+  const { cartItems, addToCart } = useCart();
+  const addedItems = cartItems.map(item => item.id);
   const [trendingEvents, setTrendingEvents] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -156,15 +156,14 @@ export function TrendingEvents() {
                         e.preventDefault();
                         e.stopPropagation();
                         if (!addedItems.includes(event.id)) {
-                          setAddedItems([...addedItems, event.id]);
                           addToCart({
                             id: event.id,
                             slug: event.slug,
                             title: event.title,
-                            image: event.image || "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=500&q=80",
-                            price: event.min_price === 0 ? "Free" : `₦${(event.min_price / 100).toLocaleString()}`,
-                            date: `${month} ${day}`,
-                            location: event.is_online ? "Online Event" : event.location,
+                            image: event.image,
+                            price: event.price,
+                            date: `${event.month} ${event.day}`,
+                            location: event.location,
                           });
                         }
                       }}
