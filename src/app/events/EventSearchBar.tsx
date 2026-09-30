@@ -1,16 +1,34 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Search, MapPin, Calendar } from "lucide-react";
 
 export function EventSearchBar({ initialParams = {} }: { initialParams?: Record<string, any> }) {
   const router = useRouter();
+  const isMounted = useRef(false);
   
   // Initialize state with values from URL search params if present
   const [query, setQuery] = useState(initialParams.q || "");
   const [location, setLocation] = useState(initialParams.location || "any");
   const [date, setDate] = useState(initialParams.date || "any");
+
+  useEffect(() => {
+    if (!isMounted.current) {
+      isMounted.current = true;
+      return;
+    }
+    const timer = setTimeout(() => {
+      const params = new URLSearchParams();
+      if (query) params.set("q", query as string);
+      if (location && location !== "any") params.set("location", location as string);
+      if (date && date !== "any") params.set("date", date as string);
+      
+      router.push(`/events?${params.toString()}`);
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [query, location, date, router]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
