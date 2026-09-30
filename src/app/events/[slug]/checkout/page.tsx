@@ -85,6 +85,8 @@ export default function CheckoutPage() {
         return prev - 1;
       });
     }, 1000);
+    return () => clearInterval(interval);
+  }, [event, success, isWaitlistActive, allSoldOut, isSalesPaused]);
   
   if (loadingEvent) {
     return (

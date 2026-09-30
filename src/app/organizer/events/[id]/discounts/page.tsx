@@ -84,20 +84,20 @@ export default function DiscountsPage() {
   return (
     <div className="p-6">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-foreground">Discount Codes</h1>
+        <h1 className="text-2xl font-bold text-foreground">Discounts & Referrals</h1>
         <button
           onClick={() => setShowModal(true)}
           className="bg-primary text-primary-foreground px-4 py-2 rounded-xl flex items-center text-sm font-medium hover:bg-primary/90 transition-colors"
         >
           <Plus className="w-4 h-4 mr-2" />
-          New Discount
+          New Code
         </button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {discounts.length === 0 && (
           <div className="col-span-full py-8 text-center text-muted-foreground bg-card border border-border rounded-2xl">
-            No discounts created yet.
+            No codes created yet.
           </div>
         )}
         {discounts.map((discount) => (
@@ -106,7 +106,8 @@ export default function DiscountsPage() {
               <div>
                 <h3 className="text-lg font-bold text-foreground">{discount.code}</h3>
                 <p className="text-sm text-muted-foreground">
-                  {discount.discount_type === 'PERCENTAGE' ? `${discount.value}% Off` : `₦${discount.value} Off`}
+                  {discount.discount_type === 'REFERRAL' ? 'Referral Tracker' :
+                   discount.discount_type === 'PERCENTAGE' ? `${discount.value}% Off` : `₦${discount.value} Off`}
                 </p>
               </div>
               <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${discount.is_active !== false ? 'bg-success/10 text-success' : 'bg-secondary text-muted-foreground'}`}>
@@ -132,7 +133,7 @@ export default function DiscountsPage() {
               <button 
                 onClick={() => handleDelete(discount.id)}
                 className="p-2 text-destructive hover:bg-destructive/10 rounded-xl transition-colors"
-                title="Delete discount"
+                title="Delete code"
               >
                 <Trash2 className="w-4 h-4" />
               </button>
@@ -144,7 +145,7 @@ export default function DiscountsPage() {
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="bg-card rounded-2xl w-full max-w-md p-6">
-            <h2 className="text-xl font-bold text-foreground mb-4">Create Discount Code</h2>
+            <h2 className="text-xl font-bold text-foreground mb-4">Create Code</h2>
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-muted-foreground mb-1">Code</label>
@@ -153,7 +154,7 @@ export default function DiscountsPage() {
                   value={code}
                   onChange={(e) => setCode(e.target.value.toUpperCase())}
                   className="w-full bg-background border border-border rounded-xl px-3 py-2 text-foreground uppercase" 
-                  placeholder="e.g. SUMMER50" 
+                  placeholder="e.g. SUMMER50 or JOHN2026" 
                 />
               </div>
               <div className="grid grid-cols-2 gap-4">
@@ -161,19 +162,23 @@ export default function DiscountsPage() {
                   <label className="block text-sm font-medium text-muted-foreground mb-1">Type</label>
                   <select 
                     value={type}
-                    onChange={(e) => setType(e.target.value)}
+                    onChange={(e) => { setType(e.target.value); if(e.target.value === 'REFERRAL') setValue('0'); }}
                     className="w-full bg-background border border-border rounded-xl px-3 py-2 text-foreground"
                   >
                     <option value="PERCENTAGE">Percentage</option>
                     <option value="FIXED">Fixed Amount</option>
+                    <option value="REFERRAL">Referral</option>
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-muted-foreground mb-1">Value</label>
+                  <label className="block text-sm font-medium text-muted-foreground mb-1">
+                    {type === "REFERRAL" ? "Value (0 = Tracking Only)" : "Value"}
+                  </label>
                   <input 
                     type="number" 
                     value={value}
                     onChange={(e) => setValue(e.target.value)}
+                    disabled={type === "REFERRAL" && value === "0" ? false : false} // Just a visual cue, they can still give a discount on referral if they want
                     className="w-full bg-background border border-border rounded-xl px-3 py-2 text-foreground" 
                     placeholder={type === "PERCENTAGE" ? "20" : "5000"} 
                   />
