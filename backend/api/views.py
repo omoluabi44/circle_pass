@@ -207,13 +207,13 @@ class EventViewSet(viewsets.ModelViewSet):
         user = self.request.user
         if user.is_authenticated and hasattr(user, 'role'):
             if user.role == 'ADMIN':
-                qs = Event.objects.all()
+                qs = Event.objects.all().order_by('-id')
             elif user.role == 'ORGANIZER':
-                qs = Event.objects.filter(organizer__user=user)
+                qs = Event.objects.filter(organizer__user=user).order_by('-id')
             else:
-                qs = Event.objects.filter(status__in=['PUBLISHED', 'LIVE'])
+                qs = Event.objects.filter(status__in=['PUBLISHED', 'LIVE']).order_by('-id')
         else:
-            qs = Event.objects.filter(status__in=['PUBLISHED', 'LIVE'])
+            qs = Event.objects.filter(status__in=['PUBLISHED', 'LIVE']).order_by('-id')
 
         # Simple Filtering & Searching
         q = self.request.query_params.get('q', None)
