@@ -6,6 +6,7 @@ import { Logo } from '@/components/ui/Logo';
 import { Menu, X, ShoppingCart } from 'lucide-react';
 import { useSession, signOut } from 'next-auth/react';
 import { useCart } from '@/context/CartContext';
+import { ThemeToggle } from '@/components/ui/ThemeToggle';
 
 export function Navbar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -62,6 +63,8 @@ export function Navbar() {
 
         {/* CTAs and Mobile Menu Toggle */}
         <div className="flex items-center gap-3">
+          
+          <ThemeToggle />
           
           {/* Cart Icon */}
           <Link href="/cart" className="relative p-2 text-foreground hover:bg-muted rounded-full transition-colors flex items-center justify-center">
