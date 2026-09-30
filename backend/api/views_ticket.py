@@ -42,3 +42,22 @@ class TicketViewSet(viewsets.ReadOnlyModelViewSet):
         obj = get_object_or_404(queryset, Q(qr_token=lookup) | Q(pk=lookup) if lookup.isdigit() else Q(qr_token=lookup))
         self.check_object_permissions(self.request, obj)
         return obj
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework.permissions import AllowAny
+from django.shortcuts import get_object_or_404
+
+class PublicTicketView(APIView):
+    permission_classes = [AllowAny]
+    
+    def get(self, request, qr_token):
+        ticket = get_object_or_404(Ticket, qr_token=qr_token)
+        
+        # 3-hour Pre-Event Activation Logic (Lazy Evaluation)
+        activation_threshold = timezone.now() + timedelta(hours=3)
+        if ticket.status == 'ISSUED' and ticket.order.event.start_time <= activation_threshold:
+            ticket.status = 'ACTIVE'
+            ticket.save(update_fields=['status'])
+            
+        serializer = TicketSerializer(ticket, context={'request': request})
+        return Response(serializer.data)

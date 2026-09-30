@@ -177,10 +177,10 @@ export default function CheckoutPage() {
       setSuccess(false);
       setSuccessData(null);
       setGuestStep(false);
-      setGuestData({ name: '', email: '', phone: '', password: '' });
+      setGuestData({ name: '', email: '', phone: '' });
       if (wasSuccess) {
-        if (data?.isGuest) {
-          router.push(`/events/${slug}`);
+        if (data?.isGuest && data?.tickets && data.tickets.length > 0) {
+          router.push(`/t/${data.tickets[0].qr_token}`);
         } else if (data?.tickets && data.tickets.length > 0) {
           router.push(`/dashboard/tickets/${data.tickets[0].qr_token}`);
         } else {
@@ -195,32 +195,21 @@ export default function CheckoutPage() {
   const { initialize: initializePaystack, isVerifying } = usePaystack();
 
   const handleGuestCheckout = async () => {
-    const { name, email, phone, password } = guestData;
-    if (!name || !email || !phone || !password) {
+    const { name, email, phone } = guestData;
+    if (!name || !email || !phone) {
       setError("Please fill in all fields.");
       return;
     }
     setError(null);
     setIsLoading(true);
     try {
-      const regRes = await fetch("/api/auth/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          username: email.split('@')[0] + Math.random().toString(36).slice(2, 6),
-          email, password, phone_number: phone, role: "ATTENDEE",
-        }),
-      });
-      const regResult = await regRes.json();
-      if (!regRes.ok) throw new Error(regResult.error || "Registration failed. Try a different email.");
-
       const tickets = Object.entries(selections).map(([id, quantity]) => ({
         ticket_type_id: Number(id), quantity,
       }));
       const referral_code = window.location.search.includes('ref=') ? new URLSearchParams(window.location.search).get('ref') || "" : "";
 
       const response = await checkout({
-        event_id: event.id, items: tickets, guest_name: name, guest_email: email, referral_code, discount_code: appliedDiscount?.code || "",
+        event_id: event.id, items: tickets, guest_name: name, guest_email: email, guest_phone: phone, referral_code, discount_code: appliedDiscount?.code || "",
       } as any);
 
       if (response.payment_required && (response as any).paystack?.access_code) {
@@ -530,14 +519,9 @@ export default function CheckoutPage() {
                   onChange={(e) => setGuestData(prev => ({...prev, phone: e.target.value}))}
                   className="w-full px-4 py-3 rounded-xl border border-border bg-secondary/50 text-foreground placeholder-muted-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
                 />
-                <input type="password" placeholder="Create a password" required
-                  value={guestData.password}
-                  onChange={(e) => setGuestData(prev => ({...prev, password: e.target.value}))}
-                  className="w-full px-4 py-3 rounded-xl border border-border bg-secondary/50 text-foreground placeholder-muted-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
-                />
 
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  An account will be created with these details. You&apos;ll receive an email to verify and access your ticket.
+                  You'll receive an email with your ticket details.
                 </p>
 
                 <button

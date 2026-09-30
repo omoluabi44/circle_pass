@@ -44,16 +44,63 @@ def send_purchase_receipt(order, tickets):
 
     subject = f"Your Tickets for {order.event.title}"
     
-    # In production, use HTML templates and render_to_string
-    message = f"Hello {order.guest_name or (order.attendee.user.get_full_name() if order.attendee else 'Guest')},\n\n"
-    message += f"Thank you for your order! Here are your tickets for {order.event.title}:\n\n"
+    name = order.guest_name or (order.attendee.user.get_full_name() if order.attendee else 'Guest')
+    first_name = name.split(' ')[0] if name else 'There'
+    order_number = f"CP-{str(order.id).zfill(8)}"
     
-    for ticket in tickets:
-        message += f"- {ticket.ticket_type.name} (Token: {ticket.qr_token})\n"
+    from django.template.loader import render_to_string
+    
+    frontend_url = settings.FRONTEND_URL if hasattr(settings, 'FRONTEND_URL') else 'http://localhost:3000'
+    
+    # Give guests the public link to their first ticket; registered users get dashboard link
+    is_guest = not order.attendee
+    if is_guest and tickets:
+        ticket_link = f"{frontend_url}/t/{tickets[0].qr_token}"
+    else:
+        ticket_link = f"{frontend_url}/dashboard/tickets"
         
-    message += "\nView your QR codes and full order details in your dashboard."
+    signup_link = f"{frontend_url}/register?email={recipient}"
+
+    context = {
+        'first_name': first_name,
+        'name': name,
+        'email': recipient,
+        'order_number': order_number,
+        'ticket_link': ticket_link,
+        'is_guest': is_guest,
+        'signup_link': signup_link,
+    }
     
-    _send_and_log_email(subject, message, [recipient])
+    html_message = render_to_string('email/order_receipt.html', context)
+    
+    message = f"""Hello {first_name},
+
+Thank you for purchasing your ticket with CirclePass. Your ticket has been successfully confirmed.
+
+Your Ticket Details
+Name: {name}
+Email: {recipient}
+Order Number: {order_number}
+
+Your ticket QR code will be activated 3 hours before the exact start time of the event.
+You can also access your ticket anytime by clicking the link below:
+{ticket_link}
+
+The CirclePass Team"""
+    
+    try:
+        send_mail(
+            subject,
+            message,
+            getattr(settings, 'DEFAULT_FROM_EMAIL', 'noreply@circlepass.com'),
+            [recipient],
+            html_message=html_message,
+            fail_silently=False,
+        )
+        EmailLog.objects.create(recipient=recipient, subject=subject, status='Sent')
+    except Exception as e:
+        logger.error(f"Failed to send email to {recipient}: {e}")
+        EmailLog.objects.create(recipient=recipient, subject=subject, status='Failed')
 
 def send_event_status_update(event):
     """

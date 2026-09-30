@@ -39,7 +39,7 @@ admin_router.register(r'organizer-verifications', AdminOrganizerVerificationView
 admin_router.register(r'events', AdminEventViewSet, basename='admin-events')
 admin_router.register(r'payouts', AdminPayoutViewSet, basename='admin-payouts')
 
-from .views_ticket import TicketViewSet
+from .views_ticket import TicketViewSet, PublicTicketView
 from .views_checkin import CheckInScanView, CheckInManualSearchView, CheckInStatsView
 
 router = DefaultRouter()
@@ -110,6 +110,7 @@ urlpatterns = [
     path('upload/presigned-url/', PresignedUrlView.as_view(), name='presigned_url'),
     
     # Find Ticket (public)
+    path('tickets/public/<str:qr_token>/', PublicTicketView.as_view(), name='public_ticket'),
     path('tickets/', TicketViewSet.as_view({'get': 'list'}), name='tickets'),
     
     # Attendee: Profile

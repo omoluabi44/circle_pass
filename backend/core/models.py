@@ -198,6 +198,7 @@ class Order(models.Model):
     attendee = models.ForeignKey(AttendeeProfile, on_delete=models.CASCADE, null=True, blank=True)
     guest_email = models.EmailField(blank=True, help_text='For guest checkout when attendee is null.')
     guest_name = models.CharField(max_length=255, blank=True)
+    guest_phone = models.CharField(max_length=20, blank=True, help_text='For guest checkout phone number.')
     event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name='orders')
     subtotal = models.IntegerField(default=0, help_text='Sum of ticket prices in kobo, before fees/discounts.')
     discount_amount = models.IntegerField(default=0, help_text='Discount amount in kobo.')

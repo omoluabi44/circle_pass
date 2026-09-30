@@ -146,6 +146,7 @@ EMAIL_USE_TLS = True
 EMAIL_HOST_USER = 'emmanuelogunleye441999@gmail.com'
 EMAIL_HOST_PASSWORD = 'wqoy wnyg jknx nwem'
 DEFAULT_FROM_EMAIL = 'emmanuelogunleye441999@gmail.com'
+FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:3000')
 CORS_ALLOW_ALL_ORIGINS = True
 
 MEDIA_URL = '/media/'

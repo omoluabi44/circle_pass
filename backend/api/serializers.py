@@ -305,6 +305,7 @@ class CheckoutRequestSerializer(serializers.Serializer):
     # Optional guest checkout fields
     guest_name = serializers.CharField(required=False, allow_blank=True, default='')
     guest_email = serializers.EmailField(required=False, allow_blank=True, default='')
+    guest_phone = serializers.CharField(required=False, allow_blank=True, default='')
     
     # Discounts & Referrals
     discount_code = serializers.CharField(required=False, allow_blank=True, default='')

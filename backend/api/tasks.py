@@ -107,3 +107,52 @@ def notify_waitlist_on_launch(event_id):
         return "Event not found."
     except Exception as e:
         return str(e)
+@shared_task
+def send_order_confirmation_email(order_id):
+    try:
+        order = Order.objects.get(id=order_id)
+        
+        name = order.guest_name or (order.attendee.user.get_full_name() if order.attendee else 'Guest')
+        email_addr = order.guest_email or (order.attendee.user.email if order.attendee else '')
+        first_name = name.split(' ')[0] if name else 'There'
+        order_number = f"CP-{str(order.id).zfill(8)}"
+        
+        subject = f"Your Ticket Confirmation - {order.event.title}"
+        
+        message = f"""Hello {first_name},
+
+Thank you for purchasing your ticket with CirclePass. Your ticket has been successfully confirmed.
+
+Your Ticket Details
+
+Name: {name}
+Email: {email_addr}
+Order Number: {order_number}
+
+Your QR Code
+
+Your ticket QR code will be activated 3 hours before the exact start time of the event.
+
+Once your QR code is activated, it will be sent directly to this email address. Please check your inbox when it is within 3 hours of the event time to access your active QR code.
+
+You can also access your ticket anytime through your CirclePass Attendee Dashboard by signing in with the email address you used to purchase your ticket:
+
+https://localhost:3000/dashboard/tickets
+
+Please keep this email for your records and ensure you have access to the email address used for your ticket purchase.
+
+We look forward to having you at the event.
+
+Warm regards,
+The CirclePass Team"""
+        
+        send_mail(
+            subject,
+            message,
+            settings.DEFAULT_FROM_EMAIL,
+            [email_addr],
+            fail_silently=False,
+        )
+        return f"Order confirmation sent to {email_addr}"
+    except Exception as e:
+        return str(e)

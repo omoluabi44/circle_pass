@@ -49,6 +49,7 @@ class CheckoutView(APIView):
         items = data['items']
         guest_name = data.get('guest_name', '')
         guest_email = data.get('guest_email', '')
+        guest_phone = data.get('guest_phone', '')
 
         # Validate event exists and is purchasable
         try:
@@ -184,6 +185,7 @@ class CheckoutView(APIView):
                     attendee=attendee,
                     guest_email=guest_email,
                     guest_name=guest_name,
+                    guest_phone=guest_phone,
                     event=event,
                     subtotal=subtotal,
                     discount_amount=discount_amount,
