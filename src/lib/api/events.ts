@@ -21,11 +21,19 @@ export async function createEvent(token: string, data: any) {
     headers['Content-Type'] = 'application/json';
   }
 
-  const res = await fetch(`${API_URL}/events/`, {
-    method: 'POST',
-    headers,
-    body: isFormData ? data : JSON.stringify(data)
-  });
+  let res;
+  try {
+    res = await fetch(`${API_URL}/events/`, {
+      method: 'POST',
+      headers,
+      body: isFormData ? data : JSON.stringify(data)
+    });
+  } catch (error: any) {
+    if (error.message === 'Failed to fetch' || error.message.includes('fetch')) {
+      throw new Error(`Network Error: Cannot connect to backend at ${API_URL}. Please ensure your backend is running or check your CORS/environment variables.`);
+    }
+    throw error;
+  }
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({}));
     if (errorData.detail) {
