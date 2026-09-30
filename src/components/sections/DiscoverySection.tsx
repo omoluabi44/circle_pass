@@ -161,7 +161,7 @@ export function DiscoverySection() {
                       ENDED
                     </div>
                   )}
-                  <h3 className="font-bold text-[15px] md:text-base text-foreground mb-3 leading-tight line-clamp-2 group-hover:text-primary transition-colors">
+                  <h3 className="font-bold text-[15px] md:text-base text-foreground mb-3 leading-tight line-clamp-2 group-hover:text-primary transition-colors uppercase">
                     {event.title}
                   </h3>
                   <div className="flex items-center gap-2 text-[11px] md:text-xs text-muted-foreground mb-2">

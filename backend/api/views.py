@@ -401,6 +401,9 @@ class WaitlistEntryCreateView(APIView):
         except Event.DoesNotExist:
             return Response({'detail': 'Event not found.'}, status=status.HTTP_404_NOT_FOUND)
 
+        if not event.waitlist_enabled:
+            return Response({'detail': 'Waitlist is not enabled for this event.'}, status=status.HTTP_400_BAD_REQUEST)
+
         entry, created = WaitlistEntry.objects.get_or_create(
             event=event,
             email=email,

@@ -70,7 +70,7 @@ export default function RealTimeEventDashboard() {
         waitlist_enabled: !overview.waitlist_enabled
       });
       setOverview({ ...overview, waitlist_enabled: updated.waitlist_enabled });
-      toast.success(updated.waitlist_enabled ? "Waitlist enabled." : "Waitlist disabled.");
+      toast.success(updated.waitlist_enabled ? "Waitlist enabled (activates when tickets sell out)." : "Waitlist disabled.");
     } catch (err: any) {
       toast.error(err.message || "Failed to update waitlist.");
     } finally {
@@ -113,6 +113,7 @@ export default function RealTimeEventDashboard() {
             <button 
               onClick={toggleWaitlist}
               disabled={updating}
+              title={overview.waitlist_enabled ? "Waitlist is enabled for when tickets sell out. Click to disable." : "Enable waitlist for when tickets sell out"}
               className={`flex items-center gap-2 border px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                 overview.waitlist_enabled
                   ? 'bg-primary/10 hover:bg-primary/20 text-primary border-primary/20'
@@ -120,7 +121,7 @@ export default function RealTimeEventDashboard() {
               } disabled:opacity-50`}
             >
               <ListPlus className="w-4 h-4" />
-              {overview.waitlist_enabled ? "Waitlist Active" : "Enable Waitlist"}
+              {overview.waitlist_enabled ? "Waitlist Enabled" : "Enable Waitlist"}
             </button>
             <button 
               onClick={async () => {

@@ -227,7 +227,7 @@ export default function EventDetailsPage() {
                   </div>
                 </div>
               </div>
-              <h1 className="text-3xl sm:text-4xl font-bold text-foreground mb-6 leading-tight">
+              <h1 className="text-3xl sm:text-4xl font-bold text-foreground mb-6 leading-tight uppercase">
                 {event.title}
               </h1>
               
@@ -320,10 +320,17 @@ export default function EventDetailsPage() {
                     </div>
 
                     {(() => {
-                      const totalCapacity = event.ticket_types?.reduce((acc: number, t: any) => acc + t.quantity, 0) || 0;
-                      const totalSold = event.ticket_types?.reduce((acc: number, t: any) => acc + t.quantity_sold, 0) || 0;
-                      const isSoldOut = totalCapacity > 0 && totalSold >= totalCapacity;
-                      const waitlistEnabled = event.waitlist_enabled;
+                      const totalCapacity = event.ticket_types?.reduce((acc: number, t: any) => acc + (t.quantity || 0), 0) || 0;
+                      const totalSold = event.ticket_types?.reduce((acc: number, t: any) => acc + (t.quantity_sold || 0), 0) || 0;
+                      const isSoldOut = Boolean(
+                        event.ticket_types &&
+                        event.ticket_types.length > 0 &&
+                        (
+                          (totalCapacity > 0 && totalSold >= totalCapacity) ||
+                          event.ticket_types.every((t: any) => t.is_sold_out || (t.quantity > 0 && (t.quantity_sold ?? 0) >= t.quantity))
+                        )
+                      );
+                      const waitlistEnabled = Boolean(event.waitlist_enabled);
                       
                       if (event.sales_paused) {
                         return (

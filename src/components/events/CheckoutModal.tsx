@@ -2,8 +2,8 @@
 
 import React, { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Ticket, Minus, Plus, AlertCircle, CheckCircle2 } from "lucide-react";
-import { useSession, signIn } from "next-auth/react";
+import { X, Ticket, Minus, Plus, AlertCircle, CheckCircle2, ArrowLeft } from "lucide-react";
+import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { checkout } from "@/lib/api/checkout";
 import { API_URL } from "@/lib/api/config";
@@ -28,6 +28,7 @@ interface CheckoutModalProps {
     absorb_fees: boolean;
     start_time: string;
     waitlist_enabled?: boolean;
+    sales_paused?: boolean;
     ticket_types: TicketType[];
   };
 }
@@ -49,72 +50,36 @@ export default function CheckoutModal({ isOpen, onClose, event }: CheckoutModalP
   const [successData, setSuccessData] = useState<any>(null);
   const router = useRouter();
 
-  // Sign-up / Login state
-  const [signupData, setSignupData] = useState({ username: '', email: '', password: '', phone_number: '' });
-  const [signupError, setSignupError] = useState('');
-  const [isSigningUp, setIsSigningUp] = useState(false);
-  const [showLogin, setShowLogin] = useState(false);
-  const [loginData, setLoginData] = useState({ email: '', password: '' });
+  // Guest checkout state
+  const [guestStep, setGuestStep] = useState(false);
+  const [guestData, setGuestData] = useState({ name: '', email: '', phone: '', password: '' });
 
-  const handleSignUp = async () => {
-    const { username, email, password, phone_number } = signupData;
-    if (!username || !email || !password || !phone_number) {
-      setSignupError("Please fill in all fields.");
-      return;
-    }
-    setSignupError('');
-    setIsSigningUp(true);
-
-    try {
-      const regRes = await fetch("/api/auth/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, email, password, phone_number, role: "ATTENDEE" }),
-      });
-      const regData = await regRes.json();
-      if (!regRes.ok) throw new Error(regData.error || "Registration failed");
-
-      const loginRes = await signIn("credentials", {
-        email,
-        password,
-        redirect: false,
-      });
-      if (loginRes?.error) {
-        throw new Error("Account created! Please verify your email, then log in to complete checkout.");
-      }
-    } catch (err: any) {
-      setSignupError(err.message || "Something went wrong.");
-    } finally {
-      setIsSigningUp(false);
-    }
-  };
-
-  const handleLogin = async () => {
-    const { email, password } = loginData;
-    if (!email || !password) {
-      setSignupError("Please fill in all fields.");
-      return;
-    }
-    setSignupError('');
-    setIsSigningUp(true);
-
-    try {
-      const res = await signIn("credentials", { email, password, redirect: false });
-      if (res?.error) {
-        throw new Error("Invalid email or password.");
-      }
-    } catch (err: any) {
-      setSignupError(err.message);
-    } finally {
-      setIsSigningUp(false);
-    }
-  };
+  // Compute event availability states
+  const isSalesPaused = Boolean((event as any).sales_paused);
+  const totalCapacity = useMemo(() => {
+    return event.ticket_types?.reduce((acc: number, t: any) => acc + (t.quantity || 0), 0) || 0;
+  }, [event.ticket_types]);
+  const totalSold = useMemo(() => {
+    return event.ticket_types?.reduce((acc: number, t: any) => acc + (t.quantity_sold || 0), 0) || 0;
+  }, [event.ticket_types]);
+  const allSoldOut = useMemo(() => {
+    return Boolean(
+      event.ticket_types &&
+      event.ticket_types.length > 0 &&
+      (
+        (totalCapacity > 0 && totalSold >= totalCapacity) ||
+        event.ticket_types.every(t => t.is_sold_out || ((t as any).quantity > 0 && ((t as any).quantity_sold ?? 0) >= (t as any).quantity))
+      )
+    );
+  }, [event.ticket_types, totalCapacity, totalSold]);
+  
+  const isWaitlistActive = Boolean(event.waitlist_enabled && allSoldOut);
 
   // Timer logic
   const [timeLeft, setTimeLeft] = useState(600); // 10 minutes
   
   React.useEffect(() => {
-    if (!isOpen || success || isWaitlistActive || !session) return;
+    if (!isOpen || success || isWaitlistActive || allSoldOut || isSalesPaused) return;
     const interval = setInterval(() => {
       setTimeLeft((prev) => {
         if (prev <= 1) {
@@ -127,7 +92,7 @@ export default function CheckoutModal({ isOpen, onClose, event }: CheckoutModalP
       });
     }, 1000);
     return () => clearInterval(interval);
-  }, [isOpen, success]);
+  }, [isOpen, success, isWaitlistActive, allSoldOut, isSalesPaused]);
 
   const [discountCode, setDiscountCode] = useState("");
   const [appliedDiscount, setAppliedDiscount] = useState<{ code: string, type: string, value: number } | null>(null);
@@ -179,9 +144,6 @@ export default function CheckoutModal({ isOpen, onClose, event }: CheckoutModalP
   }
   const total = Math.max(0, subtotal - discountAmount) + fee;
 
-  const allSoldOut = event.ticket_types.length > 0 && event.ticket_types.every(t => t.is_sold_out);
-  const isWaitlistActive = event.waitlist_enabled || allSoldOut;
-
   const [waitlistEmail, setWaitlistEmail] = useState("");
   const [waitlistName, setWaitlistName] = useState("");
 
@@ -231,10 +193,14 @@ export default function CheckoutModal({ isOpen, onClose, event }: CheckoutModalP
       setError(null);
       setSuccess(false);
       setSuccessData(null);
+      setGuestStep(false);
+      setGuestData({ name: '', email: '', phone: '', password: '' });
       onClose();
       
       if (wasSuccess) {
-        if (data?.tickets && data.tickets.length > 0) {
+        if (data?.isGuest) {
+          // Guest checkout — don't redirect to dashboard, they need to verify email first
+        } else if (data?.tickets && data.tickets.length > 0) {
           router.push(`/dashboard/tickets/${data.tickets[0].qr_token}`);
         } else {
           router.push(`/dashboard/tickets`);
@@ -245,17 +211,99 @@ export default function CheckoutModal({ isOpen, onClose, event }: CheckoutModalP
 
   const { initialize: initializePaystack, isVerifying } = usePaystack();
 
-  const handleSubmit = async () => {
-    if (totalQuantity === 0) return;
-    
+  const handleGuestCheckout = async () => {
+    const { name, email, phone, password } = guestData;
+    if (!name || !email || !phone || !password) {
+      setError("Please fill in all fields.");
+      return;
+    }
+
     setError(null);
     setIsLoading(true);
 
     try {
-      const token = (session as any)?.accessToken;
-      if (!token) {
-        throw new Error("You must be logged in to purchase tickets.");
+      // Step 1: Register the account silently (no login needed)
+      const regRes = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          username: email.split('@')[0] + Math.random().toString(36).slice(2, 6),
+          email,
+          password,
+          phone_number: phone,
+          role: "ATTENDEE",
+        }),
+      });
+      const regResult = await regRes.json();
+      if (!regRes.ok) throw new Error(regResult.error || "Registration failed. Try a different email.");
+
+      // Step 2: Guest checkout (no auth token needed)
+      const tickets = Object.entries(selections).map(([id, quantity]) => ({
+        ticket_type_id: Number(id),
+        quantity,
+      }));
+
+      const referral_code = window.location.search.includes('ref=') 
+        ? new URLSearchParams(window.location.search).get('ref') || "" 
+        : "";
+
+      const response = await checkout(
+        {
+          event_id: event.id,
+          items: tickets,
+          guest_name: name,
+          guest_email: email,
+          referral_code: referral_code,
+          discount_code: appliedDiscount?.code || "",
+        } as any
+        // No token — guest checkout
+      );
+
+      if (response.payment_required && (response as any).paystack?.access_code) {
+        initializePaystack({
+          accessCode: (response as any).paystack.access_code,
+          onSuccess: (verificationResult) => {
+            setSuccessData({ ...verificationResult, isGuest: true, guestEmail: email });
+            setSuccess(true);
+            setIsLoading(false);
+          },
+          onClose: () => {
+            setError("Payment was cancelled. Please try again.");
+            setIsLoading(false);
+          },
+          onError: (err) => {
+            setError("Payment verification failed. Please try again.");
+            setIsLoading(false);
+          }
+        });
+      } else {
+        // Free ticket — done!
+        setSuccessData({ ...response, isGuest: true, guestEmail: email });
+        setSuccess(true);
+        setIsLoading(false);
       }
+    } catch (err: any) {
+      setError(err.message || "Something went wrong. Please try again.");
+      setIsLoading(false);
+    }
+  };
+
+  const handleSubmit = async () => {
+    if (totalQuantity === 0) return;
+    
+    setError(null);
+
+    // If not logged in, show guest details form
+    if (!session) {
+      setGuestStep(true);
+      return;
+    }
+
+    // Logged-in user — normal checkout
+    setIsLoading(true);
+
+    try {
+      const token = (session as any)?.accessToken;
 
       const tickets = Object.entries(selections).map(([id, quantity]) => ({
         ticket_type_id: Number(id),
@@ -277,7 +325,6 @@ export default function CheckoutModal({ isOpen, onClose, event }: CheckoutModalP
       );
 
       if (response.payment_required && (response as any).paystack?.access_code) {
-        // Trigger Paystack inline popup
         initializePaystack({
           accessCode: (response as any).paystack.access_code,
           onSuccess: (verificationResult) => {
@@ -333,8 +380,14 @@ export default function CheckoutModal({ isOpen, onClose, event }: CheckoutModalP
                   {event.title}
                 </h2>
                 <div className="text-sm text-muted-foreground mt-1 flex items-center gap-3">
-                  <span className="flex items-center gap-1.5"><Ticket className="w-4 h-4" /> Select Tickets</span>
-                  {!isWaitlistActive && !success && (
+                  <span className="flex items-center gap-1.5">
+                    {guestStep && !session ? (
+                      <><AlertCircle className="w-4 h-4" /> Your Details</>
+                    ) : (
+                      <><Ticket className="w-4 h-4" /> Select Tickets</>
+                    )}
+                  </span>
+                  {!isWaitlistActive && !allSoldOut && !isSalesPaused && !success && !guestStep && (
                     <span className="flex items-center gap-1.5 text-warning font-medium">
                       Time left: {Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, '0')}
                     </span>
@@ -359,97 +412,7 @@ export default function CheckoutModal({ isOpen, onClose, event }: CheckoutModalP
                 </div>
               )}
 
-              {!session ? (
-                showLogin ? (
-                  <div className="space-y-4">
-                    <div className="text-center mb-6">
-                      <h3 className="text-lg font-bold text-foreground">Log In</h3>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        Sign in to continue with your purchase
-                      </p>
-                    </div>
-
-                    {signupError && (
-                      <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-sm flex items-start gap-3">
-                        <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
-                        <p>{signupError}</p>
-                      </div>
-                    )}
-
-                    <input type="email" placeholder="Email address" required
-                      value={loginData.email}
-                      onChange={(e) => setLoginData(prev => ({...prev, email: e.target.value}))}
-                      className="w-full px-4 py-3 rounded-xl border border-border bg-secondary/50 outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
-                    />
-                    <input type="password" placeholder="Password" required
-                      value={loginData.password}
-                      onChange={(e) => setLoginData(prev => ({...prev, password: e.target.value}))}
-                      className="w-full px-4 py-3 rounded-xl border border-border bg-secondary/50 outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
-                    />
-
-                    <button onClick={handleLogin} disabled={isSigningUp}
-                      className="w-full py-3.5 bg-primary text-primary-foreground rounded-xl font-bold shadow-sm hover:bg-primary/90 transition-colors disabled:opacity-50">
-                      {isSigningUp ? "Signing in..." : "Continue to Tickets"}
-                    </button>
-
-                    <p className="text-center text-sm text-muted-foreground">
-                      Don't have an account?{" "}
-                      <button onClick={() => setShowLogin(false)} className="text-primary font-bold hover:underline">
-                        Sign up
-                      </button>
-                    </p>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    <div className="text-center mb-6">
-                      <h3 className="text-lg font-bold text-foreground">Quick Sign Up</h3>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        Create an account to continue with your purchase
-                      </p>
-                    </div>
-
-                    {signupError && (
-                      <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-sm flex items-start gap-3">
-                        <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
-                        <p>{signupError}</p>
-                      </div>
-                    )}
-
-                    <input type="text" placeholder="Username" required
-                      value={signupData.username}
-                      onChange={(e) => setSignupData(prev => ({...prev, username: e.target.value}))}
-                      className="w-full px-4 py-3 rounded-xl border border-border bg-secondary/50 outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
-                    />
-                    <input type="email" placeholder="Email address" required
-                      value={signupData.email}
-                      onChange={(e) => setSignupData(prev => ({...prev, email: e.target.value}))}
-                      className="w-full px-4 py-3 rounded-xl border border-border bg-secondary/50 outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
-                    />
-                    <input type="password" placeholder="Password" required
-                      value={signupData.password}
-                      onChange={(e) => setSignupData(prev => ({...prev, password: e.target.value}))}
-                      className="w-full px-4 py-3 rounded-xl border border-border bg-secondary/50 outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
-                    />
-                    <input type="tel" placeholder="Phone number" required
-                      value={signupData.phone_number}
-                      onChange={(e) => setSignupData(prev => ({...prev, phone_number: e.target.value}))}
-                      className="w-full px-4 py-3 rounded-xl border border-border bg-secondary/50 outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
-                    />
-
-                    <button onClick={handleSignUp} disabled={isSigningUp}
-                      className="w-full py-3.5 bg-primary text-primary-foreground rounded-xl font-bold shadow-sm hover:bg-primary/90 transition-colors disabled:opacity-50">
-                      {isSigningUp ? "Creating account..." : "Continue to Tickets"}
-                    </button>
-
-                    <p className="text-center text-sm text-muted-foreground">
-                      Already have an account?{" "}
-                      <button onClick={() => setShowLogin(true)} className="text-primary font-bold hover:underline">
-                        Log in
-                      </button>
-                    </p>
-                  </div>
-                )
-              ) : success ? (
+              {success ? (
                 <div className="flex flex-col items-center justify-center py-8 text-center">
                   <motion.div
                     initial={{ scale: 0 }}
@@ -459,19 +422,52 @@ export default function CheckoutModal({ isOpen, onClose, event }: CheckoutModalP
                   >
                     <CheckCircle2 className="w-8 h-8" />
                   </motion.div>
-                  <h3 className="text-2xl font-bold text-foreground mb-2">
-                    {successData?.payment_required ? "Payment Required" : successData?.message ? "You're on the list!" : "Registration Complete!"}
-                  </h3>
-                  <p className="text-muted-foreground mb-8">
-                    {successData?.payment_required 
-                      ? "Redirecting you to complete your payment..." 
-                      : successData?.message 
-                        ? "We'll notify you if tickets become available."
-                        : "We've emailed your tickets to you. See you there!"}
-                  </p>
+
+                  {successData?.isGuest ? (
+                    <>
+                      <h3 className="text-2xl font-bold text-foreground mb-2">
+                        Registration Complete!
+                      </h3>
+                      <p className="text-muted-foreground mb-2">
+                        We've sent a confirmation to <strong>{successData.guestEmail || guestData.email}</strong>
+                      </p>
+                      <p className="text-sm text-muted-foreground mb-8">
+                        Click the link in your email to verify your account and sign in to view your ticket. Your digital pass will be visible 3 hours before the event.
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <h3 className="text-2xl font-bold text-foreground mb-2">
+                        {successData?.payment_required ? "Payment Required" : successData?.message ? "You're on the list!" : "Registration Complete!"}
+                      </h3>
+                      <p className="text-muted-foreground mb-8">
+                        {successData?.payment_required 
+                          ? "Redirecting you to complete your payment..." 
+                          : successData?.message 
+                            ? "We'll notify you if tickets become available."
+                            : "We've emailed your tickets to you. See you there!"}
+                      </p>
+                    </>
+                  )}
                   <button
                     onClick={handleClose}
                     className="px-6 py-2.5 bg-primary text-primary-foreground font-medium rounded-lg hover:bg-primary/90 transition-colors"
+                  >
+                    Close
+                  </button>
+                </div>
+              ) : isSalesPaused ? (
+                <div className="py-8 flex flex-col items-center text-center">
+                  <div className="w-16 h-16 bg-amber-500/10 text-amber-600 rounded-full flex items-center justify-center mb-4">
+                    <AlertCircle className="w-8 h-8" />
+                  </div>
+                  <h3 className="text-xl font-bold text-foreground mb-2">Sales Paused</h3>
+                  <p className="text-muted-foreground mb-6 max-w-sm">
+                    Ticket sales for this event are temporarily paused by the organizer. Please check back later.
+                  </p>
+                  <button
+                    onClick={handleClose}
+                    className="px-6 py-2.5 bg-secondary text-foreground font-medium rounded-lg hover:bg-secondary/80 transition-colors"
                   >
                     Close
                   </button>
@@ -481,9 +477,9 @@ export default function CheckoutModal({ isOpen, onClose, event }: CheckoutModalP
                   <div className="w-16 h-16 bg-primary/10 text-primary rounded-full flex items-center justify-center mb-6">
                     <AlertCircle className="w-8 h-8" />
                   </div>
-                  <h3 className="text-xl font-bold text-foreground mb-2 text-center">Tickets Unavailable</h3>
+                  <h3 className="text-xl font-bold text-foreground mb-2 text-center">Event Sold Out</h3>
                   <p className="text-muted-foreground mb-8 text-center max-w-sm">
-                    {allSoldOut ? "This event is currently sold out." : "Tickets are not available right now."} Join the waitlist to be notified if spots open up.
+                    Tickets are currently sold out. Join the waitlist to be notified if spots open up.
                   </p>
                   
                   <form onSubmit={handleJoinWaitlist} className="w-full max-w-sm space-y-4">
@@ -516,7 +512,90 @@ export default function CheckoutModal({ isOpen, onClose, event }: CheckoutModalP
                     </button>
                   </form>
                 </div>
+              ) : allSoldOut ? (
+                <div className="py-8 flex flex-col items-center text-center">
+                  <div className="w-16 h-16 bg-muted text-muted-foreground rounded-full flex items-center justify-center mb-4">
+                    <AlertCircle className="w-8 h-8" />
+                  </div>
+                  <h3 className="text-xl font-bold text-foreground mb-2">Sold Out</h3>
+                  <p className="text-muted-foreground mb-6 max-w-sm">
+                    All tickets for this event are currently sold out.
+                  </p>
+                  <button
+                    onClick={handleClose}
+                    className="px-6 py-2.5 bg-secondary text-foreground font-medium rounded-lg hover:bg-secondary/80 transition-colors"
+                  >
+                    Close
+                  </button>
+                </div>
+              ) : guestStep && !session ? (
+                /* Guest Details Form — shown AFTER ticket selection */
+                <div className="space-y-4">
+                  <button
+                    onClick={() => { setGuestStep(false); setError(null); }}
+                    className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors mb-2"
+                  >
+                    <ArrowLeft className="w-4 h-4" /> Back to tickets
+                  </button>
+
+                  <div className="text-center mb-4">
+                    <h3 className="text-lg font-bold text-foreground">Your Details</h3>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Fill in your details to complete your purchase
+                    </p>
+                  </div>
+
+                  <input type="text" placeholder="Full Name" required
+                    value={guestData.name}
+                    onChange={(e) => setGuestData(prev => ({...prev, name: e.target.value}))}
+                    className="w-full px-4 py-3 rounded-xl border border-border bg-secondary/50 text-foreground placeholder-muted-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
+                  />
+                  <input type="email" placeholder="Email address" required
+                    value={guestData.email}
+                    onChange={(e) => setGuestData(prev => ({...prev, email: e.target.value}))}
+                    className="w-full px-4 py-3 rounded-xl border border-border bg-secondary/50 text-foreground placeholder-muted-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
+                  />
+                  <input type="tel" placeholder="Phone number" required
+                    value={guestData.phone}
+                    onChange={(e) => setGuestData(prev => ({...prev, phone: e.target.value}))}
+                    className="w-full px-4 py-3 rounded-xl border border-border bg-secondary/50 text-foreground placeholder-muted-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
+                  />
+                  <input type="password" placeholder="Create a password" required
+                    value={guestData.password}
+                    onChange={(e) => setGuestData(prev => ({...prev, password: e.target.value}))}
+                    className="w-full px-4 py-3 rounded-xl border border-border bg-secondary/50 text-foreground placeholder-muted-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
+                  />
+
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    An account will be created with these details. You'll receive an email to verify and access your ticket.
+                  </p>
+
+                  <button
+                    onClick={handleGuestCheckout}
+                    disabled={isLoading}
+                    className={`w-full py-3.5 px-4 rounded-xl font-medium text-white shadow-sm flex items-center justify-center gap-2 transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed
+                      ${total === 0 
+                        ? "bg-green-600 hover:bg-green-700 shadow-green-600/20" 
+                        : "bg-primary hover:bg-primary/90 shadow-primary/20"
+                      }`}
+                  >
+                    {isLoading ? (
+                      <span className="flex items-center gap-2">
+                        <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Processing...
+                      </span>
+                    ) : total === 0 ? (
+                      "Complete Registration"
+                    ) : (
+                      `Pay ${formatNaira(total)}`
+                    )}
+                  </button>
+                </div>
               ) : (
+                /* Ticket Selection — shown to EVERYONE (logged in or not) */
                 <div className="space-y-4">
                   {event.ticket_types.map((ticket) => {
                     const selected = selections[ticket.id] || 0;
@@ -583,8 +662,8 @@ export default function CheckoutModal({ isOpen, onClose, event }: CheckoutModalP
               )}
             </div>
 
-            {/* Footer Summary */}
-            {session && !success && !isWaitlistActive && (
+            {/* Footer Summary — shown for ticket selection (logged in or guest, before guest step) */}
+            {!success && !isWaitlistActive && !allSoldOut && !isSalesPaused && !(guestStep && !session) && (
               <div className="p-4 sm:p-6 border-t border-border bg-card">
                 
                 {/* Discount Code Section */}
