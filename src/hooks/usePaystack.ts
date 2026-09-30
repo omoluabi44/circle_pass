@@ -1,5 +1,4 @@
-import { useEffect, useState } from 'react';
-import PaystackPop from '@paystack/inline-js';
+import { useState } from 'react';
 import { verifyPayment } from '@/lib/api/payments';
 
 interface PaystackOptions {
@@ -12,7 +11,8 @@ interface PaystackOptions {
 export function usePaystack() {
   const [isVerifying, setIsVerifying] = useState(false);
 
-  const initialize = (options: PaystackOptions) => {
+  const initialize = async (options: PaystackOptions) => {
+    const PaystackPop = (await import('@paystack/inline-js')).default;
     const paystack = new PaystackPop();
     
     paystack.resumeTransaction(options.accessCode, {
