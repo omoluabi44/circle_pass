@@ -12,7 +12,7 @@ from core.models import (
 class UserCreateSerializer(BaseUserCreateSerializer):
     class Meta(BaseUserCreateSerializer.Meta):
         model = User
-        fields = ('id', 'username', 'email', 'password', 'role')
+        fields = ('id', 'username', 'email', 'password', 'role', 'phone_number')
 
 class UserSerializer(BaseUserSerializer):
     class Meta(BaseUserSerializer.Meta):
