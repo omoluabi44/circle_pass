@@ -13,6 +13,7 @@ interface TicketType {
   id: number;
   tier: string;
   name: string;
+  description?: string;
   price: number; // kobo
   quantity_remaining: number;
   is_sold_out: boolean;
@@ -623,6 +624,11 @@ export default function CheckoutModal({ isOpen, onClose, event }: CheckoutModalP
                               </span>
                             )}
                           </div>
+                          {ticket.description && (
+                            <p className="text-sm text-muted-foreground mb-2 line-clamp-2">
+                              {ticket.description}
+                            </p>
+                          )}
                           <div className="text-sm text-muted-foreground flex items-center gap-2">
                             <span className="font-medium text-foreground">
                               {ticket.price === 0 ? "Free" : formatNaira(ticket.price)}
