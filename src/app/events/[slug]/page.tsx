@@ -10,6 +10,7 @@ import { useSession } from "next-auth/react";
 import { toggleSaveEvent, toggleFollowOrganizer } from "@/lib/api/engagement";
 import { API_URL } from "@/lib/api/config";
 import { getPublicEvents } from "@/lib/api/events";
+import toast from "react-hot-toast";
 
 // Fetch real event details from the backend
 export default function EventDetailsPage() {
@@ -26,6 +27,10 @@ export default function EventDetailsPage() {
   const [followerCount, setFollowerCount] = useState(0);
   const [isShareOpen, setIsShareOpen] = useState(false);
   const [recommendedEvents, setRecommendedEvents] = useState<any[]>([]);
+  
+  const [isMessageModalOpen, setIsMessageModalOpen] = useState(false);
+  const [messageText, setMessageText] = useState("");
+  const [isSendingMessage, setIsSendingMessage] = useState(false);
 
   useEffect(() => {
     // Fetch event details
@@ -117,6 +122,29 @@ export default function EventDetailsPage() {
       console.error(err);
       setIsFollowing(!newIsFollowing);
       setFollowerCount(prev => newIsFollowing ? Math.max(0, prev - 1) : prev + 1);
+    }
+  };
+
+  const handleSendMessage = async () => {
+    if (!messageText.trim()) return;
+    setIsSendingMessage(true);
+    try {
+      const res = await fetch(`${API_URL}/events/${event.id}/message/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.accessToken}`
+        },
+        body: JSON.stringify({ message: messageText })
+      });
+      if (!res.ok) throw new Error('Failed to send message');
+      toast.success("Message sent successfully!");
+      setIsMessageModalOpen(false);
+      setMessageText("");
+    } catch (err) {
+      toast.error("Failed to send message.");
+    } finally {
+      setIsSendingMessage(false);
     }
   };
 
@@ -444,9 +472,19 @@ export default function EventDetailsPage() {
                       </a>
                     )}
                   </div>
-                  <Link href={`/dashboard/inbox?new=${event.organizer || event.organizer_id}`} className="text-xs font-semibold text-primary hover:underline flex items-center gap-1.5">
+                  <button 
+                    onClick={() => {
+                      if (!session?.accessToken) {
+                        toast.error("Please login to message the organizer.");
+                        router.push("/login");
+                        return;
+                      }
+                      setIsMessageModalOpen(true);
+                    }}
+                    className="text-xs font-semibold text-primary hover:underline flex items-center gap-1.5"
+                  >
                     <MessageCircle className="w-3.5 h-3.5" /> Message directly
-                  </Link>
+                  </button>
                 </div>
               </div>
 
@@ -504,6 +542,38 @@ export default function EventDetailsPage() {
         </div>
 
       </div>
+
+      {/* Message Organizer Modal */}
+      {isMessageModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="bg-background rounded-2xl p-6 w-full max-w-md shadow-xl border border-border">
+            <h3 className="text-xl font-bold mb-4 flex items-center gap-2 text-foreground">
+              <MessageCircle className="w-5 h-5 text-primary" /> Message Organizer
+            </h3>
+            <textarea
+              className="w-full bg-secondary text-foreground p-3 rounded-xl border border-border focus:border-primary focus:ring-1 focus:ring-primary outline-none transition min-h-[120px] mb-4 resize-none"
+              placeholder="Type your message here..."
+              value={messageText}
+              onChange={(e) => setMessageText(e.target.value)}
+            />
+            <div className="flex justify-end gap-3">
+              <button 
+                onClick={() => setIsMessageModalOpen(false)}
+                className="px-4 py-2 text-sm font-medium hover:bg-secondary text-foreground rounded-lg transition"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={handleSendMessage}
+                disabled={isSendingMessage || !messageText.trim()}
+                className="px-4 py-2 bg-primary text-primary-foreground text-sm font-bold rounded-lg hover:bg-primary/90 transition disabled:opacity-50"
+              >
+                {isSendingMessage ? "Sending..." : "Send Message"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -13,7 +13,7 @@ from .views_find_ticket import FindTicketView
 from .views_dashboard import OrganizerDashboardView
 from .views_contacts import OrganizerContactsView, OrganizerFollowersView
 from .views_analytics import OrganizerAnalyticsView
-from .views_inbox import OrganizerInboxView
+from .views_inbox import OrganizerInboxView, SendMessageToOrganizerView
 from .views_engagement import (
     SaveEventToggleView, SavedEventListView,
     FollowOrganizerToggleView, FollowedOrganizerListView,
@@ -122,6 +122,9 @@ urlpatterns = [
     path('saved-events/', SavedEventListView.as_view(), name='saved_events'),
     path('organizers/<int:pk>/follow/', FollowOrganizerToggleView.as_view(), name='follow_organizer'),
     path('followed-organizers/', FollowedOrganizerListView.as_view(), name='followed_organizers'),
+    
+    # Attendee Messaging
+    path('events/<int:event_id>/message/', SendMessageToOrganizerView.as_view(), name='message_organizer'),
     
     # Admin Views
     path('admin/overview/', AdminOverviewView.as_view(), name='admin_overview'),
