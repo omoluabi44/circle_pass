@@ -62,7 +62,7 @@ export default function OrganizerLayout({
       <aside className="w-64 bg-background border-r border-border flex flex-col hidden lg:flex h-screen sticky top-0">
         <div className="p-6 border-b border-border">
           <Link href="/" className="flex items-center mb-4">
-            <Image src="/logo.png" alt="CirclePass Logo" width={110} height={35} />
+            <img src="/logo.png" alt="CirclePass Logo" className="h-8 w-auto object-contain" />
           </Link>
           <div className="mb-2">
             <RoleSwitcher />
@@ -109,7 +109,7 @@ export default function OrganizerLayout({
       {/* Mobile Top Nav */}
       <div className="lg:hidden bg-background border-b border-border p-4 flex justify-between items-center fixed top-0 w-full z-40">
         <Link href="/">
-          <Image src="/logo.png" alt="CirclePass Logo" width={100} height={32} />
+          <img src="/logo.png" alt="CirclePass Logo" className="h-8 w-auto object-contain" />
         </Link>
         <button onClick={() => setMobileMenuOpen(true)} className="p-2 bg-secondary rounded-lg">
           <Menu className="w-5 h-5 text-foreground" />
@@ -124,7 +124,7 @@ export default function OrganizerLayout({
             <div className="p-6 border-b border-border flex flex-col gap-4">
               <div className="flex items-center justify-between">
                 <Link href="/" onClick={() => setMobileMenuOpen(false)} className="flex items-center">
-                  <Image src="/logo.png" alt="CirclePass Logo" width={110} height={35} />
+                  <img src="/logo.png" alt="CirclePass Logo" className="h-8 w-auto object-contain" />
                 </Link>
                 <button onClick={() => setMobileMenuOpen(false)} className="p-2">
                   <X className="w-5 h-5 text-foreground" />

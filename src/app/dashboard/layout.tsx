@@ -28,7 +28,7 @@ export default function AttendeeDashboardLayout({
       <aside className="w-full md:w-64 bg-background border-r border-border flex flex-col h-screen sticky top-0 hidden md:flex">
         <div className="flex-1 overflow-y-auto p-5 scrollbar-hide">
           <Link href="/">
-            <Image src="/logo.png" alt="CirclePass Logo" width={120} height={40} className="mb-4 px-4" />
+            <img src="/logo.png" alt="CirclePass Logo" className="h-8 w-auto object-contain mb-4 mx-4" />
           </Link>
           <div className="px-2 mb-2">
             <RoleSwitcher />
@@ -94,7 +94,7 @@ export default function AttendeeDashboardLayout({
       <div className="md:hidden bg-background border-b border-border p-4 flex flex-col gap-2">
         <div className="flex items-center justify-between">
           <div className="w-10"></div>
-          <Image src="/logo.png" alt="CirclePass Logo" width={100} height={32} />
+          <img src="/logo.png" alt="CirclePass Logo" className="h-8 w-auto object-contain" />
           <div className="w-10 flex justify-end">
             <ThemeToggle />
           </div>
