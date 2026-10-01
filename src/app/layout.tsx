@@ -36,7 +36,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <StyledComponentsRegistry>
           <AuthProvider>
             <CartProvider>
-              <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+              <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false} forcedTheme="light" disableTransitionOnChange>
                 <LayoutRouter>
                   {children}
                 </LayoutRouter>
@@ -51,3 +51,4 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     </html>
   );
 }
+
