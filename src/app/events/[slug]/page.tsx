@@ -9,6 +9,7 @@ import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { toggleSaveEvent, toggleFollowOrganizer } from "@/lib/api/engagement";
 import { API_URL } from "@/lib/api/config";
+import { getPublicEvents } from "@/lib/api/events";
 
 // Fetch real event details from the backend
 export default function EventDetailsPage() {
@@ -24,6 +25,7 @@ export default function EventDetailsPage() {
   const [isFollowing, setIsFollowing] = useState(false);
   const [followerCount, setFollowerCount] = useState(0);
   const [isShareOpen, setIsShareOpen] = useState(false);
+  const [recommendedEvents, setRecommendedEvents] = useState<any[]>([]);
 
   useEffect(() => {
     // Fetch event details
@@ -50,6 +52,15 @@ export default function EventDetailsPage() {
         setIsSaved(eventData.is_saved || false);
         setIsFollowing(eventData.organizer?.is_followed || false);
         setFollowerCount(eventData.organizer?.follower_count || 0);
+
+        // Fetch recommendations
+        try {
+          const recsRes = await getPublicEvents({ limit: 5 });
+          const recs = Array.isArray(recsRes) ? recsRes : (recsRes.results || []);
+          setRecommendedEvents(recs.filter((e: any) => e.id !== eventData.id).slice(0, 4));
+        } catch (e) {
+          console.error("Failed to fetch recommendations", e);
+        }
       } catch (err: any) {
         setError(err.message);
       } finally {
@@ -449,25 +460,29 @@ export default function EventDetailsPage() {
         <div className="pt-12 mt-12 border-t border-border">
           <h2 className="text-2xl font-bold text-foreground mb-6">You may also like</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {/* Mocked recommended events */}
-            <Link href="/events" className="group bg-card border border-border rounded-2xl overflow-hidden hover:shadow-lg transition-all">
-              <div className="h-40 bg-muted relative">
-                <img src="https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=500&q=80" alt="Concert" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-              </div>
-              <div className="p-4">
-                <h3 className="font-bold text-foreground group-hover:text-primary transition-colors line-clamp-1">Lagos Tech Fest 2026</h3>
-                <p className="text-sm text-muted-foreground mt-1">Eko Convention Center</p>
-              </div>
-            </Link>
-            <Link href="/events" className="group bg-card border border-border rounded-2xl overflow-hidden hover:shadow-lg transition-all">
-              <div className="h-40 bg-muted relative">
-                <img src="https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=500&q=80" alt="Party" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-              </div>
-              <div className="p-4">
-                <h3 className="font-bold text-foreground group-hover:text-primary transition-colors line-clamp-1">AfroNation Afterparty</h3>
-                <p className="text-sm text-muted-foreground mt-1">Landmark Beach</p>
-              </div>
-            </Link>
+            {recommendedEvents.length > 0 ? (
+              recommendedEvents.map((recEvent) => {
+                const recImage = recEvent.cover_image 
+                  ? (recEvent.cover_image.startsWith('http') 
+                      ? recEvent.cover_image 
+                      : `http://127.0.0.1:8000${recEvent.cover_image.startsWith('/media/') ? '' : '/media/'}${recEvent.cover_image}`)
+                  : "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=500&q=80";
+
+                return (
+                  <Link key={recEvent.id} href={`/events/${recEvent.slug}`} className="group bg-card border border-border rounded-2xl overflow-hidden hover:shadow-lg transition-all">
+                    <div className="h-40 bg-muted relative">
+                      <img src={recImage} alt={recEvent.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                    </div>
+                    <div className="p-4">
+                      <h3 className="font-bold text-foreground group-hover:text-primary transition-colors line-clamp-1">{recEvent.title}</h3>
+                      <p className="text-sm text-muted-foreground mt-1 line-clamp-1">{recEvent.venue?.name || (recEvent.is_online ? "Online Event" : "TBA")}</p>
+                    </div>
+                  </Link>
+                );
+              })
+            ) : (
+              <p className="text-muted-foreground col-span-full">No other events right now.</p>
+            )}
           </div>
         </div>
 
