@@ -116,6 +116,7 @@ class Event(models.Model):
     sales_paused = models.BooleanField(default=False, help_text="If True, ticket sales are paused.")
     waitlist_enabled = models.BooleanField(default=False, help_text="If True, waitlist is enabled for sold out tickets.")
     has_onsite_services = models.BooleanField(default=False, help_text="Charges 13% of ticket price if enabled.")
+    page_views = models.PositiveIntegerField(default=0, help_text="Total number of page views")
 
 class EventScreening(models.Model):
     event = models.OneToOneField(Event, on_delete=models.CASCADE)

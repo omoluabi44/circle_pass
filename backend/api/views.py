@@ -202,6 +202,18 @@ class EventViewSet(viewsets.ModelViewSet):
             return EventCreateUpdateSerializer
         return EventSerializer
 
+    def list(self, request, *args, **kwargs):
+        response = super().list(request, *args, **kwargs)
+        
+        # Track page views when a specific event is viewed publicly
+        slug = request.query_params.get('slug')
+        is_public = request.query_params.get('public') == 'true'
+        
+        if slug and is_public:
+            Event.objects.filter(slug=slug).update(page_views=F('page_views') + 1)
+            
+        return response
+
     def get_queryset(self):
         user = self.request.user
         is_public = self.request.query_params.get('public') == 'true'
@@ -412,7 +424,7 @@ class EventViewSet(viewsets.ModelViewSet):
         return Response({
             "total_revenue": total_revenue,
             "tickets_sold": tickets_sold,
-            "page_views": 0, # Placeholder until page views tracking is implemented
+            "page_views": event.page_views,
             "check_ins": check_ins,
             "ticket_tiers": tiers
         })
