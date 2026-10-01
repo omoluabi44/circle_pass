@@ -149,7 +149,6 @@ class PublicOrganizerProfileView(APIView):
             'is_followed': is_followed,
             'is_verified': profile.is_verified,
             'instagram': profile.instagram_handle,
-            'twitter': profile.twitter_handle,
             'upcoming_events': upcoming_events,
             'past_events': past_events,
         })

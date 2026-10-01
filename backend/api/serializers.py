@@ -117,6 +117,9 @@ class EventSerializer(serializers.ModelSerializer):
     category = EventCategorySerializer(read_only=True)
     venue = VenueSerializer(read_only=True)
 
+    is_followed = serializers.SerializerMethodField()
+    follower_count = serializers.SerializerMethodField()
+
     class Meta:
         model = Event
         fields = (
@@ -125,7 +128,7 @@ class EventSerializer(serializers.ModelSerializer):
             'country', 'state', 'city', 'organizer_contact', 'emergency_contact', 
             'age_restriction', 'dress_code', 'lineup', 'personalized_dp_enabled',
             'is_online', 'status', 'absorb_fees', 'start_time', 'end_time', 'ticket_types',
-            'sales_paused', 'waitlist_enabled'
+            'sales_paused', 'waitlist_enabled', 'is_followed', 'follower_count'
         )
 
     cover_image = serializers.SerializerMethodField()
@@ -151,6 +154,17 @@ class EventSerializer(serializers.ModelSerializer):
         # Fallback if no request context
         from django.conf import settings
         return f"http://127.0.0.1:8000{cover}"
+
+    def get_is_followed(self, obj):
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            from core.models import FollowedOrganizer
+            return FollowedOrganizer.objects.filter(organizer=obj.organizer, user=request.user).exists()
+        return False
+
+    def get_follower_count(self, obj):
+        from core.models import FollowedOrganizer
+        return FollowedOrganizer.objects.filter(organizer=obj.organizer).count()
 
 
 class EventCreateUpdateSerializer(serializers.ModelSerializer):

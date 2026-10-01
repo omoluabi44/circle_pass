@@ -50,8 +50,8 @@ export default function EventDetailsPage() {
         
         setEvent(eventData);
         setIsSaved(eventData.is_saved || false);
-        setIsFollowing(eventData.organizer?.is_followed || false);
-        setFollowerCount(eventData.organizer?.follower_count || 0);
+        setIsFollowing(eventData.is_followed || false);
+        setFollowerCount(eventData.follower_count || 0);
 
         // Fetch recommendations
         try {
