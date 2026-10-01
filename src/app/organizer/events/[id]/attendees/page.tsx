@@ -39,6 +39,87 @@ export default function AttendeesPage() {
     a.email?.toLowerCase().includes(search.toLowerCase())
   );
 
+  const exportCSV = () => {
+    if (filteredAttendees.length === 0) {
+      toast.error("No data to export");
+      return;
+    }
+    const headers = ["Name", "Email", "Ticket Type", "Purchase Date", "Status"];
+    const rows = filteredAttendees.map(a => [
+      a.name || "-",
+      a.email || "-",
+      a.ticket_type || "Unknown",
+      a.purchase_date ? new Date(a.purchase_date).toLocaleDateString() : "-",
+      a.status === 'USED' ? 'Checked In' : (a.status || "Unknown")
+    ]);
+    
+    const csvContent = [
+      headers.join(","),
+      ...rows.map(e => e.map(field => `"${String(field).replace(/"/g, '""')}"`).join(","))
+    ].join("\n");
+    
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `attendees_${id}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const exportPDF = () => {
+    if (filteredAttendees.length === 0) {
+      toast.error("No data to export");
+      return;
+    }
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      toast.error("Please allow popups to generate PDF");
+      return;
+    }
+    
+    const headers = ["Name", "Email", "Ticket Type", "Purchase Date", "Status"];
+    const rows = filteredAttendees.map(a => [
+      a.name || "-",
+      a.email || "-",
+      a.ticket_type || "Unknown",
+      a.purchase_date ? new Date(a.purchase_date).toLocaleDateString() : "-",
+      a.status === 'USED' ? 'Checked In' : (a.status || "Unknown")
+    ]);
+
+    const htmlContent = `
+      <html>
+        <head>
+          <title>Attendees Export</title>
+          <style>
+            body { font-family: sans-serif; padding: 20px; }
+            table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+            th { background-color: #f2f2f2; }
+            h1 { font-size: 24px; color: #333; }
+          </style>
+        </head>
+        <body>
+          <h1>Event Attendees</h1>
+          <table>
+            <thead>
+              <tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr>
+            </thead>
+            <tbody>
+              ${rows.map(row => `<tr>${row.map(cell => `<td>${cell}</td>`).join('')}</tr>`).join('')}
+            </tbody>
+          </table>
+          <script>
+            window.onload = function() { window.print(); window.close(); }
+          </script>
+        </body>
+      </html>
+    `;
+    printWindow.document.write(htmlContent);
+    printWindow.document.close();
+  };
+
   return (
     <div className="p-6">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
@@ -55,11 +136,11 @@ export default function AttendeesPage() {
               className="w-full pl-9 pr-4 py-2 bg-background border border-border rounded-xl text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
             />
           </div>
-          <button className="flex items-center px-4 py-2 bg-secondary text-foreground rounded-xl text-sm font-medium hover:bg-secondary/80 transition-colors">
+          <button onClick={exportCSV} className="flex items-center px-4 py-2 bg-secondary text-foreground rounded-xl text-sm font-medium hover:bg-secondary/80 transition-colors">
             <Download className="w-4 h-4 mr-2" />
             CSV
           </button>
-          <button className="flex items-center px-4 py-2 bg-secondary text-foreground rounded-xl text-sm font-medium hover:bg-secondary/80 transition-colors">
+          <button onClick={exportPDF} className="flex items-center px-4 py-2 bg-secondary text-foreground rounded-xl text-sm font-medium hover:bg-secondary/80 transition-colors">
             <Download className="w-4 h-4 mr-2" />
             PDF
           </button>
