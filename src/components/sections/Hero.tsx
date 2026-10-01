@@ -77,7 +77,7 @@ export function Hero() {
           Discover events, activate e-voting, get your digital pass & show up for experiences that matter.
         </p>
         <div className="flex flex-col sm:flex-row justify-center gap-4">
-          <Link href="#events" className="px-8 py-4 bg-primary text-primary-foreground rounded-full font-medium text-lg hover:bg-primary/90 transition-colors shadow-lg shadow-primary/20">
+          <Link href="/events" className="px-8 py-4 bg-primary text-primary-foreground rounded-full font-medium text-lg hover:bg-primary/90 transition-colors shadow-lg shadow-primary/20">
             Explore Events
           </Link>
           <Link href="/organizer/events/create" className="px-8 py-4 bg-white/10 backdrop-blur-sm text-primary-foreground border border-primary-foreground/30 rounded-full font-medium text-lg hover:bg-white/20 transition-colors shadow-lg">
