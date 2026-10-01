@@ -17,13 +17,16 @@ export function ThemeToggle() {
     return <div className="w-9 h-9" />; // Placeholder to avoid layout shift
   }
 
+  const isDark = theme === "dark" || (theme === "system" && resolvedTheme === "dark");
+
   return (
     <button
-      onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
+      type="button"
+      onClick={() => setTheme(isDark ? "light" : "dark")}
       className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground h-9 w-9 p-0"
       aria-label="Toggle theme"
     >
-      {resolvedTheme === 'dark' ? (
+      {isDark ? (
         <Moon className="h-[1.2rem] w-[1.2rem] transition-all" />
       ) : (
         <Sun className="h-[1.2rem] w-[1.2rem] transition-all" />
