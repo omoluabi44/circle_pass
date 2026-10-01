@@ -1,19 +1,91 @@
 "use client";
 
-import React, { useState } from 'react';
-import { Save, AlertTriangle } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Save, AlertTriangle, Loader2 } from 'lucide-react';
+import { useParams } from 'next/navigation';
+import { useSession } from 'next-auth/react';
+import { getEventById, updateEvent } from '@/lib/api/events';
+import { toast } from 'react-hot-toast';
 
 export default function SettingsPage() {
+  const params = useParams();
+  const id = params?.id as string;
+  const { data: session, status: authStatus } = useSession();
+
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
   const [absorbFees, setAbsorbFees] = useState(false);
-  const [isPublished, setIsPublished] = useState(true);
+  const [eventStatus, setEventStatus] = useState("DRAFT");
+
+  useEffect(() => {
+    async function fetchEventSettings() {
+      if (authStatus === 'loading') return;
+      if (!session?.accessToken || !id || id === 'undefined') return;
+      try {
+        const data = await getEventById(session.accessToken as string, id);
+        setTitle(data.title || "");
+        setDescription(data.description || "");
+        setAbsorbFees(data.absorb_fees || false);
+        setEventStatus(data.status || "DRAFT");
+      } catch (err) {
+        toast.error("Failed to load event settings.");
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchEventSettings();
+  }, [id, session, authStatus]);
+
+  const handleSave = async () => {
+    if (!session?.accessToken) return;
+    setSaving(true);
+    try {
+      const dataToUpdate = {
+        title,
+        description,
+        absorb_fees: absorbFees,
+        status: eventStatus
+      };
+      await updateEvent(session.accessToken as string, id, dataToUpdate);
+      toast.success("Settings saved successfully!");
+    } catch (err: any) {
+      toast.error(err.message || "Failed to save settings.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleCancelEvent = async () => {
+    if (!confirm("Are you sure you want to cancel this event? This action cannot be undone.")) return;
+    
+    if (!session?.accessToken) return;
+    try {
+      await updateEvent(session.accessToken as string, id, { status: 'ARCHIVED' });
+      setEventStatus('ARCHIVED');
+      toast.success("Event cancelled successfully.");
+    } catch (err: any) {
+      toast.error(err.message || "Failed to cancel event.");
+    }
+  };
+
+  if (loading) {
+    return <div className="p-8 flex justify-center"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
+  }
 
   return (
     <div className="p-6 max-w-4xl mx-auto">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-foreground">Event Settings</h1>
-        <button className="bg-primary text-primary-foreground px-5 py-2 rounded-xl flex items-center text-sm font-medium hover:bg-primary/90 transition-colors">
-          <Save className="w-4 h-4 mr-2" />
-          Save Changes
+        <button 
+          onClick={handleSave} 
+          disabled={saving}
+          className="bg-primary text-primary-foreground px-5 py-2 rounded-xl flex items-center text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
+        >
+          {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+          {saving ? "Saving..." : "Save Changes"}
         </button>
       </div>
 
@@ -24,11 +96,22 @@ export default function SettingsPage() {
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-muted-foreground mb-1">Event Title</label>
-              <input type="text" className="w-full bg-background border border-border rounded-xl px-4 py-2 text-foreground" defaultValue="Lagos Tech Fest 2026" />
+              <input 
+                type="text" 
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                className="w-full bg-background border border-border rounded-xl px-4 py-2 text-foreground" 
+                placeholder="Event Title" 
+              />
             </div>
             <div>
               <label className="block text-sm font-medium text-muted-foreground mb-1">Description</label>
-              <textarea className="w-full bg-background border border-border rounded-xl px-4 py-3 text-foreground min-h-[100px]" defaultValue="The biggest tech conference in West Africa."></textarea>
+              <textarea 
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                className="w-full bg-background border border-border rounded-xl px-4 py-3 text-foreground min-h-[100px]" 
+                placeholder="Describe your event..."
+              ></textarea>
             </div>
           </div>
         </div>
@@ -57,12 +140,15 @@ export default function SettingsPage() {
               <p className="text-sm text-muted-foreground mt-1">Control whether your event is visible to the public.</p>
             </div>
             <select 
-              value={isPublished ? "PUBLISHED" : "DRAFT"} 
-              onChange={(e) => setIsPublished(e.target.value === "PUBLISHED")}
+              value={eventStatus} 
+              onChange={(e) => setEventStatus(e.target.value)}
               className="bg-background border border-border rounded-xl px-4 py-2 text-foreground text-sm font-medium"
             >
-              <option value="PUBLISHED">Published (Public)</option>
               <option value="DRAFT">Draft (Hidden)</option>
+              <option value="SUBMITTED">Submitted for Review</option>
+              <option value="PUBLISHED">Published (Public)</option>
+              <option value="ARCHIVED">Archived (Hidden/Cancelled)</option>
+              <option value="COMPLETED">Completed</option>
             </select>
           </div>
         </div>
@@ -76,7 +162,10 @@ export default function SettingsPage() {
           <p className="text-sm text-muted-foreground mb-4">
             Canceling your event will immediately stop all ticket sales and notify all current ticketholders. This action cannot be undone.
           </p>
-          <button className="bg-destructive/10 text-destructive hover:bg-destructive hover:text-white px-5 py-2 rounded-xl text-sm font-medium transition-colors">
+          <button 
+            onClick={handleCancelEvent}
+            className="bg-destructive/10 text-destructive hover:bg-destructive hover:text-white px-5 py-2 rounded-xl text-sm font-medium transition-colors"
+          >
             Cancel Event
           </button>
         </div>
