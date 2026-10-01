@@ -113,6 +113,8 @@ class VenueSerializer(serializers.ModelSerializer):
 # ==========================================
 class EventSerializer(serializers.ModelSerializer):
     organizer_name = serializers.CharField(source='organizer.company_name', read_only=True)
+    organizer_instagram = serializers.CharField(source='organizer.instagram_handle', read_only=True)
+    organizer_website = serializers.CharField(source='organizer.website', read_only=True)
     ticket_types = TicketTypeSerializer(many=True, read_only=True)
     category = EventCategorySerializer(read_only=True)
     venue = VenueSerializer(read_only=True)
@@ -123,7 +125,7 @@ class EventSerializer(serializers.ModelSerializer):
     class Meta:
         model = Event
         fields = (
-            'id', 'organizer', 'organizer_name', 'category', 'venue',
+            'id', 'organizer', 'organizer_name', 'organizer_instagram', 'organizer_website', 'category', 'venue',
             'title', 'slug', 'description', 'cover_image', 'capacity', 'event_type',
             'country', 'state', 'city', 'organizer_contact', 'emergency_contact', 
             'age_restriction', 'dress_code', 'lineup', 'personalized_dp_enabled',

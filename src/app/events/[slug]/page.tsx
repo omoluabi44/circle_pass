@@ -428,13 +428,16 @@ export default function EventDetailsPage() {
 
                 <div className="pt-3 border-t border-border/50 flex flex-wrap items-center justify-between gap-3">
                   <div className="flex gap-2">
-                    {/* Assuming organizer data might contain socials, we show generic icons if available, or just mock them for now */}
-                    <a href="#" className="p-1.5 text-muted-foreground hover:text-pink-500 hover:bg-secondary rounded-full transition">
-                      <InstagramIcon className="w-4 h-4" />
-                    </a>
-                    <a href="#" className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-secondary rounded-full transition">
-                      <Music2 className="w-4 h-4" />
-                    </a>
+                    {event.organizer_instagram && (
+                      <a href={event.organizer_instagram.startsWith('http') ? event.organizer_instagram : `https://instagram.com/${event.organizer_instagram}`} target="_blank" rel="noopener noreferrer" className="p-1.5 text-muted-foreground hover:text-pink-500 hover:bg-secondary rounded-full transition">
+                        <InstagramIcon className="w-4 h-4" />
+                      </a>
+                    )}
+                    {event.organizer_website && (
+                      <a href={event.organizer_website.startsWith('http') ? event.organizer_website : `https://${event.organizer_website}`} target="_blank" rel="noopener noreferrer" className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-secondary rounded-full transition">
+                        <LinkIcon className="w-4 h-4" />
+                      </a>
+                    )}
                   </div>
                   <Link href={`/dashboard/inbox?new=${event.organizer || event.organizer_id}`} className="text-xs font-semibold text-primary hover:underline flex items-center gap-1.5">
                     <MessageCircle className="w-3.5 h-3.5" /> Message directly
