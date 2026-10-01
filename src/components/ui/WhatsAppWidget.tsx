@@ -8,7 +8,7 @@ export function WhatsAppWidget() {
   const whatsappUrl = "https://wa.me/2341234567890?text=Hello%2C%20I%20need%20support%20with%20CirclePass";
 
   return (
-    <div className="fixed bottom-6 right-6 z-50">
+    <div className="fixed bottom-24 md:bottom-6 right-4 md:right-6 z-50">
       <Link 
         href={whatsappUrl}
         target="_blank"
