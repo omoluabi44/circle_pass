@@ -22,6 +22,7 @@ export default function TicketsPage() {
   const [quantity, setQuantity] = useState('');
   const [tier, setTier] = useState('REGULAR');
   const [loading, setLoading] = useState(true);
+  const [editingTicketId, setEditingTicketId] = useState<number | null>(null);
 
   useEffect(() => {
     async function fetchEvent() {
@@ -39,7 +40,46 @@ export default function TicketsPage() {
     fetchEvent();
   }, [id, session, status]);
 
-  const handleCreateTicketType = async () => {
+  const closeModal = () => {
+    setShowModal(false);
+    setEditingTicketId(null);
+    setName('');
+    setPrice('');
+    setQuantity('');
+    setTier('REGULAR');
+  };
+
+  const openEditModal = (ticket: any) => {
+    setEditingTicketId(ticket.id);
+    setName(ticket.name);
+    setPrice(ticket.price.toString());
+    setQuantity(ticket.quantity.toString());
+    setTier(ticket.tier);
+    setShowModal(true);
+  };
+
+  const handleDeleteTicketType = async (ticketId: number) => {
+    if (!confirm("Are you sure you want to delete this ticket type? This action might fail if tickets have already been sold.")) return;
+
+    setUpdating(true);
+    try {
+      const currentTicketTypes = event.ticket_types || [];
+      const updatedTicketTypes = currentTicketTypes.filter((t: any) => t.id !== ticketId);
+
+      const updated = await updateEvent(session?.accessToken as string, id, {
+        ticket_types: updatedTicketTypes
+      });
+      
+      setEvent(updated);
+      toast.success("Ticket type deleted!");
+    } catch (err: any) {
+      toast.error(err.message || "Failed to delete ticket type.");
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const handleCreateOrUpdateTicketType = async () => {
     if (!name || !quantity || !tier || (tier !== 'FREE' && !price) || (tier === 'FREE' && price && Number(price) !== 0)) {
       toast.error('Please fill all required fields correctly (FREE must have 0 price).');
       return;
@@ -47,7 +87,7 @@ export default function TicketsPage() {
     
     setUpdating(true);
     try {
-      const newTicketType = {
+      const ticketTypeData: any = {
         name,
         tier,
         price: Number(price) || 0,
@@ -56,22 +96,27 @@ export default function TicketsPage() {
         is_active: true
       };
       
+      let updatedTicketTypes;
       const currentTicketTypes = event.ticket_types || [];
-      const updatedTicketTypes = [...currentTicketTypes, newTicketType];
+
+      if (editingTicketId) {
+        ticketTypeData.id = editingTicketId;
+        updatedTicketTypes = currentTicketTypes.map((t: any) => 
+          t.id === editingTicketId ? { ...t, ...ticketTypeData } : t
+        );
+      } else {
+        updatedTicketTypes = [...currentTicketTypes, ticketTypeData];
+      }
 
       const updated = await updateEvent(session?.accessToken as string, id, {
         ticket_types: updatedTicketTypes
       });
       
       setEvent(updated);
-      setShowModal(false);
-      setName('');
-      setPrice('');
-      setQuantity('');
-      setTier('REGULAR');
-      toast.success("Ticket type created!");
+      closeModal();
+      toast.success(editingTicketId ? "Ticket type updated!" : "Ticket type created!");
     } catch (err: any) {
-      toast.error(err.message || "Failed to create ticket type.");
+      toast.error(err.message || "Failed to save ticket type.");
     } finally {
       setUpdating(false);
     }
@@ -119,8 +164,18 @@ export default function TicketsPage() {
                     {ticket.quantity_sold || 0} / {ticket.quantity}
                   </td>
                   <td className="p-4 flex items-center space-x-3">
-                    <button className="text-primary hover:text-primary/80"><Edit2 className="w-4 h-4" /></button>
-                    <button className="text-destructive hover:text-destructive/80"><Trash2 className="w-4 h-4" /></button>
+                    <button 
+                      onClick={() => openEditModal(ticket)}
+                      className="text-primary hover:text-primary/80"
+                    >
+                      <Edit2 className="w-4 h-4" />
+                    </button>
+                    <button 
+                      onClick={() => handleDeleteTicketType(ticket.id)}
+                      className="text-destructive hover:text-destructive/80"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                   </td>
                 </tr>
               ))
@@ -138,7 +193,7 @@ export default function TicketsPage() {
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="bg-card rounded-2xl w-full max-w-md p-6">
-            <h2 className="text-xl font-bold text-foreground mb-4">Create Ticket Type</h2>
+            <h2 className="text-xl font-bold text-foreground mb-4">{editingTicketId ? 'Edit Ticket Type' : 'Create Ticket Type'}</h2>
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-muted-foreground mb-1">Tier</label>
@@ -190,8 +245,8 @@ export default function TicketsPage() {
               </div>
             </div>
             <div className="mt-6 flex justify-end space-x-3">
-              <button onClick={() => setShowModal(false)} disabled={updating} className="px-4 py-2 text-muted-foreground hover:bg-secondary rounded-xl transition-colors">Cancel</button>
-              <button onClick={handleCreateTicketType} disabled={updating} className="px-4 py-2 bg-primary text-primary-foreground rounded-xl disabled:opacity-50">
+              <button onClick={closeModal} disabled={updating} className="px-4 py-2 text-muted-foreground hover:bg-secondary rounded-xl transition-colors">Cancel</button>
+              <button onClick={handleCreateOrUpdateTicketType} disabled={updating} className="px-4 py-2 bg-primary text-primary-foreground rounded-xl disabled:opacity-50">
                 {updating ? 'Saving...' : 'Save'}
               </button>
             </div>
