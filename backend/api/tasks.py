@@ -1,7 +1,101 @@
 from celery import shared_task
-from django.core.mail import send_mail
+from django.core.mail import EmailMultiAlternatives, get_connection
 from core.models import Order
 from django.conf import settings
+
+def get_html_email(title, content):
+    # content is already formatted HTML paragraphs or we can replace \n with <br>
+    formatted_content = content.replace('\n', '<br>')
+    return f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="utf-8">
+        <style>
+            body {{
+                font-family: 'Roboto', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+                background-color: #F9FAFB;
+                margin: 0;
+                padding: 40px 20px;
+                color: #333333;
+            }}
+            .container {{
+                max-width: 600px;
+                margin: 0 auto;
+                background-color: #ffffff;
+                border-radius: 12px;
+                overflow: hidden;
+                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            }}
+            .header {{
+                background-color: #6366f1;
+                padding: 30px 20px;
+                text-align: center;
+            }}
+            .header h1 {{
+                color: #ffffff;
+                margin: 0;
+                font-size: 26px;
+                font-weight: 800;
+                letter-spacing: 1px;
+            }}
+            .content {{
+                padding: 40px 30px;
+                line-height: 1.6;
+                font-size: 16px;
+                color: #1f2937;
+            }}
+            .footer {{
+                background-color: #f3f4f6;
+                padding: 20px;
+                text-align: center;
+                font-size: 14px;
+                color: #6b7280;
+                border-top: 1px solid #e5e7eb;
+            }}
+            .button {{
+                display: inline-block;
+                padding: 12px 24px;
+                background-color: #6366f1;
+                color: #ffffff !important;
+                text-decoration: none;
+                border-radius: 8px;
+                font-weight: bold;
+                margin-top: 20px;
+            }}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>CirclePass</h1>
+            </div>
+            <div class="content">
+                <h2 style="color: #111827; margin-top: 0; font-size: 22px;">{title}</h2>
+                <div style="margin-top: 20px;">{formatted_content}</div>
+            </div>
+            <div class="footer">
+                <p style="margin: 0;">&copy; 2026 CirclePass. All rights reserved.</p>
+                <p style="margin: 5px 0 0 0;">Your Pass to the Next Experience</p>
+            </div>
+        </div>
+    </body>
+    </html>
+    """
+
+def send_html_email(subject, text_content, to_emails, title_for_html=None):
+    if title_for_html is None:
+        title_for_html = subject
+    html_content = get_html_email(title_for_html, text_content)
+    
+    msg = EmailMultiAlternatives(
+        subject,
+        text_content,
+        settings.DEFAULT_FROM_EMAIL,
+        to_emails
+    )
+    msg.attach_alternative(html_content, "text/html")
+    msg.send(fail_silently=True)
 
 @shared_task
 def send_abandoned_cart_email(order_id, time_period):
@@ -15,6 +109,7 @@ def send_abandoned_cart_email(order_id, time_period):
             return "Order not pending, skipped."
             
         subject = f"You left something behind for {order.event.title}!"
+        title = "Don't Miss Out!"
         
         if time_period == '1hr':
             message = "Hi! We noticed you left some tickets in your cart. Complete your purchase before they sell out!"
@@ -23,13 +118,7 @@ def send_abandoned_cart_email(order_id, time_period):
         else: # 7days
             message = "Last chance! This is your final reminder to complete your ticket purchase for {}.".format(order.event.title)
             
-        send_mail(
-            subject,
-            message,
-            settings.DEFAULT_FROM_EMAIL,
-            [order.user.email if order.user else order.guest_email],
-            fail_silently=False,
-        )
+        send_html_email(subject, message, [order.user.email if order.user else order.guest_email], title_for_html=title)
         return f"Sent {time_period} email for order {order_id}"
     except Order.DoesNotExist:
         return "Order does not exist."
@@ -47,20 +136,15 @@ def check_sold_out_and_notify(event_id):
         
         if total_capacity > 0 and total_sold >= total_capacity:
             subject = f"Your event '{event.title}' is Sold Out!"
+            title = "Congratulations! 🎉"
             message = (
-                f"Congratulations! Your event '{event.title}' has officially sold out all tickets.\n\n"
+                f"Your event '{event.title}' has officially sold out all tickets.\n\n"
                 f"Consider increasing your venue capacity or enabling the Waitlist feature "
                 f"so interested attendees can still sign up.\n\n"
                 f"Log in to your CirclePass dashboard to manage your event."
             )
             organizer_email = event.organizer.user.email
-            send_mail(
-                subject,
-                message,
-                settings.DEFAULT_FROM_EMAIL,
-                [organizer_email],
-                fail_silently=True,
-            )
+            send_html_email(subject, message, [organizer_email], title_for_html=title)
             return f"Notified organizer for sold out event {event_id}"
         return "Not sold out yet."
     except Event.DoesNotExist:
@@ -80,25 +164,29 @@ def notify_waitlist_on_launch(event_id):
         
         event_url = f"https://getcirclepass.com/events/{event.slug or event.id}"
         subject = f"Tickets are now LIVE for {event.title}!"
+        title = "Tickets Are Available! 🎟️"
         message = (
             f"Good news!\n\n"
             f"You joined the waitlist for '{event.title}', and tickets are finally on sale.\n\n"
             f"Hurry up and secure your spot before they sell out!\n"
             f"As a special thank you for waiting, use the promo code PRESALE at checkout for a discount!\n\n"
-            f"Get tickets here: {event_url}\n\n"
+            f"Get tickets here: <a href='{event_url}' style='color: #6366f1; font-weight: bold;'>{event_url}</a>\n\n"
             f"See you there!"
         )
         
         emails = [entry.email for entry in entries]
         
-        # Send mass email (in reality, loop or mass_mail)
-        send_mail(
-            subject,
-            message,
-            settings.DEFAULT_FROM_EMAIL,
-            emails, # BCC or loop for privacy
-            fail_silently=True,
-        )
+        # Send mass HTML email
+        connection = get_connection()
+        messages = []
+        html_content = get_html_email(title, message)
+        for email in emails:
+            msg = EmailMultiAlternatives(subject, message, settings.DEFAULT_FROM_EMAIL, [email], connection=connection)
+            msg.attach_alternative(html_content, "text/html")
+            messages.append(msg)
+            
+        if messages:
+            connection.send_messages(messages)
         
         # Mark as notified
         entries.update(notified=True)
@@ -107,6 +195,7 @@ def notify_waitlist_on_launch(event_id):
         return "Event not found."
     except Exception as e:
         return str(e)
+
 @shared_task
 def send_order_confirmation_email(order_id):
     try:
@@ -118,26 +207,24 @@ def send_order_confirmation_email(order_id):
         order_number = f"CP-{str(order.id).zfill(8)}"
         
         subject = f"Your Ticket Confirmation - {order.event.title}"
+        title = "Ticket Confirmed! ✅"
         
         message = f"""Hello {first_name},
 
 Thank you for purchasing your ticket with CirclePass. Your ticket has been successfully confirmed.
 
-Your Ticket Details
-
+<strong>Your Ticket Details</strong>
 Name: {name}
 Email: {email_addr}
 Order Number: {order_number}
 
-Your QR Code
-
+<strong>Your QR Code</strong>
 Your ticket QR code will be activated 3 hours before the exact start time of the event.
 
 Once your QR code is activated, it will be sent directly to this email address. Please check your inbox when it is within 3 hours of the event time to access your active QR code.
 
 You can also access your ticket anytime through your CirclePass Attendee Dashboard by signing in with the email address you used to purchase your ticket:
-
-https://localhost:3000/dashboard/tickets
+<a href='https://getcirclepass.com/dashboard/tickets' style='color: #6366f1;'>View My Tickets</a>
 
 Please keep this email for your records and ensure you have access to the email address used for your ticket purchase.
 
@@ -146,13 +233,7 @@ We look forward to having you at the event.
 Warm regards,
 The CirclePass Team"""
         
-        send_mail(
-            subject,
-            message,
-            settings.DEFAULT_FROM_EMAIL,
-            [email_addr],
-            fail_silently=False,
-        )
+        send_html_email(subject, message, [email_addr], title_for_html=title)
         return f"Order confirmation sent to {email_addr}"
     except Exception as e:
         return str(e)
@@ -179,25 +260,31 @@ def send_event_announcement_email(announcement_id):
             return "No attendees to notify."
             
         subject = f"Announcement: {announcement.title} - {event.title}"
+        title = f"Message from {event.organizer.company_name}"
+        
         message = (
             f"Hello,\n\n"
             f"The organizer of '{event.title}' has posted a new announcement:\n\n"
-            f"{announcement.title}\n"
+            f"<strong>{announcement.title}</strong>\n"
             f"{'-'*40}\n"
             f"{announcement.message}\n\n"
             f"Best regards,\n"
             f"CirclePass on behalf of {event.organizer.company_name}"
         )
         
-        from django.core.mail import send_mass_mail
-        from django.conf import settings
+        # Send mass HTML email
+        connection = get_connection()
+        messages = []
+        html_content = get_html_email(title, message)
         
-        messages = [
-            (subject, message, settings.DEFAULT_FROM_EMAIL, [email])
-            for email in emails
-        ]
-        
-        send_mass_mail(messages, fail_silently=True)
+        for email in emails:
+            msg = EmailMultiAlternatives(subject, message, settings.DEFAULT_FROM_EMAIL, [email], connection=connection)
+            msg.attach_alternative(html_content, "text/html")
+            messages.append(msg)
+            
+        if messages:
+            connection.send_messages(messages)
+            
         return f"Announcement {announcement_id} sent to {len(emails)} attendees."
     except Exception as e:
         import traceback
