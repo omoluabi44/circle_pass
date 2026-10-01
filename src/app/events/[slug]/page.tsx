@@ -383,13 +383,18 @@ export default function EventDetailsPage() {
                       <div className="w-2 h-2 rounded-full bg-primary" />
                       Available Tiers
                     </h3>
-                    <div className="space-y-3">
+                    <div className="space-y-4">
                       {event.ticket_types?.map((ticket: any) => (
-                        <div key={ticket.id} className="flex items-center justify-between text-sm">
-                          <span className="text-muted-foreground font-medium">{ticket.name}</span>
-                          <span className="font-bold text-foreground">
-                            {ticket.price === 0 ? "Free" : `₦${(ticket.price / 100).toLocaleString()}`}
-                          </span>
+                        <div key={ticket.id} className="flex flex-col gap-1 pb-3 border-b border-border/50 last:border-0 last:pb-0">
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-foreground font-bold">{ticket.name}</span>
+                            <span className="font-bold text-primary">
+                              {ticket.price === 0 ? "Free" : `₦${(ticket.price / 100).toLocaleString()}`}
+                            </span>
+                          </div>
+                          {ticket.description && (
+                            <p className="text-xs text-muted-foreground line-clamp-2">{ticket.description}</p>
+                          )}
                         </div>
                       ))}
                     </div>
