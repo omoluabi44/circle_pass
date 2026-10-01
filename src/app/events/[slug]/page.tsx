@@ -31,7 +31,14 @@ export default function EventDetailsPage() {
     // Fetch event details
     const fetchEvent = async () => {
       try {
-        const res = await fetch(`${API_URL}/events/?slug=${slug}`, { cache: 'no-store' });
+        const headers: any = {};
+        if (session?.accessToken) {
+          headers['Authorization'] = `Bearer ${session.accessToken}`;
+        }
+        const res = await fetch(`${API_URL}/events/?slug=${slug}`, { 
+          cache: 'no-store',
+          headers 
+        });
         if (!res.ok) throw new Error("Event not found");
         const data = await res.json();
         
@@ -68,8 +75,10 @@ export default function EventDetailsPage() {
       }
     };
 
-    fetchEvent();
-  }, [slug]);
+    if (session !== undefined) {
+      fetchEvent();
+    }
+  }, [slug, session]);
 
   const handleSaveEvent = async () => {
     if (!session?.accessToken) {

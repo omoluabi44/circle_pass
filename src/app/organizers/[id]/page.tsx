@@ -69,8 +69,10 @@ export default function OrganizerProfilePage() {
       }
     };
     
-    fetchProfile();
-  }, [id]);
+    if (session !== undefined) {
+      fetchProfile();
+    }
+  }, [id, session]);
 
   const handleFollow = async () => {
     const newFollowing = !isFollowing;
