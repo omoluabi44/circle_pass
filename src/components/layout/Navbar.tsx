@@ -81,9 +81,6 @@ export function Navbar() {
               <Link href={session?.user?.role === 'ADMIN' ? '/admin' : session?.user?.role === 'ORGANIZER' ? '/organizer' : '/dashboard'} className="hidden sm:inline-flex text-sm font-medium px-5 py-2.5 rounded-full border border-border hover:border-primary/50 hover:bg-secondary transition-all text-foreground shadow-sm">
                 Dashboard
               </Link>
-              <button onClick={() => signOut()} className="hidden sm:inline-flex text-sm font-medium px-5 py-2.5 rounded-full border border-border hover:border-destructive/30 hover:bg-destructive/10 hover:text-destructive transition-all text-foreground shadow-sm">
-                Sign Out
-              </button>
             </>
           ) : (
             <Link href="/login" className="hidden sm:inline-flex text-sm font-medium px-5 py-2.5 rounded-full border border-border hover:border-primary/50 hover:bg-secondary transition-all text-foreground shadow-sm">
@@ -170,21 +167,6 @@ export function Navbar() {
                 >
                   Dashboard
                 </Link>
-                {(session?.user as any)?.role !== 'ADMIN' && (
-                  <Link
-                    href="/organizer/events/create"
-                    className="sm:hidden text-base font-medium px-4 py-3 rounded-lg hover:bg-secondary text-foreground"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                  >
-                    Create Event
-                  </Link>
-                )}
-                <button
-                  onClick={() => { signOut(); setIsMobileMenuOpen(false); }}
-                  className="sm:hidden text-left text-base font-medium px-4 py-3 rounded-lg hover:bg-destructive/10 text-destructive"
-                >
-                  Sign Out
-                </button>
               </>
             ) : (
               <Link
