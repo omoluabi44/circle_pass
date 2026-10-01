@@ -79,6 +79,8 @@ class TicketTypeSerializer(serializers.ModelSerializer):
 
 class TicketTypeCreateSerializer(serializers.ModelSerializer):
     """Used when creating/updating ticket types within an event."""
+    id = serializers.IntegerField(required=False)
+
     class Meta:
         model = TicketType
         fields = (
