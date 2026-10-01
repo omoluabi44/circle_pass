@@ -204,7 +204,10 @@ class EventViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        if user.is_authenticated and hasattr(user, 'role'):
+        is_public = self.request.query_params.get('public') == 'true'
+        slug = self.request.query_params.get('slug')
+
+        if user.is_authenticated and hasattr(user, 'role') and not is_public:
             if user.role == 'ADMIN':
                 qs = Event.objects.all().order_by('-id')
             elif user.role == 'ORGANIZER':
@@ -212,7 +215,11 @@ class EventViewSet(viewsets.ModelViewSet):
             else:
                 qs = Event.objects.filter(status__in=['PUBLISHED', 'LIVE']).order_by('-id')
         else:
-            qs = Event.objects.filter(status__in=['PUBLISHED', 'LIVE']).order_by('-id')
+            if user.is_authenticated and user.role in ['ORGANIZER', 'ADMIN']:
+                # If public request but authenticated as organizer/admin, let them see public events PLUS their own drafts
+                qs = Event.objects.filter(Q(status__in=['PUBLISHED', 'LIVE']) | Q(organizer__user=user)).order_by('-id')
+            else:
+                qs = Event.objects.filter(status__in=['PUBLISHED', 'LIVE']).order_by('-id')
 
         # Simple Filtering & Searching
         q = self.request.query_params.get('q', None)

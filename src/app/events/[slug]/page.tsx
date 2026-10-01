@@ -35,7 +35,7 @@ export default function EventDetailsPage() {
         if (session?.accessToken) {
           headers['Authorization'] = `Bearer ${session.accessToken}`;
         }
-        const res = await fetch(`${API_URL}/events/?slug=${slug}`, { 
+        const res = await fetch(`${API_URL}/events/?slug=${slug}&public=true`, { 
           cache: 'no-store',
           headers 
         });
