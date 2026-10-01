@@ -156,3 +156,49 @@ The CirclePass Team"""
         return f"Order confirmation sent to {email_addr}"
     except Exception as e:
         return str(e)
+
+@shared_task
+def send_event_announcement_email(announcement_id):
+    from core.models import EventAnnouncement, Order
+    try:
+        announcement = EventAnnouncement.objects.get(id=announcement_id)
+        event = announcement.event
+        
+        # Get all completed orders for this event
+        orders = Order.objects.filter(event=event, status='COMPLETED')
+        
+        # Collect unique emails
+        emails = set()
+        for order in orders:
+            if order.guest_email:
+                emails.add(order.guest_email)
+            elif order.attendee and order.attendee.user.email:
+                emails.add(order.attendee.user.email)
+                
+        if not emails:
+            return "No attendees to notify."
+            
+        subject = f"Announcement: {announcement.title} - {event.title}"
+        message = (
+            f"Hello,\n\n"
+            f"The organizer of '{event.title}' has posted a new announcement:\n\n"
+            f"{announcement.title}\n"
+            f"{'-'*40}\n"
+            f"{announcement.message}\n\n"
+            f"Best regards,\n"
+            f"CirclePass on behalf of {event.organizer.company_name}"
+        )
+        
+        from django.core.mail import send_mass_mail
+        from django.conf import settings
+        
+        messages = [
+            (subject, message, settings.DEFAULT_FROM_EMAIL, [email])
+            for email in emails
+        ]
+        
+        send_mass_mail(messages, fail_silently=True)
+        return f"Announcement {announcement_id} sent to {len(emails)} attendees."
+    except Exception as e:
+        import traceback
+        return str(traceback.format_exc())

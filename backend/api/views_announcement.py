@@ -32,5 +32,16 @@ class EventAnnouncementListCreateView(APIView):
         message = request.data.get('message', '').strip()
         if not title or not message:
             return Response({'error': 'Title and message are required'}, status=400)
+            
         announcement = EventAnnouncement.objects.create(event=event, title=title, message=message)
-        return Response({'id': announcement.id, 'title': announcement.title, 'message': announcement.message, 'created_at': announcement.created_at}, status=201)
+        
+        # Trigger async email task
+        from api.tasks import send_event_announcement_email
+        send_event_announcement_email.delay(announcement.id)
+        
+        return Response({
+            'id': announcement.id, 
+            'title': announcement.title, 
+            'message': announcement.message, 
+            'created_at': announcement.created_at
+        }, status=201)
