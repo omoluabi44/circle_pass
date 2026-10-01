@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { Music2, MapPin, Calendar, CheckCircle } from "lucide-react";
+import { Music2, MapPin, Calendar, CheckCircle, Link as LinkIcon } from "lucide-react";
 import { InstagramIcon } from "@/components/ui/InstagramIcon";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
@@ -125,7 +125,7 @@ export default function OrganizerProfilePage() {
           
           <div className="relative z-10 flex flex-col md:flex-row items-center md:items-end gap-6 pt-12">
             <div className="w-32 h-32 bg-background border-4 border-background rounded-full overflow-hidden shrink-0 shadow-md">
-              <img src="https://ui-avatars.com/api/?name=CirclePass&background=6366f1&color=fff&size=128" alt={organizer.name} className="w-full h-full object-cover" />
+              <img src={organizer.logo || `https://ui-avatars.com/api/?name=${encodeURIComponent(organizer.name)}&background=6366f1&color=fff&size=128`} alt={organizer.name} className="w-full h-full object-cover" />
             </div>
             
             <div className="flex-1 text-center md:text-left">
@@ -140,9 +140,9 @@ export default function OrganizerProfilePage() {
                       <InstagramIcon className="w-5 h-5" />
                     </a>
                   )}
-                  {organizer.tiktok && (
-                    <a href={organizer.tiktok} target="_blank" rel="noopener noreferrer" className="hover:text-foreground transition">
-                      <Music2 className="w-5 h-5" />
+                  {organizer.website && (
+                    <a href={organizer.website.startsWith('http') ? organizer.website : `https://${organizer.website}`} target="_blank" rel="noopener noreferrer" className="hover:text-foreground transition">
+                      <LinkIcon className="w-5 h-5" />
                     </a>
                   )}
                 </div>

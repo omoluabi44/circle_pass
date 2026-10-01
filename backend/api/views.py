@@ -144,11 +144,13 @@ class PublicOrganizerProfileView(APIView):
         return Response({
             'id': profile.id,
             'name': profile.company_name,
+            'logo': profile.logo,
             'bio': profile.bio,
             'follower_count': follower_count,
             'is_followed': is_followed,
             'is_verified': profile.is_verified,
             'instagram': profile.instagram_handle,
+            'website': profile.website,
             'upcoming_events': upcoming_events,
             'past_events': past_events,
         })
