@@ -254,6 +254,28 @@ class CheckIn(models.Model):
     ticket = models.ForeignKey(Ticket, on_delete=models.CASCADE, related_name='checkins')
     scanned_at = models.DateTimeField(auto_now_add=True)
     status = models.CharField(max_length=50) # Valid, Already Used, Invalid
+    scanned_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='scans_performed')
+
+class TeamMember(models.Model):
+    ROLE_CHOICES = (
+        ('ORGANIZER_ADMIN', 'Organizer/Admin'),
+        ('SCANNER_STAFF', 'Scanner/Staff'),
+    )
+    STATUS_CHOICES = (
+        ('PENDING', 'Pending'),
+        ('ACTIVE', 'Active'),
+    )
+    organizer = models.ForeignKey(OrganizerProfile, on_delete=models.CASCADE, related_name='team_members')
+    event = models.ForeignKey(Event, on_delete=models.CASCADE, null=True, blank=True, related_name='event_team_members')
+    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True, related_name='team_roles')
+    email = models.EmailField()
+    role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='SCANNER_STAFF')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDING')
+    token = models.CharField(max_length=64, unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('organizer', 'email', 'event')
 
 # ==========================================
 # PAYMENTS & FINANCE

@@ -41,6 +41,7 @@ admin_router.register(r'payouts', AdminPayoutViewSet, basename='admin-payouts')
 
 from .views_ticket import TicketViewSet, PublicTicketView
 from .views_checkin import CheckInScanView, CheckInManualSearchView, CheckInStatsView
+from .views_team import TeamMemberManagementView, TeamMemberDetailView, AcceptTeamInviteView
 from .views import SupportTicketViewSet
 
 router = DefaultRouter()
@@ -77,6 +78,11 @@ urlpatterns = [
     path('check-in/scan/', CheckInScanView.as_view(), name='checkin_scan'),
     path('check-in/search/', CheckInManualSearchView.as_view(), name='checkin_search'),
     path('check-in/stats/', CheckInStatsView.as_view(), name='checkin_stats'),
+    
+    # Team Management
+    path('events/<int:event_id>/team/', TeamMemberManagementView.as_view(), name='team_management'),
+    path('events/<int:event_id>/team/<int:pk>/', TeamMemberDetailView.as_view(), name='team_detail'),
+    path('team/accept/', AcceptTeamInviteView.as_view(), name='team_accept_invite'),
     
     # Organizer: Wallet & Payouts
     path('organizer/wallet/', OrganizerWalletView.as_view(), name='organizer_wallet'),
