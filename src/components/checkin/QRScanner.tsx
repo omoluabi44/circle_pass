@@ -51,7 +51,7 @@ export function QRScanner({ eventId, onSuccess }: QRScannerProps) {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
-        body: JSON.stringify({ qr_token: decodedText }),
+        body: JSON.stringify({ qr_token: decodedText, event_id: eventId }),
       });
 
       const data = await response.json();
@@ -84,8 +84,13 @@ export function QRScanner({ eventId, onSuccess }: QRScannerProps) {
     <div className="flex flex-col items-center">
       {!scanResult && (
         <div className="w-full max-w-md">
-          <div id="qr-reader" className="w-full rounded-lg overflow-hidden border-2 border-gray-100"></div>
-          <p className="text-center text-sm text-gray-500 mt-4">Point camera at the attendee's ticket QR code.</p>
+          <div className="relative p-2 rounded-2xl bg-white shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100">
+            <div id="qr-reader" className="w-full rounded-xl overflow-hidden [&_video]:rounded-xl [&_#qr-shaded-region]:rounded-xl"></div>
+          </div>
+          <div className="flex items-center justify-center gap-2 mt-6">
+            <div className="h-2 w-2 rounded-full bg-[#6366f1] animate-pulse"></div>
+            <p className="text-center text-sm font-medium text-gray-500">Camera active. Point at QR code.</p>
+          </div>
         </div>
       )}
 

@@ -19,9 +19,14 @@ class CheckInScanView(APIView):
     def post(self, request, *args, **kwargs):
         qr_token = request.data.get('qr_token')
         ticket_id = request.data.get('ticket_id')
+        event_id = request.data.get('event_id')
         
         if not qr_token and not ticket_id:
             return Response({"detail": "QR token or ticket ID is required."}, status=status.HTTP_400_BAD_REQUEST)
+            
+        if not event_id:
+            return Response({"detail": "Event ID is required to verify ticket context."}, status=status.HTTP_400_BAD_REQUEST)
+
         
         # 1. Cryptographically verify the token (signature check) if using QR
         if qr_token and not verify_qr_token(qr_token):
@@ -36,6 +41,10 @@ class CheckInScanView(APIView):
                     ticket = Ticket.objects.select_for_update().get(pk=ticket_id)
             except Ticket.DoesNotExist:
                 return Response({"detail": "Ticket not found."}, status=status.HTTP_404_NOT_FOUND)
+                
+            # Verify the ticket belongs to the specified event
+            if str(ticket.order.event_id) != str(event_id):
+                return Response({"detail": "Wrong Event: This ticket is for a different event."}, status=status.HTTP_400_BAD_REQUEST)
                 
             # Verify the organizer owns this event
             if ticket.order.event.organizer.user != request.user:
