@@ -3,10 +3,12 @@
 import { LifeBuoy, MessageCircle, ExternalLink, HelpCircle, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useState, useEffect } from "react";
-import api from "@/lib/api";
+import { useSession } from "next-auth/react";
+import { API_URL } from "@/lib/api/config";
 import { toast } from "react-hot-toast";
 
 export default function SupportPage() {
+  const { data: session } = useSession();
   const [issueType, setIssueType] = useState("Payout Issue");
   const [relatedEvent, setRelatedEvent] = useState("");
   const [description, setDescription] = useState("");
@@ -15,10 +17,14 @@ export default function SupportPage() {
 
   useEffect(() => {
     // Fetch events for dropdown
-    api.get('/events/')
-      .then(res => setEvents(res.data.results || res.data))
+    if (!session?.accessToken) return;
+    fetch(`${API_URL}/events/`, {
+      headers: { Authorization: `Bearer ${session.accessToken}` }
+    })
+      .then(res => res.json())
+      .then(data => setEvents(data.results || data))
       .catch(err => console.error(err));
-  }, []);
+  }, [session]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -29,11 +35,20 @@ export default function SupportPage() {
     
     setLoading(true);
     try {
-      await api.post('/support-tickets/', {
-        issue_type: issueType,
-        related_event: relatedEvent || null,
-        description,
+      if (!session?.accessToken) throw new Error("Not authenticated");
+      const res = await fetch(`${API_URL}/support-tickets/`, {
+        method: "POST",
+        headers: { 
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.accessToken}` 
+        },
+        body: JSON.stringify({
+          issue_type: issueType,
+          related_event: relatedEvent || null,
+          description,
+        }),
       });
+      if (!res.ok) throw new Error("Failed to submit ticket");
       toast.success("Support ticket submitted successfully. We'll get back to you shortly.");
       setDescription("");
       setRelatedEvent("");

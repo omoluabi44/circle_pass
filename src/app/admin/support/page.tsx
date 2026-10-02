@@ -1,19 +1,26 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import api from "@/lib/api";
+import { useSession } from "next-auth/react";
 import { toast } from "react-hot-toast";
 import { Loader2, MessageSquare } from "lucide-react";
 import { format } from "date-fns";
+import { API_URL } from "@/lib/api/config";
 
 export default function AdminSupportPage() {
+  const { data: session } = useSession();
   const [tickets, setTickets] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchTickets = async () => {
+    if (!session?.accessToken) return;
     try {
-      const res = await api.get('/support-tickets/');
-      setTickets(res.data.results || res.data);
+      const res = await fetch(`${API_URL}/support-tickets/`, {
+        headers: { Authorization: `Bearer ${session.accessToken}` }
+      });
+      if (!res.ok) throw new Error("Failed to load support tickets");
+      const data = await res.json();
+      setTickets(data.results || data);
     } catch (error) {
       toast.error("Failed to load support tickets");
     } finally {
@@ -22,12 +29,23 @@ export default function AdminSupportPage() {
   };
 
   useEffect(() => {
-    fetchTickets();
-  }, []);
+    if (session?.accessToken) {
+      fetchTickets();
+    }
+  }, [session]);
 
   const handleUpdateStatus = async (ticketId: number, newStatus: string) => {
+    if (!session?.accessToken) return;
     try {
-      await api.patch(`/support-tickets/${ticketId}/`, { status: newStatus });
+      const res = await fetch(`${API_URL}/support-tickets/${ticketId}/`, {
+        method: "PATCH",
+        headers: { 
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.accessToken}` 
+        },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      if (!res.ok) throw new Error("Failed to update status");
       toast.success(`Ticket marked as ${newStatus.replace('_', ' ')}`);
       fetchTickets();
     } catch (error) {
