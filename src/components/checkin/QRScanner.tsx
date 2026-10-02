@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
-import { Html5Qrcode, CameraDevice } from 'html5-qrcode';
+import { Html5Qrcode, CameraDevice, Html5QrcodeSupportedFormats } from 'html5-qrcode';
 import { CheckCircle2, XCircle, AlertCircle, RefreshCw, Camera, ChevronDown, Scan } from 'lucide-react';
 
 import { useSession } from 'next-auth/react';
@@ -18,24 +18,38 @@ export function QRScanner({ eventId, onSuccess }: QRScannerProps) {
   const [scanning, setScanning] = useState(false);
   const [cameras, setCameras] = useState<CameraDevice[]>([]);
   const [selectedCamera, setSelectedCamera] = useState<string>('');
+  const [cameraError, setCameraError] = useState<string>('');
   const scannerRef = useRef<Html5Qrcode | null>(null);
 
   useEffect(() => {
-    Html5Qrcode.getCameras()
-      .then((devices) => {
-        if (devices && devices.length) {
+    const initCameras = async () => {
+      try {
+        const devices = await Html5Qrcode.getCameras();
+        if (devices && devices.length > 0) {
           setCameras(devices);
           const backCamera = devices.find(d => d.label.toLowerCase().includes('back') || d.label.toLowerCase().includes('environment'));
           setSelectedCamera(backCamera ? backCamera.id : devices[0].id);
+        } else {
+          setCameraError("No cameras found on this device.");
         }
-      })
-      .catch((err) => console.error("Error getting cameras", err));
+      } catch (err) {
+        console.error("Error getting cameras", err);
+        setCameraError("Camera permission denied or unsupported context (use HTTPS or localhost).");
+      }
+    };
 
+    initCameras();
     scannerRef.current = new Html5Qrcode("qr-reader");
 
     return () => {
-      if (scannerRef.current && scannerRef.current.isScanning) {
-        scannerRef.current.stop().catch(console.error);
+      if (scannerRef.current) {
+        try {
+          if (scannerRef.current.getState() === 2 /* SCANNING */) {
+            scannerRef.current.stop().catch(console.error);
+          }
+        } catch (e) {
+          // ignore
+        }
       }
     };
   }, []);
@@ -44,8 +58,12 @@ export function QRScanner({ eventId, onSuccess }: QRScannerProps) {
     if (!scanning) return;
     
     // Stop scanning immediately on success
-    if (scannerRef.current && scannerRef.current.isScanning) {
-        await scannerRef.current.stop().catch(console.error);
+    try {
+      if (scannerRef.current && scannerRef.current.getState() === 2) {
+          await scannerRef.current.stop();
+      }
+    } catch(e) {
+      console.error(e);
     }
     setScanning(false);
     
@@ -86,23 +104,33 @@ export function QRScanner({ eventId, onSuccess }: QRScannerProps) {
     if (!scannerRef.current) return;
 
     if (scanning) {
-      if (scannerRef.current.isScanning) {
-        await scannerRef.current.stop().catch(console.error);
+      try {
+        if (scannerRef.current.getState() === 2) {
+          await scannerRef.current.stop();
+        }
+      } catch(e) {
+        console.error(e);
       }
       setScanning(false);
     } else {
-      if (selectedCamera) {
-        try {
-          await scannerRef.current.start(
-            selectedCamera,
-            { fps: 10, qrbox: { width: 250, height: 250 } },
-            onScanSuccess,
-            onScanFailure
-          );
-          setScanning(true);
-        } catch (err) {
-          console.error("Failed to start scanner", err);
-        }
+      // If selectedCamera is empty, try requesting cameras again
+      if (!selectedCamera) {
+        alert(cameraError || "Please select a camera or ensure permissions are granted.");
+        return;
+      }
+
+      setScanning(true);
+      try {
+        await scannerRef.current.start(
+          selectedCamera,
+          { fps: 10, qrbox: { width: 250, height: 250 }, formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE] },
+          onScanSuccess,
+          onScanFailure
+        );
+      } catch (err) {
+        console.error("Failed to start scanner", err);
+        setScanning(false);
+        alert("Failed to start camera. Please ensure permissions are granted.");
       }
     }
   };
@@ -112,7 +140,6 @@ export function QRScanner({ eventId, onSuccess }: QRScannerProps) {
     setScanning(false);
   };
 
-  // Extract short label for camera (e.g. "Back Camera")
   const getCameraLabel = (label: string) => {
     if (!label) return "Camera";
     if (label.toLowerCase().includes('back') || label.toLowerCase().includes('environment')) return "Back Camera";
@@ -159,9 +186,15 @@ export function QRScanner({ eventId, onSuccess }: QRScannerProps) {
              Point camera at the attendee's ticket QR code.
           </p>
 
+          {cameraError && !scanning && (
+            <p className="text-center text-sm text-red-500 mt-4 font-medium">
+               {cameraError}
+            </p>
+          )}
+
           <div 
              id="qr-reader" 
-             className={`w-full mt-4 rounded-xl overflow-hidden [&_video]:rounded-xl [&_#qr-shaded-region]:rounded-xl ${scanning ? 'block' : 'hidden'}`}
+             className={`w-full rounded-xl overflow-hidden [&_video]:rounded-xl [&_#qr-shaded-region]:rounded-xl ${scanning ? 'mt-4 block' : 'hidden'}`}
           ></div>
         </div>
       )}
