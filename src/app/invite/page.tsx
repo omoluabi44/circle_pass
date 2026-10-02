@@ -1,13 +1,13 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { API_URL } from "@/lib/api/config";
 import { CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 
-export default function InvitePage() {
+function InviteContent() {
   const searchParams = useSearchParams();
   const token = searchParams.get('token');
   const { data: session, status } = useSession();
@@ -133,5 +133,17 @@ export default function InvitePage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function InvitePage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <Loader2 className="w-10 h-10 text-[#6366f1] animate-spin" />
+      </div>
+    }>
+      <InviteContent />
+    </Suspense>
   );
 }
