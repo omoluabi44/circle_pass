@@ -4,17 +4,18 @@ from rest_framework import status, permissions
 from django.utils import timezone
 from datetime import timedelta
 from django.db import transaction
+from django.db.models import Q
 
-from core.models import Ticket, CheckIn
+from core.models import Ticket, CheckIn, TeamMember
 from core.utils.qr import verify_qr_token
-from .permissions import IsOrganizer
+from .permissions import IsOrganizerOrTeamMember
 
 class CheckInScanView(APIView):
     """
     PassControl Check-in endpoint for organizers.
     Verifies the QR token securely and atomically transitions the ticket to USED.
     """
-    permission_classes = [permissions.IsAuthenticated, IsOrganizer]
+    permission_classes = [permissions.IsAuthenticated, IsOrganizerOrTeamMember]
 
     def post(self, request, *args, **kwargs):
         qr_token = request.data.get('qr_token')
@@ -27,7 +28,6 @@ class CheckInScanView(APIView):
         if not event_id:
             return Response({"detail": "Event ID is required to verify ticket context."}, status=status.HTTP_400_BAD_REQUEST)
 
-        
         # 1. Cryptographically verify the token (signature check) if using QR
         if qr_token and not verify_qr_token(qr_token):
             return Response({"detail": "Invalid or tampered QR token."}, status=status.HTTP_400_BAD_REQUEST)
@@ -46,9 +46,22 @@ class CheckInScanView(APIView):
             if str(ticket.order.event_id) != str(event_id):
                 return Response({"detail": "Wrong Event: This ticket is for a different event."}, status=status.HTTP_400_BAD_REQUEST)
                 
-            # Verify the organizer owns this event
-            if ticket.order.event.organizer.user != request.user:
+            # Verify the user has permission to scan tickets for this event
+            has_permission = False
+            event_obj = ticket.order.event
+            if event_obj.organizer.user == request.user or request.user.role == "ADMIN":
+                has_permission = True
+            else:
+                # Check if user is an active team member for this organizer, either globally or specifically for this event
+                has_permission = TeamMember.objects.filter(
+                    user=request.user,
+                    organizer=event_obj.organizer,
+                    status='ACTIVE'
+                ).filter(Q(event=event_obj) | Q(event__isnull=True)).exists()
+
+            if not has_permission:
                 return Response({"detail": "You do not have permission to scan tickets for this event."}, status=status.HTTP_403_FORBIDDEN)
+
             
             # 3. Apply lazy activation just in case it wasn't triggered yet
             if ticket.status == 'ISSUED':
@@ -88,7 +101,8 @@ class CheckInScanView(APIView):
             # Create Audit Record
             CheckIn.objects.create(
                 ticket=ticket,
-                status=scan_status
+                status=scan_status,
+                scanned_by=request.user
             )
             
             return Response({
@@ -106,7 +120,7 @@ class CheckInManualSearchView(APIView):
     """
     Manual search for tickets by name, email, or token string.
     """
-    permission_classes = [permissions.IsAuthenticated, IsOrganizer]
+    permission_classes = [permissions.IsAuthenticated, IsOrganizerOrTeamMember]
 
     def get(self, request, *args, **kwargs):
         event_id = request.query_params.get('event_id')
@@ -115,8 +129,22 @@ class CheckInManualSearchView(APIView):
         if not event_id:
             return Response({"detail": "event_id is required."}, status=status.HTTP_400_BAD_REQUEST)
 
+        from django.shortcuts import get_object_or_404
+        from core.models import Event
+        
+        # Check permissions for this event
+        event_obj = get_object_or_404(Event, id=event_id)
+        if event_obj.organizer.user != request.user and request.user.role != "ADMIN":
+            has_permission = TeamMember.objects.filter(
+                user=request.user,
+                organizer=event_obj.organizer,
+                status='ACTIVE'
+            ).filter(Q(event=event_obj) | Q(event__isnull=True)).exists()
+            if not has_permission:
+                return Response({"detail": "Forbidden"}, status=status.HTTP_403_FORBIDDEN)
+
         # Basic search
-        tickets = Ticket.objects.filter(order__event_id=event_id, order__event__organizer__user=request.user)
+        tickets = Ticket.objects.filter(order__event_id=event_id)
 
         if query:
             tickets = tickets.filter(
@@ -145,7 +173,7 @@ class CheckInStatsView(APIView):
     """
     Live scan feed and statistics.
     """
-    permission_classes = [permissions.IsAuthenticated, IsOrganizer]
+    permission_classes = [permissions.IsAuthenticated, IsOrganizerOrTeamMember]
 
     def get(self, request, *args, **kwargs):
         event_id = request.query_params.get('event_id')
@@ -153,24 +181,39 @@ class CheckInStatsView(APIView):
         if not event_id:
             return Response({"detail": "event_id is required."}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Stats
-        total_tickets = Ticket.objects.filter(
-            order__event_id=event_id, 
-            order__event__organizer__user=request.user,
-            status__in=['ISSUED', 'ACTIVE', 'USED']
-        ).count()
+        from django.shortcuts import get_object_or_404
+        from core.models import Event
         
-        checked_in = Ticket.objects.filter(
-            order__event_id=event_id,
-            order__event__organizer__user=request.user,
-            status='USED'
-        ).count()
+        # Check permissions for this event
+        event_obj = get_object_or_404(Event, id=event_id)
+        if event_obj.organizer.user != request.user and request.user.role != "ADMIN":
+            has_permission = TeamMember.objects.filter(
+                user=request.user,
+                organizer=event_obj.organizer,
+                status='ACTIVE'
+            ).filter(Q(event=event_obj) | Q(event__isnull=True)).exists()
+            if not has_permission:
+                return Response({"detail": "Forbidden"}, status=status.HTTP_403_FORBIDDEN)
+
+        # Base tickets queryset
+        tickets_qs = Ticket.objects.filter(order__event_id=event_id)
+
+        # Stats requested by user:
+        # Total Passes (Total issued)
+        total_tickets = tickets_qs.filter(status__in=['ISSUED', 'ACTIVE', 'USED']).count()
+        # Active/Unused Passes
+        active_passes = tickets_qs.filter(status__in=['ISSUED', 'ACTIVE']).count()
+        # Checked-in Passes
+        checked_in = tickets_qs.filter(status='USED').count()
+        # Remaining Passes (Same as active_passes conceptually, but we can return it as requested)
+        remaining = total_tickets - checked_in
+        # Check-in Rate
+        check_in_rate = (checked_in / total_tickets * 100) if total_tickets > 0 else 0
 
         # Recent scans (CheckIn objects)
         recent_checkins = CheckIn.objects.filter(
-            ticket__order__event_id=event_id,
-            ticket__order__event__organizer__user=request.user
-        ).order_by('-scanned_at')[:20]
+            ticket__order__event_id=event_id
+        ).select_related('ticket__ticket_type', 'scanned_by').order_by('-scanned_at')[:20]
 
         recent_data = [{
             "id": c.id,
@@ -178,12 +221,14 @@ class CheckInStatsView(APIView):
             "ticket_type": c.ticket.ticket_type.name,
             "status": c.status,
             "scanned_at": c.scanned_at,
+            "scanned_by_name": c.scanned_by.get_full_name() if c.scanned_by else (c.scanned_by.username if c.scanned_by else "System")
         } for c in recent_checkins]
 
         return Response({
             "total_tickets": total_tickets,
+            "active_passes": active_passes,
             "checked_in": checked_in,
-            "remaining": total_tickets - checked_in,
-            "percentage": (checked_in / total_tickets * 100) if total_tickets > 0 else 0,
+            "remaining": remaining,
+            "percentage": check_in_rate,
             "recent_scans": recent_data
         }, status=status.HTTP_200_OK)
