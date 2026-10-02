@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { CheckCircle, XCircle } from "lucide-react";
 import ClientVerificationButtons from "./ClientVerificationButtons";
+import UserListTabs from "./UserListTabs";
 
 export default async function AdminUsersPage() {
   const session = await getSession();
@@ -83,28 +84,7 @@ export default async function AdminUsersPage() {
 
         <section>
           <h2 className="text-xl font-bold mb-4">All Users</h2>
-          <div className="bg-background border border-border rounded-xl shadow-sm overflow-hidden overflow-x-auto">
-            <table className="w-full text-sm text-left">
-              <thead className="bg-muted text-muted-foreground font-bold text-xs uppercase tracking-wider">
-                <tr>
-                  <th className="px-4 py-3">Username</th>
-                  <th className="px-4 py-3">Email</th>
-                  <th className="px-4 py-3">Role</th>
-                  <th className="px-4 py-3">Joined</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {users.map((u: any) => (
-                  <tr key={u.id} className="hover:bg-secondary transition-colors">
-                    <td className="px-4 py-3 font-medium text-foreground">{u.username}</td>
-                    <td className="px-4 py-3 text-muted-foreground">{u.email}</td>
-                    <td className="px-4 py-3">{u.role}</td>
-                    <td className="px-4 py-3 text-muted-foreground">{new Date(u.date_joined).toLocaleDateString()}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <UserListTabs users={users} />
         </section>
       </div>
     </div>
