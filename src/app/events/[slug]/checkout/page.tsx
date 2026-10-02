@@ -386,19 +386,19 @@ export default function CheckoutPage() {
                 {successData?.isGuest ? (
                   <>
                     <h3 className="text-2xl font-bold text-foreground mb-2">
-                      Registration Complete!
+                      Ticket Sent to Your Email!
                     </h3>
                     <p className="text-muted-foreground mb-2">
-                      We&apos;ve sent a confirmation to <strong>{successData.guestEmail || guestData.email}</strong>
+                      We&apos;ve sent your ticket details to <strong>{successData.guestEmail || guestData.email}</strong>
                     </p>
                     <p className="text-sm text-muted-foreground mb-8">
-                      Click the link in your email to verify your account and sign in to view your ticket.
+                      Please check your inbox (and spam folder) for your ticket confirmation and QR code.
                     </p>
                   </>
                 ) : (
                   <>
                     <h3 className="text-2xl font-bold text-foreground mb-2">
-                      {successData?.payment_required ? "Payment Required" : successData?.message ? "You're on the list!" : "Registration Complete!"}
+                      {successData?.payment_required ? "Payment Required" : successData?.message ? "You're on the list!" : "Ticket Sent to Your Email!"}
                     </h3>
                     <p className="text-muted-foreground mb-8">
                       {successData?.payment_required 
@@ -713,3 +713,4 @@ export default function CheckoutPage() {
     </div>
   );
 }
+

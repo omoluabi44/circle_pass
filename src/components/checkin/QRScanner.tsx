@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
-import { Html5QrcodeScanner, Html5QrcodeScanType } from 'html5-qrcode';
-import { CheckCircle2, XCircle, AlertCircle, RefreshCw } from 'lucide-react';
+import { Html5Qrcode, CameraDevice } from 'html5-qrcode';
+import { CheckCircle2, XCircle, AlertCircle, RefreshCw, Camera, ChevronDown, Scan } from 'lucide-react';
 
 import { useSession } from 'next-auth/react';
 import { API_URL } from "@/lib/api/config";
@@ -15,31 +15,38 @@ interface QRScannerProps {
 export function QRScanner({ eventId, onSuccess }: QRScannerProps) {
   const { data: session } = useSession();
   const [scanResult, setScanResult] = useState<any>(null);
-  const [scanning, setScanning] = useState(true);
-  const scannerRef = useRef<Html5QrcodeScanner | null>(null);
+  const [scanning, setScanning] = useState(false);
+  const [cameras, setCameras] = useState<CameraDevice[]>([]);
+  const [selectedCamera, setSelectedCamera] = useState<string>('');
+  const scannerRef = useRef<Html5Qrcode | null>(null);
 
   useEffect(() => {
-    // Prevent multiple initializations in React strict mode
-    if (!scannerRef.current) {
-      scannerRef.current = new Html5QrcodeScanner(
-        'qr-reader',
-        { fps: 10, qrbox: { width: 250, height: 250 }, supportedScanTypes: [Html5QrcodeScanType.SCAN_TYPE_CAMERA] },
-        false
-      );
+    Html5Qrcode.getCameras()
+      .then((devices) => {
+        if (devices && devices.length) {
+          setCameras(devices);
+          const backCamera = devices.find(d => d.label.toLowerCase().includes('back') || d.label.toLowerCase().includes('environment'));
+          setSelectedCamera(backCamera ? backCamera.id : devices[0].id);
+        }
+      })
+      .catch((err) => console.error("Error getting cameras", err));
 
-      scannerRef.current.render(onScanSuccess, onScanFailure);
-    }
+    scannerRef.current = new Html5Qrcode("qr-reader");
 
     return () => {
-      if (scannerRef.current) {
-        scannerRef.current.clear().catch(console.error);
-        scannerRef.current = null;
+      if (scannerRef.current && scannerRef.current.isScanning) {
+        scannerRef.current.stop().catch(console.error);
       }
     };
   }, []);
 
   const onScanSuccess = async (decodedText: string) => {
     if (!scanning) return;
+    
+    // Stop scanning immediately on success
+    if (scannerRef.current && scannerRef.current.isScanning) {
+        await scannerRef.current.stop().catch(console.error);
+    }
     setScanning(false);
     
     // Call the API to verify and check in
@@ -72,30 +79,95 @@ export function QRScanner({ eventId, onSuccess }: QRScannerProps) {
   };
 
   const onScanFailure = (error: any) => {
-    // html5-qrcode calls this frequently on failed frames, ignore it
+    // ignore
+  };
+
+  const toggleScanning = async () => {
+    if (!scannerRef.current) return;
+
+    if (scanning) {
+      if (scannerRef.current.isScanning) {
+        await scannerRef.current.stop().catch(console.error);
+      }
+      setScanning(false);
+    } else {
+      if (selectedCamera) {
+        try {
+          await scannerRef.current.start(
+            selectedCamera,
+            { fps: 10, qrbox: { width: 250, height: 250 } },
+            onScanSuccess,
+            onScanFailure
+          );
+          setScanning(true);
+        } catch (err) {
+          console.error("Failed to start scanner", err);
+        }
+      }
+    }
   };
 
   const resetScanner = () => {
     setScanResult(null);
-    setScanning(true);
+    setScanning(false);
+  };
+
+  // Extract short label for camera (e.g. "Back Camera")
+  const getCameraLabel = (label: string) => {
+    if (!label) return "Camera";
+    if (label.toLowerCase().includes('back') || label.toLowerCase().includes('environment')) return "Back Camera";
+    if (label.toLowerCase().includes('front') || label.toLowerCase().includes('user')) return "Front Camera";
+    return label.replace(/\([0-9a-f]{4}:[0-9a-f]{4}\)/g, '').trim();
   };
 
   return (
-    <div className="flex flex-col items-center">
+    <div className="flex flex-col w-full">
       {!scanResult && (
-        <div className="w-full max-w-md">
-          <div className="relative p-2 rounded-2xl bg-white shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100">
-            <div id="qr-reader" className="w-full rounded-xl overflow-hidden [&_video]:rounded-xl [&_#qr-shaded-region]:rounded-xl"></div>
+        <div className="w-full">
+          <div className="flex items-center border border-gray-200 rounded-xl p-3 mb-4 bg-gray-50/50">
+             <div className="flex items-center gap-2 pr-4 border-r border-gray-200 text-gray-900 font-semibold text-sm whitespace-nowrap">
+                <Camera className="w-5 h-5 text-[#6366f1]" />
+                Select Camera
+             </div>
+             <div className="flex-1 pl-4 relative">
+                <select 
+                   value={selectedCamera}
+                   onChange={(e) => setSelectedCamera(e.target.value)}
+                   className="w-full bg-transparent appearance-none text-gray-700 font-medium text-sm outline-none pr-8 cursor-pointer"
+                   disabled={scanning}
+                >
+                   {cameras.length === 0 && <option value="">No cameras found</option>}
+                   {cameras.map(c => (
+                      <option key={c.id} value={c.id}>
+                        {getCameraLabel(c.label) || `Camera ${c.id.substring(0, 5)}`}
+                      </option>
+                   ))}
+                </select>
+                <ChevronDown className="w-4 h-4 text-gray-500 absolute right-0 top-1/2 -translate-y-1/2 pointer-events-none" />
+             </div>
           </div>
-          <div className="flex items-center justify-center gap-2 mt-6">
-            <div className="h-2 w-2 rounded-full bg-[#6366f1] animate-pulse"></div>
-            <p className="text-center text-sm font-medium text-gray-500">Camera active. Point at QR code.</p>
-          </div>
+
+          <button
+             onClick={toggleScanning}
+             className="w-full bg-[#6366f1] text-white rounded-xl py-3.5 flex items-center justify-center gap-2 font-semibold text-base hover:bg-[#5046e5] transition-colors shadow-sm"
+          >
+             <Scan className="w-5 h-5" />
+             {scanning ? 'Stop Scanning' : 'Start Scanning'}
+          </button>
+
+          <p className="text-center text-sm text-gray-500 mt-5">
+             Point camera at the attendee's ticket QR code.
+          </p>
+
+          <div 
+             id="qr-reader" 
+             className={`w-full mt-4 rounded-xl overflow-hidden [&_video]:rounded-xl [&_#qr-shaded-region]:rounded-xl ${scanning ? 'block' : 'hidden'}`}
+          ></div>
         </div>
       )}
 
       {scanResult && (
-        <div className="w-full max-w-md text-center py-8">
+        <div className="w-full text-center py-4">
           {scanResult.success ? (
             <div className="flex flex-col items-center text-green-600 mb-6">
               <CheckCircle2 size={64} className="mb-4" />
@@ -126,7 +198,7 @@ export function QRScanner({ eventId, onSuccess }: QRScannerProps) {
 
           <button
             onClick={resetScanner}
-            className="flex items-center justify-center gap-2 w-full py-3 px-4 bg-[#6366f1] text-white rounded-lg font-medium hover:bg-[#5046e5] transition-colors"
+            className="flex items-center justify-center gap-2 w-full py-3.5 px-4 bg-[#6366f1] text-white rounded-xl font-semibold text-base hover:bg-[#5046e5] transition-colors shadow-sm"
           >
             <RefreshCw size={20} />
             Scan Next Ticket
