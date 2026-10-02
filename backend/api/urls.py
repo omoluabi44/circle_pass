@@ -41,12 +41,14 @@ admin_router.register(r'payouts', AdminPayoutViewSet, basename='admin-payouts')
 
 from .views_ticket import TicketViewSet, PublicTicketView
 from .views_checkin import CheckInScanView, CheckInManualSearchView, CheckInStatsView
+from .views import SupportTicketViewSet
 
 router = DefaultRouter()
 router.register(r'organizer/profile', OrganizerProfileViewSet, basename='organizer-profile')
 router.register(r'events', EventViewSet, basename='events')
 router.register(r'categories', EventCategoryViewSet, basename='categories')
 router.register(r'tickets', TicketViewSet, basename='tickets')
+router.register(r'support-tickets', SupportTicketViewSet, basename='support-tickets')
 
 urlpatterns = [
     path('', include(router.urls)),

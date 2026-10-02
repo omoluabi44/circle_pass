@@ -522,3 +522,21 @@ class EmailLog(models.Model):
 
     def __str__(self):
         return f'{self.subject} -> {self.recipient} ({self.status})'
+
+class SupportTicket(models.Model):
+    STATUS_CHOICES = (
+        ('OPEN', 'Open'),
+        ('IN_PROGRESS', 'In Progress'),
+        ('RESOLVED', 'Resolved'),
+        ('CLOSED', 'Closed'),
+    )
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='support_tickets')
+    issue_type = models.CharField(max_length=100)
+    related_event = models.ForeignKey(Event, on_delete=models.SET_NULL, null=True, blank=True, related_name='support_tickets')
+    description = models.TextField()
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='OPEN')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.issue_type} - {self.user.email} - {self.status}"

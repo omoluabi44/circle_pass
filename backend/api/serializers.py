@@ -509,3 +509,14 @@ class FollowedOrganizerSerializer(serializers.ModelSerializer):
             status__in=['PUBLISHED', 'LIVE'],
             start_time__gte=timezone.now()
         ).count()
+
+from core.models import SupportTicket
+
+class SupportTicketSerializer(serializers.ModelSerializer):
+    user_email = serializers.EmailField(source='user.email', read_only=True)
+    user_name = serializers.CharField(source='user.get_full_name', read_only=True)
+    
+    class Meta:
+        model = SupportTicket
+        fields = '__all__'
+        read_only_fields = ('user', 'status', 'created_at', 'updated_at')

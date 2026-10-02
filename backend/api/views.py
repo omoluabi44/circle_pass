@@ -464,3 +464,19 @@ class WaitlistEntryCreateView(APIView):
             return Response({'detail': 'You are already on the list!'}, status=status.HTTP_200_OK)
 
         return Response({'detail': 'Successfully joined the waitlist!'}, status=status.HTTP_201_CREATED)
+
+from core.models import SupportTicket
+from api.serializers import SupportTicketSerializer
+
+class SupportTicketViewSet(viewsets.ModelViewSet):
+    serializer_class = SupportTicketSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.is_staff or user.role == 'ADMIN':
+            return SupportTicket.objects.all().order_by('-created_at')
+        return SupportTicket.objects.filter(user=user).order_by('-created_at')
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)

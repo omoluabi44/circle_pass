@@ -1,7 +1,50 @@
-import { LifeBuoy, MessageCircle, ExternalLink, HelpCircle } from "lucide-react";
+"use client";
+
+import { LifeBuoy, MessageCircle, ExternalLink, HelpCircle, Loader2 } from "lucide-react";
 import Link from "next/link";
+import { useState, useEffect } from "react";
+import api from "@/lib/api";
+import { toast } from "react-hot-toast";
 
 export default function SupportPage() {
+  const [issueType, setIssueType] = useState("Payout Issue");
+  const [relatedEvent, setRelatedEvent] = useState("");
+  const [description, setDescription] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [events, setEvents] = useState<any[]>([]);
+
+  useEffect(() => {
+    // Fetch events for dropdown
+    api.get('/events/')
+      .then(res => setEvents(res.data.results || res.data))
+      .catch(err => console.error(err));
+  }, []);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!description.trim()) {
+      toast.error("Please describe your issue.");
+      return;
+    }
+    
+    setLoading(true);
+    try {
+      await api.post('/support-tickets/', {
+        issue_type: issueType,
+        related_event: relatedEvent || null,
+        description,
+      });
+      toast.success("Support ticket submitted successfully. We'll get back to you shortly.");
+      setDescription("");
+      setRelatedEvent("");
+      setIssueType("Payout Issue");
+    } catch (error) {
+      toast.error("Failed to submit ticket. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="p-6 md:p-10 max-w-4xl mx-auto space-y-8">
       <header className="mb-8">
@@ -39,11 +82,15 @@ export default function SupportPage() {
 
       <div className="bg-card border border-border rounded-2xl p-8 mt-8">
         <h3 className="text-xl font-bold text-foreground mb-6">Report an Issue</h3>
-        <form className="space-y-4">
+        <form className="space-y-4" onSubmit={handleSubmit}>
           <div className="grid md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <label className="text-sm font-bold text-foreground">Issue Type</label>
-              <select className="w-full bg-background border border-border rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-primary transition-colors">
+              <select 
+                className="w-full bg-background border border-border rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-primary transition-colors"
+                value={issueType}
+                onChange={(e) => setIssueType(e.target.value)}
+              >
                 <option>Payout Issue</option>
                 <option>Ticket Scanning Problem</option>
                 <option>Event Setup</option>
@@ -52,17 +99,35 @@ export default function SupportPage() {
             </div>
             <div className="space-y-2">
               <label className="text-sm font-bold text-foreground">Related Event (Optional)</label>
-              <select className="w-full bg-background border border-border rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-primary transition-colors">
-                <option>Select an event...</option>
-                <option>Lagos House Party</option>
+              <select 
+                className="w-full bg-background border border-border rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-primary transition-colors"
+                value={relatedEvent}
+                onChange={(e) => setRelatedEvent(e.target.value)}
+              >
+                <option value="">Select an event...</option>
+                {events.map((event: any) => (
+                  <option key={event.id} value={event.id}>{event.title}</option>
+                ))}
               </select>
             </div>
           </div>
           <div className="space-y-2">
             <label className="text-sm font-bold text-foreground">Description</label>
-            <textarea rows={4} className="w-full bg-background border border-border rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-primary transition-colors" placeholder="Please describe the issue in detail..."></textarea>
+            <textarea 
+              rows={4} 
+              className="w-full bg-background border border-border rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-primary transition-colors" 
+              placeholder="Please describe the issue in detail..."
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              required
+            ></textarea>
           </div>
-          <button type="button" className="px-6 py-3 bg-primary text-primary-foreground rounded-xl font-bold hover:bg-primary/90 transition-colors">
+          <button 
+            type="submit" 
+            disabled={loading}
+            className="px-6 py-3 bg-primary text-primary-foreground rounded-xl font-bold hover:bg-primary/90 transition-colors flex items-center gap-2"
+          >
+            {loading && <Loader2 className="w-4 h-4 animate-spin" />}
             Submit Ticket
           </button>
         </form>

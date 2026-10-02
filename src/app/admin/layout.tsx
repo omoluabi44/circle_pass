@@ -88,7 +88,7 @@ export default function AdminLayout({
               <Mail className="w-5 h-5" />
               Communications
             </Link>
-            <Link href="#" className="flex items-center gap-3 px-3 py-2.5 rounded-lg opacity-50 cursor-not-allowed text-muted-foreground">
+            <Link href="/admin/support" className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${pathname.startsWith('/admin/support') ? 'bg-primary text-primary-foreground' : 'hover:bg-muted text-muted-foreground hover:text-foreground'}`}>
               <HeartHandshake className="w-5 h-5" />
               Support
             </Link>
