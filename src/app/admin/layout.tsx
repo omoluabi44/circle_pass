@@ -188,8 +188,32 @@ export default function AdminLayout({
                   <CreditCard className="w-5 h-5" /> Payouts
                 </Link>
               </div>
+              <div className="space-y-1">
+                <h4 className="px-3 text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">Operations</h4>
+                <Link href="/admin/passcontrol" className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${pathname.startsWith('/admin/passcontrol') ? 'bg-primary text-primary-foreground' : 'hover:bg-muted text-muted-foreground hover:text-foreground'}`}>
+                  <ScanLine className="w-5 h-5" /> PassControl
+                </Link>
+                <Link href="#" className="flex items-center gap-3 px-3 py-2.5 rounded-lg opacity-50 cursor-not-allowed text-muted-foreground">
+                  <Mail className="w-5 h-5" /> Communications
+                </Link>
+                <Link href="/admin/support" className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${pathname.startsWith('/admin/support') ? 'bg-primary text-primary-foreground' : 'hover:bg-muted text-muted-foreground hover:text-foreground'}`}>
+                  <HeartHandshake className="w-5 h-5" /> Support
+                </Link>
+              </div>
+              <div className="space-y-1">
+                <h4 className="px-3 text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">Insights</h4>
+                <Link href="/admin/analytics" className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${pathname.startsWith('/admin/analytics') ? 'bg-primary text-primary-foreground' : 'hover:bg-muted text-muted-foreground hover:text-foreground'}`}>
+                  <BarChart3 className="w-5 h-5" /> Analytics
+                </Link>
+              </div>
               <div className="space-y-1 pb-4">
                 <h4 className="px-3 text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">Administration</h4>
+                <Link href="#" className="flex items-center gap-3 px-3 py-2.5 rounded-lg opacity-50 cursor-not-allowed text-muted-foreground">
+                  <ShieldCheck className="w-5 h-5" /> Admin Team
+                </Link>
+                <Link href="/admin/audit" className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${pathname.startsWith('/admin/audit') ? 'bg-primary text-primary-foreground' : 'hover:bg-muted text-muted-foreground hover:text-foreground'}`}>
+                  <FileText className="w-5 h-5" /> Audit Logs
+                </Link>
                 <Link href="/admin/settings" className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${pathname.startsWith('/admin/settings') ? 'bg-primary text-primary-foreground' : 'hover:bg-muted text-muted-foreground hover:text-foreground'}`}>
                   <Settings className="w-5 h-5" /> Settings
                 </Link>
