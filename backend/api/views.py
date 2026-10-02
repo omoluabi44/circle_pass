@@ -224,14 +224,21 @@ class EventViewSet(viewsets.ModelViewSet):
         if user.is_authenticated and hasattr(user, 'role') and not is_public:
             if user.role == 'ADMIN':
                 qs = Event.objects.all().order_by('-id')
-            elif user.role == 'ORGANIZER':
-                qs = Event.objects.filter(organizer__user=user).order_by('-id')
             else:
-                qs = Event.objects.filter(status__in=['PUBLISHED', 'LIVE']).order_by('-id')
+                from core.models import TeamMember
+                team_events = TeamMember.objects.filter(user=user, status='ACTIVE').values_list('event_id', flat=True)
+                team_orgs = TeamMember.objects.filter(user=user, status='ACTIVE', event__isnull=True).values_list('organizer_id', flat=True)
+                
+                if user.role == 'ORGANIZER':
+                    qs = Event.objects.filter(Q(organizer__user=user) | Q(id__in=team_events) | Q(organizer__id__in=team_orgs)).order_by('-id').distinct()
+                else:
+                    qs = Event.objects.filter(Q(status__in=['PUBLISHED', 'LIVE']) | Q(id__in=team_events) | Q(organizer__id__in=team_orgs)).order_by('-id').distinct()
         else:
             if user.is_authenticated and user.role in ['ORGANIZER', 'ADMIN']:
-                # If public request but authenticated as organizer/admin, let them see public events PLUS their own drafts
-                qs = Event.objects.filter(Q(status__in=['PUBLISHED', 'LIVE']) | Q(organizer__user=user)).order_by('-id')
+                from core.models import TeamMember
+                team_events = TeamMember.objects.filter(user=user, status='ACTIVE').values_list('event_id', flat=True)
+                team_orgs = TeamMember.objects.filter(user=user, status='ACTIVE', event__isnull=True).values_list('organizer_id', flat=True)
+                qs = Event.objects.filter(Q(status__in=['PUBLISHED', 'LIVE']) | Q(organizer__user=user) | Q(id__in=team_events) | Q(organizer__id__in=team_orgs)).order_by('-id').distinct()
             else:
                 qs = Event.objects.filter(status__in=['PUBLISHED', 'LIVE']).order_by('-id')
 
