@@ -1,6 +1,6 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework import status, viewsets, serializers
+from rest_framework import status, viewsets, serializers, permissions
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from djoser.views import UserViewSet
 from djoser import utils
@@ -468,9 +468,11 @@ class WaitlistEntryCreateView(APIView):
 from core.models import SupportTicket
 from api.serializers import SupportTicketSerializer
 
+from rest_framework.permissions import IsAuthenticated
+
 class SupportTicketViewSet(viewsets.ModelViewSet):
     serializer_class = SupportTicketSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
         user = self.request.user
