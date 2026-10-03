@@ -120,18 +120,25 @@ export function QRScanner({ eventId, onSuccess }: QRScannerProps) {
       }
 
       setScanning(true);
-      try {
-        await scannerRef.current.start(
-          selectedCamera,
-          { fps: 10, qrbox: { width: 250, height: 250 }, formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE] },
-          onScanSuccess,
-          onScanFailure
-        );
-      } catch (err) {
-        console.error("Failed to start scanner", err);
-        setScanning(false);
-        alert("Failed to start camera. Please ensure permissions are granted.");
-      }
+      
+      // Wait a tick for React to flush the 'hidden' class removal from the DOM
+      // before Html5Qrcode tries to calculate dimensions.
+      setTimeout(async () => {
+        try {
+          if (scannerRef.current) {
+            await scannerRef.current.start(
+              selectedCamera,
+              { fps: 10, qrbox: { width: 250, height: 250 }, formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE] },
+              onScanSuccess,
+              onScanFailure
+            );
+          }
+        } catch (err) {
+          console.error("Failed to start scanner", err);
+          setScanning(false);
+          alert("Failed to start camera. Please ensure permissions are granted.");
+        }
+      }, 100);
     }
   };
 
