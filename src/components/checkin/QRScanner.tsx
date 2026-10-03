@@ -20,6 +20,7 @@ export function QRScanner({ eventId, onSuccess }: QRScannerProps) {
   const [selectedCamera, setSelectedCamera] = useState<string>('');
   const [cameraError, setCameraError] = useState<string>('');
   const scannerRef = useRef<Html5Qrcode | null>(null);
+  const isProcessingRef = useRef(false);
 
   useEffect(() => {
     const initCameras = async () => {
@@ -55,7 +56,8 @@ export function QRScanner({ eventId, onSuccess }: QRScannerProps) {
   }, []);
 
   const onScanSuccess = async (decodedText: string) => {
-    if (!scanning) return;
+    if (isProcessingRef.current) return;
+    isProcessingRef.current = true;
     
     // Stop scanning immediately on success
     try {
@@ -145,6 +147,7 @@ export function QRScanner({ eventId, onSuccess }: QRScannerProps) {
   const resetScanner = () => {
     setScanResult(null);
     setScanning(false);
+    isProcessingRef.current = false;
   };
 
   const getCameraLabel = (label: string) => {
