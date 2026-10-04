@@ -386,13 +386,13 @@ export default function CheckoutPage() {
                 {successData?.isGuest ? (
                   <>
                     <h3 className="text-2xl font-bold text-foreground mb-2">
-                      Ticket Sent to Your Email!
+                      You're in the Circle! 🎉
                     </h3>
                     <p className="text-muted-foreground mb-2">
-                      We&apos;ve sent your ticket details to <strong>{successData.guestEmail || guestData.email}</strong>
+                      Your ticket is confirmed and has been sent to your email.
                     </p>
-                    <p className="text-sm text-muted-foreground mb-8">
-                      Please check your inbox (and spam folder) for your ticket confirmation and QR code.
+                    <p className="text-muted-foreground mb-8">
+                      See you at the experience!
                     </p>
                   </>
                 ) : (
