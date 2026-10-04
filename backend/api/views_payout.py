@@ -70,7 +70,10 @@ class PaystackResolveAccountView(APIView):
                 headers={'Authorization': f'Bearer {settings.PAYSTACK_SECRET_KEY}'},
                 timeout=15,
             )
-            return Response(res.json())
+            res_data = res.json()
+            if not res_data.get('status'):
+                return Response({'error': res_data.get('message', 'Failed to resolve account')}, status=400)
+            return Response(res_data)
         except Exception as e:
             return Response({'error': str(e)}, status=400)
 
