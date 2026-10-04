@@ -67,7 +67,7 @@ export default function EventDetailsPage() {
 
         // Fetch recommendations
         try {
-          const recsRes = await getPublicEvents({ limit: 5 });
+          const recsRes = await getPublicEvents({ limit: 5, upcoming: true });
           const recs = Array.isArray(recsRes) ? recsRes : (recsRes.results || []);
           setRecommendedEvents(recs.filter((e: any) => e.id !== eventData.id).slice(0, 4));
         } catch (e) {

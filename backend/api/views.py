@@ -257,6 +257,11 @@ class EventViewSet(viewsets.ModelViewSet):
             is_online_bool = is_online.lower() == 'true'
             qs = qs.filter(is_online=is_online_bool)
 
+        upcoming = self.request.query_params.get('upcoming', None)
+        if upcoming and upcoming.lower() == 'true':
+            from django.utils import timezone
+            qs = qs.filter(start_time__gte=timezone.now())
+
         location = self.request.query_params.get('location', None)
         if location and location.lower() != 'any':
             qs = qs.filter(venue__location__icontains=location)
