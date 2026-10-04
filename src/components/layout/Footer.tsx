@@ -34,7 +34,7 @@ export function Footer() {
           <div className="col-span-2 space-y-4">
             <Logo className="flex items-center space-x-2 mb-4" />
             <p className="text-muted-foreground text-sm max-w-xs">
-              Your Pass to the next experience. Discover events, activate e-voting, get your digital pass & show up for experiences that matter.
+              Your Pass to the next experience. Discover events, activate Voting, get your digital pass & show up for experiences that matter.
             </p>
             <div className="flex gap-4 pt-2">
               <Link href="https://www.instagram.com/circle.pass?stkn=MW1kMzhucnZ5enN1aQ==" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary transition-colors flex items-center gap-1.5 font-medium">
@@ -50,9 +50,9 @@ export function Footer() {
             <div className="space-y-3 md:space-y-4">
               <h4 className="font-semibold text-[13px] sm:text-base md:text-lg text-foreground">Explore</h4>
               <ul className="space-y-2 text-[11px] sm:text-xs md:text-sm text-muted-foreground">
-                <li><Link href="#" className="hover:text-primary transition-colors">Browse events</Link></li>
-                <li><Link href="#" className="hover:text-primary transition-colors">E-voting</Link></li>
-                <li><Link href="#" className="hover:text-primary transition-colors">Nominations</Link></li>
+                <li><Link href="/events" className="hover:text-primary transition-colors">Browse events</Link></li>
+                <li><Link href="/coming-soon" className="hover:text-primary transition-colors">Voting</Link></li>
+                <li><Link href="/coming-soon" className="hover:text-primary transition-colors">Nominations</Link></li>
                 <li><Link href="/pricing" className="hover:text-primary transition-colors">Pricing</Link></li>
                 <li><Link href="/blog" className="hover:text-primary transition-colors">Blog</Link></li>
               </ul>
@@ -71,7 +71,7 @@ export function Footer() {
               <ul className="space-y-2 text-[11px] sm:text-xs md:text-sm text-muted-foreground">
                 <li><Link href="/about" className="hover:text-primary transition-colors">About</Link></li>
                 <li><Link href="/how-it-works" className="hover:text-primary transition-colors">How it works</Link></li>
-                <li><Link href="#" className="hover:text-primary transition-colors">FAQ</Link></li>
+                <li><Link href="/#faq" className="hover:text-primary transition-colors">FAQ</Link></li>
                 <li><Link href="/about" className="hover:text-primary transition-colors">Contact</Link></li>
               </ul>
             </div>

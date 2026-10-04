@@ -59,7 +59,7 @@ export function HowItWorks() {
     {
       title: "Beyond Ticketing",
       items: [
-        { title: "E-Voting", desc: "CirclePass isn't limited to ticketed events. Create standalone voting campaigns for elections, awards, competitions and other experiences that require structured voting." },
+        { title: "Voting", desc: "CirclePass isn't limited to ticketed events. Create standalone voting campaigns for elections, awards, competitions and other experiences that require structured voting." },
         { title: "Nominations", desc: "Give participants a clear way to submit nominees before voting begins. Build a nomination stage into your campaign and collect potential candidates in one place." },
         { title: "Nominee Review & Approval", desc: "Review nominations before opening the ballot. Organizers can assess submissions and approve eligible nominees for the voting stage." },
         { title: "Voting", desc: "Launch the voting stage when you're ready and allow participants to cast their votes through a structured digital voting experience." },

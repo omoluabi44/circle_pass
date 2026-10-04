@@ -42,8 +42,8 @@ export async function PlanningVotingSplit() {
             <p className="text-gray-600 mb-8 text-lg text-balance">
               Create polls & awards, invite your audience to vote & see results in real time.
             </p>
-            <Link href="#voting" className="inline-flex items-center gap-2 justify-center px-6 py-3 bg-primary text-white font-semibold rounded-xl hover:bg-primary/90 transition-all">
-              Explore E-voting <ArrowRight className="w-5 h-5" />
+            <Link href="/coming-soon" className="inline-flex items-center gap-2 justify-center px-6 py-3 bg-primary text-white font-semibold rounded-xl hover:bg-primary/90 transition-all">
+              Explore Voting <ArrowRight className="w-5 h-5" />
             </Link>
           </div>
 

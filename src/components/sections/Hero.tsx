@@ -86,7 +86,7 @@ export function Hero() {
           Your Pass to the <span className="text-primary drop-shadow-md">Next Experience.</span>
         </h1>
         <p className="text-lg md:text-xl text-muted-foreground mb-10 max-w-2xl mx-auto text-balance drop-shadow">
-          Discover events, activate e-voting, get your digital pass & show up for experiences that matter.
+          Discover events, activate voting, get your digital pass & show up for experiences that matter.
         </p>
         <div className="flex flex-col sm:flex-row justify-center gap-4">
           <Link href="/events" className="px-8 py-4 bg-primary text-primary-foreground rounded-full font-medium text-lg hover:bg-primary/90 transition-colors shadow-lg shadow-primary/20">
