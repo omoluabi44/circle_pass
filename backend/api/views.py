@@ -227,7 +227,7 @@ class EventViewSet(viewsets.ModelViewSet):
             elif user.role == 'ORGANIZER':
                 qs = Event.objects.filter(organizer__user=user).order_by('-id')
             else:
-                qs = Event.objects.filter(status__in=['PUBLISHED', 'LIVE']).order_by('-id')
+                qs = Event.objects.none() # Internal request by non-organizer should see no owned events
         else:
             if user.is_authenticated and user.role in ['ORGANIZER', 'ADMIN']:
                 # If public request but authenticated as organizer/admin, let them see public events PLUS their own drafts
