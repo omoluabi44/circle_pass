@@ -122,8 +122,8 @@ export function TeamManagement({ eventId }: { eventId: string }) {
         </button>
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-100 overflow-hidden shadow-sm">
-        <table className="w-full text-sm text-left text-gray-500">
+      <div className="bg-white rounded-xl border border-gray-100 overflow-x-auto shadow-sm">
+        <table className="w-full text-sm text-left text-gray-500 min-w-[800px]">
           <thead className="text-xs text-gray-500 uppercase bg-gray-50 border-b border-gray-100">
             <tr>
               <th className="px-6 py-4 font-medium">Member</th>
@@ -177,20 +177,23 @@ export function TeamManagement({ eventId }: { eventId: string }) {
                     {member.scan_count || 0}
                   </td>
                   <td className="px-6 py-4 text-right">
-                    <button
-                      onClick={() => handleViewHistory(member.id)}
-                      className="text-blue-600 hover:text-blue-800 px-3 py-1.5 rounded-lg hover:bg-blue-50 transition-colors mr-2 text-sm font-medium"
-                      title="View Scan History"
-                    >
-                      History
-                    </button>
-                    <button
-                      onClick={() => handleRevoke(member.id)}
-                      className="text-red-500 hover:text-red-700 p-2 rounded-lg hover:bg-red-50 transition-colors"
-                      title="Revoke Access"
-                    >
-                      <Trash2 size={16} />
-                    </button>
+                    <div className="flex justify-end items-center">
+                      <button
+                        onClick={() => handleViewHistory(member.id)}
+                        className="text-blue-600 hover:text-blue-800 px-3 py-1.5 rounded-lg hover:bg-blue-50 transition-colors mr-2 text-sm font-medium"
+                        title="View Scan History"
+                      >
+                        History
+                      </button>
+                      <button
+                        onClick={() => handleRevoke(member.id)}
+                        className="text-red-500 hover:text-red-700 px-3 py-1.5 rounded-lg hover:bg-red-50 transition-colors text-sm font-medium flex items-center gap-1"
+                        title="Revoke Access"
+                      >
+                        <Trash2 size={16} />
+                        <span className="hidden sm:inline">Remove</span>
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))
