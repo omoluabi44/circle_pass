@@ -52,7 +52,7 @@ function HorizontalCarousel({ children }: { children: React.ReactNode }) {
       {/* Scrollable track */}
       <div
         ref={scrollRef}
-        className="flex gap-4 md:gap-6 overflow-x-auto scroll-smooth snap-x snap-mandatory pb-2 hide-scrollbar"
+        className="flex gap-4 md:gap-6 overflow-x-auto scroll-smooth snap-x snap-mandatory pb-2 custom-scrollbar"
       >
         {children}
       </div>

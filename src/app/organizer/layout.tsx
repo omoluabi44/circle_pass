@@ -192,7 +192,7 @@ export default function OrganizerLayout({
       )}
       
       {/* Main Content */}
-      <main className="flex-1 overflow-y-auto w-full pt-16 lg:pt-0 min-h-screen">
+      <main className="flex-1 overflow-y-auto custom-scrollbar w-full pt-16 lg:pt-0 min-h-screen">
         {children}
       </main>
     </div>

@@ -152,7 +152,7 @@ export function DiscoverySection({ limit, searchParams }: DiscoverySectionProps 
                 </div>
                 
                 {/* Horizontally scrollable container */}
-                <div className="flex overflow-x-auto gap-4 pb-6 snap-x snap-mandatory hide-scrollbar -mx-4 px-4 md:mx-0 md:px-0">
+                <div className="flex overflow-x-auto gap-4 pb-6 snap-x snap-mandatory custom-scrollbar -mx-4 px-4 md:mx-0 md:px-0">
                   {categoryEvents.map(event => (
                     <Link 
                       href={`/events/${event.slug}`}
@@ -212,7 +212,7 @@ export function DiscoverySection({ limit, searchParams }: DiscoverySectionProps 
                   <h3 className="text-xl md:text-2xl font-extrabold text-foreground uppercase tracking-tight">OTHER EVENTS</h3>
                 </div>
                 
-                <div className="flex overflow-x-auto gap-4 pb-6 snap-x snap-mandatory hide-scrollbar -mx-4 px-4 md:mx-0 md:px-0">
+                <div className="flex overflow-x-auto gap-4 pb-6 snap-x snap-mandatory custom-scrollbar -mx-4 px-4 md:mx-0 md:px-0">
                   {uncategorizedEvents.map(event => (
                     <Link 
                       href={`/events/${event.slug}`}
