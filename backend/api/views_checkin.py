@@ -221,7 +221,7 @@ class CheckInStatsView(APIView):
             "ticket_type": c.ticket.ticket_type.name,
             "status": c.status,
             "scanned_at": c.scanned_at,
-            "scanned_by_name": c.scanned_by.get_full_name() if c.scanned_by else (c.scanned_by.username if c.scanned_by else "System")
+            "scanned_by_name": (c.scanned_by.get_full_name().strip() or c.scanned_by.username or c.scanned_by.email) if c.scanned_by else "System"
         } for c in recent_checkins]
 
         return Response({
