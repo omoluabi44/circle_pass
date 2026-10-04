@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useState, useRef, useEffect } from 'react';
+import { useSession } from "next-auth/react";
 
 export function Hero() {
   const [activeVideo, setActiveVideo] = useState(0);
@@ -29,6 +30,17 @@ export function Hero() {
   const handleVideoEnd = () => {
     setActiveVideo((prev) => (prev === 0 ? 1 : 0));
   };
+
+  const { data: session } = useSession();
+  
+  let createEventHref = "/register";
+  if (session?.user) {
+    if (session.user.role === 'ORGANIZER' || session.user.role === 'ADMIN') {
+      createEventHref = "/organizer/events/create";
+    } else {
+      createEventHref = "/dashboard";
+    }
+  }
 
   return (
     <section className="relative py-20 md:py-32 lg:py-48 text-center px-4 overflow-hidden min-h-[80vh] flex items-center justify-center mt-[-80px] pt-[80px]">
@@ -80,7 +92,7 @@ export function Hero() {
           <Link href="/events" className="px-8 py-4 bg-primary text-primary-foreground rounded-full font-medium text-lg hover:bg-primary/90 transition-colors shadow-lg shadow-primary/20">
             Explore Events
           </Link>
-          <Link href="/organizer/events/create" className="px-8 py-4 bg-white/10 backdrop-blur-sm text-primary-foreground border border-primary-foreground/30 rounded-full font-medium text-lg hover:bg-white/20 transition-colors shadow-lg">
+          <Link href={createEventHref} className="px-8 py-4 bg-white/10 backdrop-blur-sm text-primary-foreground border border-primary-foreground/30 rounded-full font-medium text-lg hover:bg-white/20 transition-colors shadow-lg">
             Create Event
           </Link>
         </div>
