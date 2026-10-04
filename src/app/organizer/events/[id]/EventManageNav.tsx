@@ -28,8 +28,8 @@ export default function EventManageNav({ eventId }: { eventId: string }) {
   ];
 
   return (
-    <div className="px-4 md:px-8 overflow-x-auto no-scrollbar border-t border-border/50">
-      <nav className="flex items-center gap-6 min-w-max">
+    <div className="px-4 md:px-8 border-t border-border/50 pt-2 pb-2">
+      <nav className="flex flex-wrap items-center gap-x-4 gap-y-2">
         {navItems.map((item) => {
           const isActive = pathname.startsWith(item.href);
           const Icon = item.icon;
@@ -37,7 +37,7 @@ export default function EventManageNav({ eventId }: { eventId: string }) {
             <Link
               key={item.name}
               href={item.href}
-              className={`flex items-center gap-2 py-4 px-1 border-b-2 transition-colors font-medium text-sm ${
+              className={`flex items-center gap-2 py-2 px-1 border-b-2 transition-colors font-medium text-sm ${
                 isActive 
                   ? "border-primary text-primary" 
                   : "border-transparent text-muted-foreground hover:text-foreground hover:border-border"
