@@ -5,7 +5,7 @@ Extracted to be reused by checkout, webhook, and verify endpoints.
 from django.db import transaction
 from django.db.models import F
 from django.utils import timezone
-from core.models import Order, Ticket, TicketType, OrganizerWallet
+from core.models import Order, Ticket, TicketType, OrganizerWallet, WalletTransaction
 from core.utils.qr import generate_secure_qr_token
 from core.utils.notifications import send_purchase_receipt
 
