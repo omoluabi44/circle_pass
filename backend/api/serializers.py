@@ -399,11 +399,44 @@ class TicketSerializer(serializers.ModelSerializer):
 # ==========================================
 # WALLET & PAYOUT SERIALIZERS
 # ==========================================
+
+from core.models import OrganizerBankAccount
+
+class OrganizerBankAccountSerializer(serializers.ModelSerializer):
+    masked_number = serializers.SerializerMethodField()
+
+    class Meta:
+        model = OrganizerBankAccount
+        fields = (
+            'id', 'bank_name', 'bank_code', 'account_number',
+            'masked_number', 'account_name', 'is_default', 'created_at',
+        )
+        read_only_fields = fields
+
+    def get_masked_number(self, obj):
+        num = obj.account_number
+        return f'••••{num[-4:]}' if len(num) >= 4 else num
+
+
 class OrganizerWalletSerializer(serializers.ModelSerializer):
+    pending_payout = serializers.SerializerMethodField()
+
     class Meta:
         model = OrganizerWallet
-        fields = ('pending_balance', 'available_balance', 'total_earnings', 'total_payouts', 'updated_at', 'bank_name', 'bank_code', 'account_number', 'account_name')
-        read_only_fields = ('pending_balance', 'available_balance', 'total_earnings', 'total_payouts', 'updated_at')
+        fields = (
+            'available_balance', 'total_earnings', 'total_payouts',
+            'pending_payout', 'updated_at',
+        )
+        read_only_fields = fields
+
+    def get_pending_payout(self, obj):
+        """Sum of amounts reserved by PROCESSING payouts."""
+        from django.db.models import Sum
+        from core.models import Payout
+        result = Payout.objects.filter(
+            wallet=obj, status='PROCESSING'
+        ).aggregate(total=Sum('amount'))
+        return result['total'] or 0
 
 
 class WalletTransactionSerializer(serializers.ModelSerializer):
@@ -414,23 +447,27 @@ class WalletTransactionSerializer(serializers.ModelSerializer):
 
 
 class PayoutSerializer(serializers.ModelSerializer):
+    masked_account_number = serializers.SerializerMethodField()
+
     class Meta:
         model = Payout
         fields = (
-            'id', 'amount', 'status', 'reference', 'bank_name',
-            'account_number', 'account_name', 'rejection_reason',
-            'requested_at', 'processed_at',
+            'id', 'amount', 'payout_charge', 'amount_received',
+            'status', 'reference', 'bank_name',
+            'account_number', 'masked_account_number', 'account_name',
+            'failure_reason', 'requested_at', 'processed_at',
         )
         read_only_fields = fields
+
+    def get_masked_account_number(self, obj):
+        num = obj.account_number
+        return f'••••{num[-4:]}' if len(num) >= 4 else num
 
 
 class PayoutRequestSerializer(serializers.Serializer):
     """Validates an organizer's payout withdrawal request."""
-    amount = serializers.IntegerField(min_value=100000, help_text='Amount in kobo. Minimum ₦1,000.')
-    bank_code = serializers.CharField(max_length=10)
-    account_number = serializers.CharField(max_length=20)
-    account_name = serializers.CharField(max_length=255)
-    bank_name = serializers.CharField(max_length=100)
+    amount = serializers.IntegerField(min_value=100_000, help_text='Amount in kobo. Minimum ₦1,000.')
+    bank_account_id = serializers.IntegerField(help_text='ID of a saved OrganizerBankAccount.')
 
 
 class AdminPayoutSerializer(serializers.ModelSerializer):
@@ -440,9 +477,11 @@ class AdminPayoutSerializer(serializers.ModelSerializer):
     class Meta:
         model = Payout
         fields = (
-            'id', 'amount', 'status', 'reference', 'bank_name',
+            'id', 'amount', 'payout_charge', 'amount_received',
+            'status', 'reference', 'bank_name',
             'account_number', 'account_name', 'bank_code',
-            'organizer_name', 'organizer_email', 'rejection_reason',
+            'organizer_name', 'organizer_email',
+            'failure_reason', 'paystack_transfer_code',
             'requested_at', 'processed_at',
         )
         read_only_fields = fields

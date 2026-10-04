@@ -2,8 +2,18 @@
 
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
-import { getAdminPayouts, approvePayout, rejectPayout } from "@/lib/api/admin";
-import { RefreshCw, Check, X, AlertCircle } from "lucide-react";
+import { RefreshCw, AlertCircle, ChevronRight, X } from "lucide-react";
+import { API_URL as API } from "@/lib/api/config";
+
+const STATUS_COLORS: Record<string, string> = {
+  PROCESSING: "bg-blue-100 text-blue-700",
+  SUCCESSFUL: "bg-green-100 text-green-700",
+  FAILED:     "bg-red-100 text-red-700",
+  REVERSED:   "bg-orange-100 text-orange-700",
+};
+
+const formatCurrency = (kobo: number) =>
+  `₦${(kobo / 100).toLocaleString("en-NG", { minimumFractionDigits: 2 })}`;
 
 export default function AdminPayoutsPage() {
   const { data: session } = useSession();
@@ -11,18 +21,20 @@ export default function AdminPayoutsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [activeTab, setActiveTab] = useState("ALL");
-
-  const [rejectModalOpen, setRejectModalOpen] = useState(false);
   const [selectedPayout, setSelectedPayout] = useState<any>(null);
-  const [rejectReason, setRejectReason] = useState("");
-  const [actionLoading, setActionLoading] = useState(false);
 
   const fetchPayouts = async () => {
     if (!session?.accessToken) return;
     try {
       setLoading(true);
-      const data = await getAdminPayouts(session.accessToken);
-      setPayouts(data);
+      setError("");
+      const qs = activeTab !== "ALL" ? `?status=${activeTab}` : "";
+      const res = await fetch(`${API}/admin/payouts/${qs}`, {
+        headers: { Authorization: `Bearer ${session.accessToken}` },
+      });
+      if (!res.ok) throw new Error("Failed to load payouts");
+      const data = await res.json();
+      setPayouts(Array.isArray(data) ? data : data.results ?? []);
     } catch (err: any) {
       setError(err.message || "Failed to load payouts");
     } finally {
@@ -30,70 +42,32 @@ export default function AdminPayoutsPage() {
     }
   };
 
-  useEffect(() => {
-    fetchPayouts();
-  }, [session]);
+  useEffect(() => { fetchPayouts(); }, [session, activeTab]);
 
-  const handleApprove = async (id: number) => {
-    if (!session?.accessToken || !confirm("Are you sure you want to approve this payout?")) return;
-    try {
-      setActionLoading(true);
-      await approvePayout(session.accessToken, id);
-      await fetchPayouts();
-    } catch (err: any) {
-      alert(err.message || "Failed to approve payout");
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
-  const handleRejectSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!session?.accessToken || !selectedPayout) return;
-    try {
-      setActionLoading(true);
-      await rejectPayout(session.accessToken, selectedPayout.id, rejectReason);
-      setRejectModalOpen(false);
-      setRejectReason("");
-      setSelectedPayout(null);
-      await fetchPayouts();
-    } catch (err: any) {
-      alert(err.message || "Failed to reject payout");
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
-  const openRejectModal = (payout: any) => {
-    setSelectedPayout(payout);
-    setRejectReason("");
-    setRejectModalOpen(true);
-  };
-
-  const filteredPayouts = payouts.filter(p => activeTab === "ALL" || p.status.toUpperCase() === activeTab);
-
-  if (loading) {
-    return <div className="p-8 max-w-6xl mx-auto flex justify-center"><RefreshCw className="w-8 h-8 animate-spin text-primary" /></div>;
-  }
+  if (loading) return (
+    <div className="p-8 max-w-6xl mx-auto flex justify-center">
+      <RefreshCw className="w-8 h-8 animate-spin text-primary" />
+    </div>
+  );
 
   return (
     <div className="p-8 max-w-6xl mx-auto">
       <header className="mb-8">
-        <h1 className="text-3xl font-bold text-foreground">Payout Approvals</h1>
+        <h1 className="text-3xl font-bold text-foreground">Payout Monitor</h1>
         <p className="text-muted-foreground mt-2 text-sm">
-          Note: Approving a payout here marks it as completed. Actual transfer of funds should be handled manually via your bank or Paystack dashboard.
+          Payouts are auto-initiated via Paystack Transfers. Status is driven by Paystack webhooks.
         </p>
       </header>
 
       {error && (
         <div className="mb-6 bg-red-50 text-red-500 p-4 rounded-lg flex items-center gap-2">
-          <AlertCircle className="w-5 h-5" />
-          {error}
+          <AlertCircle className="w-5 h-5" />{error}
         </div>
       )}
 
+      {/* Status tabs */}
       <div className="flex gap-2 mb-6 border-b border-gray-200 pb-2 overflow-x-auto">
-        {["ALL", "PENDING", "PROCESSING", "COMPLETED", "REJECTED"].map(tab => (
+        {["ALL", "PROCESSING", "SUCCESSFUL", "FAILED", "REVERSED"].map(tab => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
@@ -107,7 +81,7 @@ export default function AdminPayoutsPage() {
       </div>
 
       <div className="bg-background border border-border rounded-xl shadow-sm overflow-hidden">
-        {filteredPayouts.length === 0 ? (
+        {payouts.length === 0 ? (
           <div className="p-8 text-center text-muted-foreground">No payouts found.</div>
         ) : (
           <div className="overflow-x-auto">
@@ -116,56 +90,41 @@ export default function AdminPayoutsPage() {
                 <tr>
                   <th className="px-4 py-3">Reference</th>
                   <th className="px-4 py-3">Organizer</th>
-                  <th className="px-4 py-3">Amount</th>
-                  <th className="px-4 py-3">Bank Details</th>
+                  <th className="px-4 py-3">Deducted</th>
+                  <th className="px-4 py-3">Charge</th>
+                  <th className="px-4 py-3">Received</th>
+                  <th className="px-4 py-3">Bank</th>
                   <th className="px-4 py-3">Status</th>
                   <th className="px-4 py-3">Date</th>
-                  <th className="px-4 py-3 text-right">Actions</th>
+                  <th className="px-4 py-3"></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {filteredPayouts.map((p: any) => (
-                  <tr key={p.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-4 py-3 font-medium text-foreground">{p.reference}</td>
-                    <td className="px-4 py-3">{p.organizer_name || "Unknown"}</td>
-                    <td className="px-4 py-3 font-bold text-foreground">₦{(p.amount / 100).toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+                {payouts.map((p: any) => (
+                  <tr
+                    key={p.id}
+                    className="hover:bg-gray-50 transition-colors cursor-pointer"
+                    onClick={() => setSelectedPayout(p)}
+                  >
+                    <td className="px-4 py-3 font-mono text-xs text-foreground">{p.reference}</td>
+                    <td className="px-4 py-3">{p.organizer_name || "—"}</td>
+                    <td className="px-4 py-3 font-bold text-foreground">{formatCurrency(p.amount)}</td>
+                    <td className="px-4 py-3 text-orange-600">{formatCurrency(p.payout_charge || 0)}</td>
+                    <td className="px-4 py-3 font-semibold text-green-700">{formatCurrency(p.amount_received || 0)}</td>
                     <td className="px-4 py-3 text-xs">
                       <div>{p.bank_name}</div>
-                      <div>{p.account_number}</div>
                       <div className="text-gray-500">{p.account_name}</div>
                     </td>
                     <td className="px-4 py-3">
-                      <span className={`px-2 py-1 rounded-full text-xs font-bold ${
-                        p.status.toUpperCase() === 'COMPLETED' ? 'bg-green-100 text-green-700' : 
-                        p.status.toUpperCase() === 'REJECTED' || p.status.toUpperCase() === 'FAILED' ? 'bg-red-100 text-red-700' :
-                        p.status.toUpperCase() === 'PROCESSING' ? 'bg-blue-100 text-blue-700' :
-                        'bg-yellow-100 text-yellow-700'
-                      }`}>
+                      <span className={`px-2 py-1 rounded-full text-xs font-bold ${STATUS_COLORS[p.status?.toUpperCase()] ?? "bg-gray-100 text-gray-700"}`}>
                         {p.status}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-gray-500">{new Date(p.created_at).toLocaleDateString()}</td>
-                    <td className="px-4 py-3 text-right">
-                      {p.status.toUpperCase() === 'PENDING' && (
-                        <div className="flex justify-end gap-2">
-                          <button
-                            onClick={() => handleApprove(p.id)}
-                            disabled={actionLoading}
-                            className="p-1.5 bg-green-100 text-green-600 rounded hover:bg-green-200 transition-colors"
-                            title="Approve"
-                          >
-                            <Check className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => openRejectModal(p)}
-                            disabled={actionLoading}
-                            className="p-1.5 bg-red-100 text-red-600 rounded hover:bg-red-200 transition-colors"
-                            title="Reject"
-                          >
-                            <X className="w-4 h-4" />
-                          </button>
-                        </div>
-                      )}
+                    <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">
+                      {new Date(p.requested_at).toLocaleDateString()}
+                    </td>
+                    <td className="px-4 py-3">
+                      <ChevronRight className="w-4 h-4 text-gray-400" />
                     </td>
                   </tr>
                 ))}
@@ -175,49 +134,47 @@ export default function AdminPayoutsPage() {
         )}
       </div>
 
-      {rejectModalOpen && (
+      {/* Payout Detail Modal */}
+      {selectedPayout && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-lg w-full max-w-md overflow-hidden">
-            <div className="p-6 border-b border-gray-100 flex justify-between items-center">
-              <h3 className="text-xl font-bold">Reject Payout</h3>
-              <button onClick={() => setRejectModalOpen(false)} className="text-gray-400 hover:text-gray-600">
+          <div className="bg-white rounded-xl shadow-lg w-full max-w-md max-h-[85vh] flex flex-col overflow-hidden">
+            <div className="p-6 border-b border-gray-100 flex justify-between items-center shrink-0">
+              <h3 className="text-xl font-bold">Payout Detail</h3>
+              <button onClick={() => setSelectedPayout(null)} className="text-gray-400 hover:text-gray-600">
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <form onSubmit={handleRejectSubmit} className="p-6 space-y-4">
-              <p className="text-sm text-gray-600">
-                Please provide a reason for rejecting the payout for <b>{selectedPayout?.organizer_name}</b> (₦{((selectedPayout?.amount || 0) / 100).toLocaleString()}).
-              </p>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Reason</label>
-                <textarea
-                  required
-                  value={rejectReason}
-                  onChange={(e) => setRejectReason(e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary focus:border-transparent outline-none resize-none h-24"
-                  placeholder="e.g. Invalid bank details"
-                />
+            <div className="p-6 space-y-3 text-sm overflow-y-auto">
+              <div className="flex justify-center mb-2">
+                <span className={`px-3 py-1.5 rounded-full text-sm font-bold ${STATUS_COLORS[selectedPayout.status?.toUpperCase()] ?? "bg-gray-100 text-gray-700"}`}>
+                  {selectedPayout.status}
+                </span>
               </div>
-
-              <div className="pt-2 flex gap-3">
-                <button
-                  type="button"
-                  onClick={() => setRejectModalOpen(false)}
-                  className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-2.5 rounded-lg transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={actionLoading}
-                  className="flex-1 bg-red-600 hover:bg-red-700 text-white font-medium py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-70"
-                >
-                  {actionLoading && <RefreshCw className="w-4 h-4 animate-spin" />}
-                  Reject
-                </button>
-              </div>
-            </form>
+              {[
+                ["Reference",       selectedPayout.reference],
+                ["Organizer",       selectedPayout.organizer_name],
+                ["Email",           selectedPayout.organizer_email],
+                ["Amount Deducted", formatCurrency(selectedPayout.amount)],
+                ["Payout Charge",   formatCurrency(selectedPayout.payout_charge || 0)],
+                ["Amount Received", formatCurrency(selectedPayout.amount_received || 0)],
+                ["Bank",            selectedPayout.bank_name],
+                ["Account",         selectedPayout.account_number],
+                ["Account Name",    selectedPayout.account_name],
+                ["Transfer Code",   selectedPayout.paystack_transfer_code || "—"],
+                ["Requested",       new Date(selectedPayout.requested_at).toLocaleString()],
+                ...(selectedPayout.processed_at
+                  ? [["Processed", new Date(selectedPayout.processed_at).toLocaleString()]]
+                  : []),
+                ...(selectedPayout.failure_reason
+                  ? [["Failure Reason", selectedPayout.failure_reason]]
+                  : []),
+              ].map(([k, v]) => (
+                <div key={k} className="flex justify-between gap-4 border-b border-gray-100 pb-2 last:border-0 last:pb-0">
+                  <span className="text-gray-500 shrink-0">{k}</span>
+                  <span className="font-medium text-right break-all">{v}</span>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       )}

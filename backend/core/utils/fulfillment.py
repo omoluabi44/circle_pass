@@ -41,35 +41,32 @@ def fulfill_order(order, payment=None):
         order_fresh.status = 'COMPLETED'
         order_fresh.save(update_fields=['status', 'updated_at'])
 
-        # Credit organizer wallet if this is a paid order (and not free/absorbed completely)
+        # Credit organizer wallet: 95% of the actual amount Paystack collected.
+        # CirclePass keeps its 5% commission, and pays Paystack's 1.5%+₦100 fee from that 5%.
+        # We never credit from pending; funds go straight to available_balance.
         if payment and payment.amount > 0:
-            credit_amount = order_fresh.subtotal - order_fresh.discount_amount
-            # The organizer wallet receives subtotal minus discount. 
-            # If the organizer absorbed fees, the fee_amount is 0 in the order anyway,
-            # or rather if they absorbed fees, they receive (subtotal - discount - fee).
-            # Therefore, organizer gets: Subtotal - Discount - (Fee if absorbed, else 0)
-            if order_fresh.event.absorb_fees:
-                cp_fee = int(order_fresh.subtotal * 0.05)
-                credit_amount = credit_amount - cp_fee if order_fresh.event.absorb_fees else credit_amount
-            
-            # Get or create the wallet
+            organizer_credit = int(payment.amount * 0.95)
+            cp_fee = payment.amount - organizer_credit  # 5% retained by CirclePass
+
             wallet, _ = OrganizerWallet.objects.get_or_create(organizer=order_fresh.event.organizer)
-            # Atomic update of pending_balance and total_earnings
             OrganizerWallet.objects.filter(pk=wallet.pk).update(
-                pending_balance=F('pending_balance') + credit_amount,
-                total_earnings=F('total_earnings') + credit_amount,
+                available_balance=F('available_balance') + organizer_credit,
+                total_earnings=F('total_earnings') + organizer_credit,
             )
             wallet.refresh_from_db()
 
-            # Create wallet transaction ledger entry for audit trail
-            from core.models import WalletTransaction
             WalletTransaction.objects.create(
                 wallet=wallet,
                 type='CREDIT',
-                amount=credit_amount,
+                amount=organizer_credit,
                 balance_after=wallet.available_balance,
                 reference=f'Order #{order_fresh.pk}',
-                description=f'Revenue from order for {order_fresh.event.title}',
+                description=(
+                    f'Ticket sale – {order_fresh.event.title}. '
+                    f'Gross: ₦{payment.amount / 100:,.0f}, '
+                    f'CirclePass fee (5%): ₦{cp_fee / 100:,.0f}, '
+                    f'Organizer (95%): ₦{organizer_credit / 100:,.0f}'
+                ),
             )
 
         send_purchase_receipt(order_fresh, tickets)

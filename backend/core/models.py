@@ -317,38 +317,68 @@ class OrganizerWallet(models.Model):
     available_balance = models.IntegerField(default=0, help_text='Funds ready for withdrawal (kobo).')
     total_earnings = models.IntegerField(default=0, help_text='Lifetime credited revenue (kobo).')
     total_payouts = models.IntegerField(default=0, help_text='Lifetime withdrawn amount (kobo).')
-    
-    # Banking Details
+
+    # Banking Details (legacy single-slot, kept for backward compat)
     bank_name = models.CharField(max_length=100, blank=True)
     bank_code = models.CharField(max_length=20, blank=True)
     account_number = models.CharField(max_length=20, blank=True)
     account_name = models.CharField(max_length=255, blank=True)
-    
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return f'Wallet — {self.organizer.company_name}'
 
+
+class OrganizerBankAccount(models.Model):
+    """Multiple verified bank accounts per organizer with stored Paystack recipient codes."""
+    organizer = models.ForeignKey(
+        OrganizerProfile, on_delete=models.CASCADE, related_name='bank_accounts'
+    )
+    bank_name = models.CharField(max_length=100)
+    bank_code = models.CharField(max_length=20)
+    account_number = models.CharField(max_length=20)
+    account_name = models.CharField(max_length=255)
+    paystack_recipient_code = models.CharField(max_length=100, blank=True)
+    is_default = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        unique_together = [('organizer', 'account_number', 'bank_code')]
+
+    def __str__(self):
+        return f"{self.bank_name} {self.account_number} — {self.organizer.company_name}"
+
+
 class Payout(models.Model):
     PAYOUT_STATUS_CHOICES = (
-        ('PENDING', 'Pending'),
         ('PROCESSING', 'Processing'),
-        ('COMPLETED', 'Completed'),
+        ('SUCCESSFUL', 'Successful'),
         ('FAILED', 'Failed'),
-        ('REJECTED', 'Rejected'),
+        ('REVERSED', 'Reversed'),
     )
     wallet = models.ForeignKey(OrganizerWallet, on_delete=models.CASCADE, related_name='payouts')
-    amount = models.IntegerField(help_text='Amount in kobo.')
-    status = models.CharField(max_length=50, choices=PAYOUT_STATUS_CHOICES, default='PENDING')
+    bank_account = models.ForeignKey(
+        OrganizerBankAccount, on_delete=models.SET_NULL,
+        null=True, blank=True, related_name='payouts'
+    )
+    # Financial fields
+    amount = models.IntegerField(help_text='Total amount deducted from available_balance (kobo).')
+    payout_charge = models.IntegerField(default=0, help_text='Paystack transfer fee in kobo.')
+    amount_received = models.IntegerField(default=0, help_text='amount - payout_charge: what organizer actually receives (kobo).')
+    status = models.CharField(max_length=50, choices=PAYOUT_STATUS_CHOICES, default='PROCESSING')
     reference = models.CharField(max_length=100, unique=True, db_index=True, help_text='CirclePass payout reference.')
+    # Bank snapshot (stored at request time)
     bank_name = models.CharField(max_length=100)
     account_number = models.CharField(max_length=20)
     account_name = models.CharField(max_length=255)
     bank_code = models.CharField(max_length=10)
+    # Paystack transfer tracking
     paystack_recipient_code = models.CharField(max_length=100, blank=True)
-    paystack_transfer_code = models.CharField(max_length=100, blank=True)
-    rejection_reason = models.TextField(blank=True)
+    paystack_transfer_code = models.CharField(max_length=100, blank=True, db_index=True)
+    failure_reason = models.TextField(blank=True)
     requested_at = models.DateTimeField(auto_now_add=True)
     processed_at = models.DateTimeField(null=True, blank=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -371,6 +401,9 @@ class WalletTransaction(models.Model):
     balance_after = models.IntegerField(help_text='Available balance after this transaction.')
     reference = models.CharField(max_length=255, help_text='Order ID, payout ref, etc.')
     description = models.TextField(blank=True)
+    related_payout = models.ForeignKey(
+        Payout, on_delete=models.SET_NULL, null=True, blank=True, related_name='ledger_entries'
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -378,6 +411,17 @@ class WalletTransaction(models.Model):
 
     def __str__(self):
         return f'{self.type} ₦{self.amount / 100:,.2f} — {self.reference}'
+
+
+class PayoutWebhookEvent(models.Model):
+    """Append-only log of Paystack transfer webhook deliveries. Ensures idempotent processing."""
+    payout = models.ForeignKey(Payout, on_delete=models.CASCADE, related_name='webhook_events')
+    event_id = models.CharField(max_length=255, unique=True, help_text='Paystack transfer event key for idempotency.')
+    event_type = models.CharField(max_length=100, help_text='e.g. transfer.success')
+    raw_body = models.JSONField(help_text='Full webhook payload.')
+    processed = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
 
 # ==========================================
 # PROMOTERS

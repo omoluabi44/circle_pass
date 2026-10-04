@@ -1,20 +1,46 @@
 """
 Organizer Payout API views + Admin payout management.
-Handles payout requests, history, admin approval/rejection.
+Handles payout requests with auto-initiated Paystack transfers,
+dynamic fee calculation, and fee-preview endpoint.
 """
 import uuid
 
 from django.db import transaction
-from django.db.models import F
+from django.db.models import F, Sum
 from django.utils import timezone
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from api.permissions import IsOrganizerOrAdmin, IsAdmin
-from core.models import OrganizerWallet, Payout, WalletTransaction
+from core.models import OrganizerWallet, OrganizerBankAccount, Payout, WalletTransaction
 from django.conf import settings
 import requests
+
+
+# ==========================================
+# FEE UTILITIES
+# ==========================================
+
+def calculate_paystack_transfer_fee(amount_kobo: int) -> int:
+    """
+    Dynamic Paystack NGN transfer fee in kobo.
+    ≤ ₦5,000  → ₦10  (1,000 kobo)
+    ≤ ₦50,000 → ₦25  (2,500 kobo)
+    > ₦50,000 → ₦50  (5,000 kobo)
+    """
+    naira = amount_kobo / 100
+    if naira <= 5_000:
+        return 1_000   # ₦10
+    elif naira <= 50_000:
+        return 2_500   # ₦25
+    else:
+        return 5_000   # ₦50
+
+
+# ==========================================
+# PAYSTACK HELPERS (kept for backward compat)
+# ==========================================
 
 class PaystackBankListView(APIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -23,10 +49,11 @@ class PaystackBankListView(APIView):
         try:
             res = requests.get('https://api.paystack.co/bank', headers={
                 'Authorization': f'Bearer {settings.PAYSTACK_SECRET_KEY}'
-            })
+            }, timeout=15)
             return Response(res.json())
         except Exception as e:
             return Response({'error': str(e)}, status=400)
+
 
 class PaystackResolveAccountView(APIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -36,15 +63,47 @@ class PaystackResolveAccountView(APIView):
         bank_code = request.data.get('bank_code')
         if not account_number or not bank_code:
             return Response({'error': 'account_number and bank_code are required'}, status=400)
-            
+
         try:
             res = requests.get(
                 f'https://api.paystack.co/bank/resolve?account_number={account_number}&bank_code={bank_code}',
-                headers={'Authorization': f'Bearer {settings.PAYSTACK_SECRET_KEY}'}
+                headers={'Authorization': f'Bearer {settings.PAYSTACK_SECRET_KEY}'},
+                timeout=15,
             )
             return Response(res.json())
         except Exception as e:
             return Response({'error': str(e)}, status=400)
+
+
+# ==========================================
+# FEE PREVIEW ENDPOINT
+# ==========================================
+
+class PayoutFeePreviewView(APIView):
+    """
+    GET /api/organizer/payouts/fee-preview/?amount=<kobo>
+    Returns dynamic payout charge and what the organizer will receive.
+    All values in kobo.
+    """
+    permission_classes = [permissions.IsAuthenticated, IsOrganizerOrAdmin]
+
+    def get(self, request):
+        try:
+            amount_kobo = int(request.query_params.get('amount', 0))
+        except (ValueError, TypeError):
+            return Response({'detail': 'amount must be a valid integer (kobo).'}, status=400)
+
+        if amount_kobo < 100_000:  # Minimum ₦1,000
+            return Response({'detail': 'Minimum withdrawal amount is ₦1,000.'}, status=400)
+
+        payout_charge = calculate_paystack_transfer_fee(amount_kobo)
+        amount_received = amount_kobo - payout_charge
+
+        return Response({
+            'amount_requested': amount_kobo,
+            'payout_charge': payout_charge,
+            'amount_received': amount_received,
+        })
 
 
 # ==========================================
@@ -54,18 +113,15 @@ class PaystackResolveAccountView(APIView):
 class OrganizerPayoutListCreateView(APIView):
     """
     GET  /api/organizer/payouts/  — List organizer's payout history.
-    POST /api/organizer/payouts/  — Request a new payout withdrawal.
+    POST /api/organizer/payouts/  — Request a new payout withdrawal (auto-initiates Paystack transfer).
     """
     permission_classes = [permissions.IsAuthenticated, IsOrganizerOrAdmin]
 
     def get(self, request):
         from api.serializers import PayoutSerializer
-        if getattr(request.user, 'role', '') == 'ADMIN':
-            payouts = Payout.objects.all().order_by('-requested_at')
-        else:
-            payouts = Payout.objects.filter(
-                wallet__organizer__user=request.user
-            ).order_by('-requested_at')
+        payouts = Payout.objects.filter(
+            wallet__organizer__user=request.user
+        ).order_by('-requested_at')
         serializer = PayoutSerializer(payouts, many=True)
         return Response(serializer.data)
 
@@ -76,77 +132,123 @@ class OrganizerPayoutListCreateView(APIView):
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
 
+        amount = data['amount']  # kobo — this is the TOTAL deducted from balance
+        bank_account_id = data['bank_account_id']
+
+        # Calculate fees dynamically — always server-side
+        payout_charge = calculate_paystack_transfer_fee(amount)
+        amount_received = amount - payout_charge  # organizer receives this
+
         with transaction.atomic():
             try:
-                if getattr(request.user, 'role', '') == 'ADMIN':
-                    wallet = OrganizerWallet.objects.select_for_update().first()
-                    if not wallet:
-                        raise OrganizerWallet.DoesNotExist
-                else:
-                    wallet = OrganizerWallet.objects.select_for_update().get(
-                        organizer__user=request.user
-                    )
-            except OrganizerWallet.DoesNotExist:
-                return Response(
-                    {'detail': 'Wallet not found.'},
-                    status=status.HTTP_404_NOT_FOUND,
+                wallet = OrganizerWallet.objects.select_for_update().get(
+                    organizer__user=request.user
                 )
+            except OrganizerWallet.DoesNotExist:
+                return Response({'detail': 'Wallet not found.'}, status=status.HTTP_404_NOT_FOUND)
 
-            amount = data['amount']
-            withdrawal_fee = 10000 # ₦100 withdrawal fee (in kobo)
-            total_deduction = amount + withdrawal_fee
+            try:
+                bank_account = OrganizerBankAccount.objects.get(
+                    pk=bank_account_id, organizer__user=request.user
+                )
+            except OrganizerBankAccount.DoesNotExist:
+                return Response({'detail': 'Bank account not found.'}, status=status.HTTP_404_NOT_FOUND)
 
-            if total_deduction > wallet.available_balance:
+            if amount > wallet.available_balance:
                 return Response(
-                    {'detail': f'Insufficient balance for payout and ₦100 fee. Available: ₦{wallet.available_balance / 100:,.2f}'},
+                    {'detail': f'Insufficient balance. Available: ₦{wallet.available_balance / 100:,.2f}'},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
-            # Generate unique payout reference
-            reference = f'PO-{uuid.uuid4().hex[:8].upper()}'
+            # Generate unique reference
+            reference = f'PO-{uuid.uuid4().hex[:10].upper()}'
 
-            # Deduct from available balance
-            wallet.available_balance = F('available_balance') - total_deduction
-            wallet.save(update_fields=['available_balance', 'updated_at'])
+            # Reserve the full amount immediately (deduct from available_balance)
+            OrganizerWallet.objects.filter(pk=wallet.pk).update(
+                available_balance=F('available_balance') - amount
+            )
             wallet.refresh_from_db()
 
-            # Create the payout record
+            # Create payout record in PROCESSING state
             payout = Payout.objects.create(
                 wallet=wallet,
+                bank_account=bank_account,
                 amount=amount,
+                payout_charge=payout_charge,
+                amount_received=amount_received,
+                status='PROCESSING',
                 reference=reference,
-                bank_name=data['bank_name'],
-                account_number=data['account_number'],
-                account_name=data['account_name'],
-                bank_code=data['bank_code'],
-                status='PENDING',
+                bank_name=bank_account.bank_name,
+                account_number=bank_account.account_number,
+                account_name=bank_account.account_name,
+                bank_code=bank_account.bank_code,
+                paystack_recipient_code=bank_account.paystack_recipient_code,
             )
 
-            # Create wallet transaction entry for payout
+            # Create ledger entry for the withdrawal reservation
             WalletTransaction.objects.create(
                 wallet=wallet,
                 type='PAYOUT',
                 amount=amount,
-                balance_after=wallet.available_balance + withdrawal_fee,
-                reference=reference,
-                description=f'Payout request to {data["bank_name"]} - {data["account_number"]}',
-            )
-            
-            # Create wallet transaction entry for fee
-            WalletTransaction.objects.create(
-                wallet=wallet,
-                type='PAYOUT',
-                amount=withdrawal_fee,
                 balance_after=wallet.available_balance,
-                reference=f'{reference}-FEE',
-                description=f'Withdrawal fee for {reference}',
+                reference=reference,
+                description=(
+                    f'Payout to {bank_account.bank_name} ••••{bank_account.account_number[-4:]}. '
+                    f'Requested: ₦{amount / 100:,.0f}, '
+                    f'Charge: ₦{payout_charge / 100:,.0f}, '
+                    f'Organizer receives: ₦{amount_received / 100:,.0f}'
+                ),
+                related_payout=payout,
             )
 
-            # If auto-upon-request is enabled, we could trigger Paystack Transfers API here
-            # For now, it stays PENDING for manual processing or async processing.
+            # Auto-initiate Paystack transfer
+            try:
+                from core.utils.transfers import initiate_transfer, create_transfer_recipient
 
-        result = PayoutSerializer(payout)
-        return Response(result.data, status=status.HTTP_201_CREATED)
+                # Ensure recipient code exists (may have been created when bank account was saved)
+                recipient_code = bank_account.paystack_recipient_code
+                if not recipient_code:
+                    recipient_code = create_transfer_recipient(
+                        bank_account.bank_code,
+                        bank_account.account_number,
+                        bank_account.account_name,
+                    )
+                    bank_account.paystack_recipient_code = recipient_code
+                    bank_account.save(update_fields=['paystack_recipient_code'])
+                    payout.paystack_recipient_code = recipient_code
+                    payout.save(update_fields=['paystack_recipient_code'])
+
+                # Initiate the transfer with amount_received (what organizer gets after charge)
+                transfer_code = initiate_transfer(recipient_code, amount_received, reference)
+                payout.paystack_transfer_code = transfer_code
+                payout.save(update_fields=['paystack_transfer_code', 'updated_at'])
+
+            except Exception as transfer_error:
+                # Transfer initiation failed — mark as failed and refund
+                OrganizerWallet.objects.filter(pk=wallet.pk).update(
+                    available_balance=F('available_balance') + amount
+                )
+                wallet.refresh_from_db()
+                WalletTransaction.objects.create(
+                    wallet=wallet,
+                    type='REVERSAL',
+                    amount=amount,
+                    balance_after=wallet.available_balance,
+                    reference=reference,
+                    description=f'Payout initiation failed: {str(transfer_error)}',
+                    related_payout=payout,
+                )
+                payout.status = 'FAILED'
+                payout.failure_reason = f'Transfer initiation failed: {str(transfer_error)}'
+                payout.processed_at = timezone.now()
+                payout.save(update_fields=['status', 'failure_reason', 'processed_at', 'updated_at'])
+
+                return Response(
+                    {'detail': f'Payout could not be initiated: {str(transfer_error)}'},
+                    status=status.HTTP_502_BAD_GATEWAY,
+                )
+
+        return Response(PayoutSerializer(payout).data, status=status.HTTP_201_CREATED)
 
 
 class OrganizerPayoutDetailView(APIView):
@@ -158,18 +260,9 @@ class OrganizerPayoutDetailView(APIView):
     def get(self, request, pk):
         from api.serializers import PayoutSerializer
         try:
-            if getattr(request.user, 'role', '') == 'ADMIN':
-                payout = Payout.objects.get(pk=pk)
-            else:
-                payout = Payout.objects.get(
-                    pk=pk,
-                    wallet__organizer__user=request.user,
-                )
+            payout = Payout.objects.get(pk=pk, wallet__organizer__user=request.user)
         except Payout.DoesNotExist:
-            return Response(
-                {'detail': 'Payout not found.'},
-                status=status.HTTP_404_NOT_FOUND,
-            )
+            return Response({'detail': 'Payout not found.'}, status=status.HTTP_404_NOT_FOUND)
         return Response(PayoutSerializer(payout).data)
 
 
@@ -180,7 +273,7 @@ class OrganizerPayoutDetailView(APIView):
 class AdminPayoutListView(generics.ListAPIView):
     """
     GET /api/admin/payouts/  — All payouts for admin review.
-    Supports ?status=PENDING query param filter.
+    Supports ?status= query param filter.
     """
     permission_classes = [permissions.IsAuthenticated, IsAdmin]
 
@@ -197,101 +290,3 @@ class AdminPayoutListView(generics.ListAPIView):
         if status_filter:
             qs = qs.filter(status=status_filter.upper())
         return qs
-
-
-class AdminPayoutApproveView(APIView):
-    """
-    POST /api/admin/payouts/<id>/approve/
-    Transitions payout from PENDING → PROCESSING.
-    In production, this would also initiate a Paystack Transfer.
-    """
-    permission_classes = [permissions.IsAuthenticated, IsAdmin]
-
-    def post(self, request, pk):
-        from api.serializers import AdminPayoutSerializer
-
-        with transaction.atomic():
-            try:
-                payout = Payout.objects.select_for_update().get(pk=pk)
-            except Payout.DoesNotExist:
-                return Response(
-                    {'detail': 'Payout not found.'},
-                    status=status.HTTP_404_NOT_FOUND,
-                )
-
-            if payout.status != 'PENDING':
-                return Response(
-                    {'detail': f'Cannot approve a payout with status: {payout.status}'},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-
-            payout.status = 'PROCESSING'
-            payout.save(update_fields=['status', 'updated_at'])
-
-            # TODO: Initiate Paystack Transfer here in production
-            # from core.utils.transfers import create_transfer_recipient, initiate_transfer
-            # recipient_code = create_transfer_recipient(payout.bank_code, payout.account_number, payout.account_name)
-            # transfer_code = initiate_transfer(recipient_code, payout.amount, payout.reference)
-            # payout.paystack_recipient_code = recipient_code
-            # payout.paystack_transfer_code = transfer_code
-            # payout.save(update_fields=['paystack_recipient_code', 'paystack_transfer_code', 'updated_at'])
-
-        return Response(AdminPayoutSerializer(payout).data)
-
-
-class AdminPayoutRejectView(APIView):
-    """
-    POST /api/admin/payouts/<id>/reject/
-    Rejects a PENDING payout and refunds the amount back to available_balance.
-    Body: { "reason": "..." }
-    """
-    permission_classes = [permissions.IsAuthenticated, IsAdmin]
-
-    def post(self, request, pk):
-        from api.serializers import AdminPayoutSerializer
-
-        reason = request.data.get('reason', '')
-        if not reason:
-            return Response(
-                {'detail': 'Rejection reason is required.'},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        with transaction.atomic():
-            try:
-                payout = Payout.objects.select_for_update().get(pk=pk)
-            except Payout.DoesNotExist:
-                return Response(
-                    {'detail': 'Payout not found.'},
-                    status=status.HTTP_404_NOT_FOUND,
-                )
-
-            if payout.status != 'PENDING':
-                return Response(
-                    {'detail': f'Cannot reject a payout with status: {payout.status}'},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-
-            # Refund the amount back to available balance
-            wallet = OrganizerWallet.objects.select_for_update().get(pk=payout.wallet_id)
-            wallet.available_balance = F('available_balance') + payout.amount
-            wallet.save(update_fields=['available_balance', 'updated_at'])
-            wallet.refresh_from_db()
-
-            # Create reversal transaction
-            WalletTransaction.objects.create(
-                wallet=wallet,
-                type='REVERSAL',
-                amount=payout.amount,
-                balance_after=wallet.available_balance,
-                reference=payout.reference,
-                description=f'Payout rejected: {reason}',
-            )
-
-            # Update payout status
-            payout.status = 'REJECTED'
-            payout.rejection_reason = reason
-            payout.processed_at = timezone.now()
-            payout.save(update_fields=['status', 'rejection_reason', 'processed_at', 'updated_at'])
-
-        return Response(AdminPayoutSerializer(payout).data)

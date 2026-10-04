@@ -6,8 +6,12 @@ from .views_payment import PaystackWebhookView, PaymentVerifyView
 from .views_wallet import OrganizerWalletView, WalletTransactionListView
 from .views_payout import (
     OrganizerPayoutListCreateView, OrganizerPayoutDetailView,
-    AdminPayoutListView, AdminPayoutApproveView, AdminPayoutRejectView,
+    AdminPayoutListView,
     PaystackBankListView, PaystackResolveAccountView,
+    PayoutFeePreviewView,
+)
+from .views_bank_account import (
+    OrganizerBankAccountListCreateView, OrganizerBankAccountDetailView,
 )
 from .views_find_ticket import FindTicketView
 from .views_dashboard import OrganizerDashboardView
@@ -88,13 +92,18 @@ urlpatterns = [
     # Organizer: Wallet & Payouts
     path('organizer/wallet/', OrganizerWalletView.as_view(), name='organizer_wallet'),
     path('organizer/wallet/transactions/', WalletTransactionListView.as_view(), name='wallet_transactions'),
-    
+
     path('organizer/banks/', PaystackBankListView.as_view(), name='organizer_banks'),
     path('organizer/resolve_account/', PaystackResolveAccountView.as_view(), name='resolve_account'),
-    
+
+    # Bank accounts (multi-account)
+    path('organizer/bank-accounts/', OrganizerBankAccountListCreateView.as_view(), name='bank_accounts'),
+    path('organizer/bank-accounts/<int:pk>/', OrganizerBankAccountDetailView.as_view(), name='bank_account_detail'),
+
     path('organizer/payouts/', OrganizerPayoutListCreateView.as_view(), name='organizer_payouts'),
+    path('organizer/payouts/fee-preview/', PayoutFeePreviewView.as_view(), name='payout_fee_preview'),
     path('organizer/payouts/<int:pk>/', OrganizerPayoutDetailView.as_view(), name='organizer_payout_detail'),
-    
+
     # Organizer: Dashboard Overview
     path('organizer/dashboard/', OrganizerDashboardView.as_view(), name='organizer_dashboard'),
     path('organizer/contacts/', OrganizerContactsView.as_view(), name='organizer_contacts'),
@@ -139,11 +148,9 @@ urlpatterns = [
     path('admin/overview/', AdminOverviewView.as_view(), name='admin_overview'),
     path('admin/', include(admin_router.urls)),
     
-    # Admin: Payouts (Old specific views, kept for compatibility if needed, though viewset has them too)
+    # Admin: Payouts (view-only; payouts are auto-initiated and settled via Paystack webhooks)
     path('admin/payouts_list/', AdminPayoutListView.as_view(), name='admin_payouts_list'),
-    path('admin/payouts/<int:pk>/approve_old/', AdminPayoutApproveView.as_view(), name='admin_payout_approve_old'),
-    path('admin/payouts/<int:pk>/reject_old/', AdminPayoutRejectView.as_view(), name='admin_payout_reject_old'),
-    
+
     # Content/Blog (stubs)
     path('blog/', StubView.as_view(), name='blog_list'),
     path('content/social/', StubView.as_view(), name='content_social'),
