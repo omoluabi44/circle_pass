@@ -16,7 +16,10 @@ export default function MyTicketsPage() {
   useEffect(() => {
     const fetchTickets = async () => {
       const token = (session as any)?.accessToken;
-      if (!token) return;
+      if (!token) {
+        setLoading(false);
+        return;
+      }
 
       try {
         const res = await fetch(`${API_URL}/tickets/`, {

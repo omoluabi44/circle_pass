@@ -69,7 +69,8 @@ export const authOptions: NextAuthOptions = {
         // Exchange Google email/profile for Django token
         try {
           const { cookies } = await import("next/headers");
-          const selectedRole = cookies().get('oauth_role')?.value || 'ATTENDEE';
+          const cookieStore = await cookies();
+          const selectedRole = cookieStore.get('oauth_role')?.value || 'ATTENDEE';
           
           console.log("Attempting Google Auth to backend with:", profile.email, selectedRole, "URL:", `${API_URL}/auth/google/`);
           
