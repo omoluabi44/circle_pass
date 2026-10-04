@@ -140,9 +140,10 @@ export default function TicketsPage() {
       </div>
 
       <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
-        <table className="w-full text-left border-collapse">
-          <thead>
-            <tr className="bg-secondary/50 border-b border-border">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse whitespace-nowrap min-w-[600px]">
+            <thead>
+              <tr className="bg-secondary/50 border-b border-border">
               <th className="p-4 text-sm font-semibold text-muted-foreground">Name</th>
               <th className="p-4 text-sm font-semibold text-muted-foreground">Tier</th>
               <th className="p-4 text-sm font-semibold text-muted-foreground">Price</th>
@@ -188,6 +189,7 @@ export default function TicketsPage() {
             )}
           </tbody>
         </table>
+        </div>
       </div>
 
       {showModal && (
