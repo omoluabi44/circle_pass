@@ -71,7 +71,7 @@ export async function resolveBankAccount(token: string, bank_code: string, accou
   });
   if (!res.ok) {
     const err = await res.json();
-    throw new Error(err.detail || err.message || 'Failed to verify account');
+    throw new Error(err.error || err.detail || err.message || 'Failed to verify account');
   }
   return res.json();
 }
