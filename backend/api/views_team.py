@@ -7,13 +7,23 @@ from django.core.mail import send_mail
 from django.conf import settings
 
 from core.models import Event, TeamMember, OrganizerProfile
-from .permissions import IsOrganizer
+from .permissions import IsOrganizerOrTeamMember
+from django.db.models import Q
+
+def check_event_admin_access(event, user):
+    if user.is_staff or getattr(user, 'role', '') == 'ADMIN':
+        return True
+    if event.organizer.user == user:
+        return True
+    return TeamMember.objects.filter(user=user, status='ACTIVE', role='ORGANIZER_ADMIN').filter(Q(event=event) | Q(event__isnull=True)).exists()
 
 class TeamMemberManagementView(APIView):
-    permission_classes = [permissions.IsAuthenticated, IsOrganizer]
+    permission_classes = [permissions.IsAuthenticated, IsOrganizerOrTeamMember]
 
     def get(self, request, event_id):
-        event = get_object_or_404(Event, id=event_id, organizer__user=request.user)
+        event = get_object_or_404(Event, id=event_id)
+        if not check_event_admin_access(event, request.user):
+            return Response({'detail': 'No Event matches the given query.'}, status=status.HTTP_404_NOT_FOUND)
         members = TeamMember.objects.filter(organizer=event.organizer)
         
         data = []
@@ -38,7 +48,9 @@ class TeamMemberManagementView(APIView):
         return Response(data)
 
     def post(self, request, event_id):
-        event = get_object_or_404(Event, id=event_id, organizer__user=request.user)
+        event = get_object_or_404(Event, id=event_id)
+        if not check_event_admin_access(event, request.user):
+            return Response({'detail': 'No Event matches the given query.'}, status=status.HTTP_404_NOT_FOUND)
         email = request.data.get('email')
         role = request.data.get('role', 'SCANNER_STAFF')
         scope = request.data.get('scope', 'event') # 'event' or 'all'
@@ -113,10 +125,12 @@ class TeamMemberManagementView(APIView):
         return Response({"detail": "Invitation sent successfully."}, status=status.HTTP_201_CREATED)
 
 class TeamMemberDetailView(APIView):
-    permission_classes = [permissions.IsAuthenticated, IsOrganizer]
+    permission_classes = [permissions.IsAuthenticated, IsOrganizerOrTeamMember]
 
     def get(self, request, event_id, pk):
-        event = get_object_or_404(Event, id=event_id, organizer__user=request.user)
+        event = get_object_or_404(Event, id=event_id)
+        if not check_event_admin_access(event, request.user):
+            return Response({'detail': 'No Event matches the given query.'}, status=status.HTTP_404_NOT_FOUND)
         member = get_object_or_404(TeamMember, pk=pk, organizer=event.organizer)
         
         if not member.user:
@@ -147,7 +161,9 @@ class TeamMemberDetailView(APIView):
         })
 
     def delete(self, request, event_id, pk):
-        event = get_object_or_404(Event, id=event_id, organizer__user=request.user)
+        event = get_object_or_404(Event, id=event_id)
+        if not check_event_admin_access(event, request.user):
+            return Response({'detail': 'No Event matches the given query.'}, status=status.HTTP_404_NOT_FOUND)
         member = get_object_or_404(TeamMember, pk=pk, organizer=event.organizer)
         member.delete()
         return Response({"detail": "Team member removed."}, status=status.HTTP_204_NO_CONTENT)
