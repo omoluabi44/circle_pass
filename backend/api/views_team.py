@@ -216,7 +216,7 @@ class AcceptTeamInviteView(APIView):
 
         return Response({
             "detail": "Invitation accepted successfully.", 
-            "organizer": member.organizer.name,
+            "organizer": member.organizer.company_name,
             "event_id": member.event_id
         })
 
