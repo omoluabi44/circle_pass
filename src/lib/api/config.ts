@@ -7,4 +7,7 @@
 const isServer = typeof window === 'undefined';
 const envUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
 
-export const API_URL = isServer ? envUrl.replace('localhost', '127.0.0.1') : envUrl;
+// When running on the server, we use the internal Docker hostname if it's production
+export const API_URL = isServer 
+  ? (process.env.NODE_ENV === 'production' ? 'http://backend:8000/api' : envUrl.replace('localhost', '127.0.0.1'))
+  : envUrl;
