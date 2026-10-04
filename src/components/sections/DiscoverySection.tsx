@@ -11,7 +11,8 @@ interface DiscoverySectionProps {
 }
 
 export function DiscoverySection({ limit, searchParams }: DiscoverySectionProps = {}) {
-  const [activeTab, setActiveTab] = useState<"upcoming" | "past">("upcoming");
+  const defaultTab = searchParams?.tab === 'past' ? 'past' : 'upcoming';
+  const [activeTab, setActiveTab] = useState<"upcoming" | "past">(defaultTab);
   const [activeFilter, setActiveFilter] = useState("ALL");
   const [events, setEvents] = useState<any[]>([]);
   const [filters, setFilters] = useState<string[]>(["ALL"]);
