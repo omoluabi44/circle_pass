@@ -84,26 +84,50 @@ class TeamMemberManagementView(APIView):
 
         # Send invite email
         # Use a fallback URL if settings.FRONTEND_URL isn't defined
-        frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:3000')
+        frontend_url = getattr(settings, 'FRONTEND_URL', 'https://thecirclepass.com')
         invite_link = f"{frontend_url}/invite?token={token}"
+        
+        display_name = email.split('@')[0]
+        event_name = event.title if event else "All Events"
+        role_name = "Staff Scanner" if role == "SCANNER_STAFF" else "Organizer/Admin"
         
         # HTML Template for the email
         html_content = f"""
         <html>
             <body style="font-family: Arial, sans-serif; background-color: #f9fafb; padding: 40px 0; margin: 0;">
-                <div style="max-w-md: 600px; margin: 0 auto; background-color: #ffffff; padding: 40px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); text-align: center;">
-                    <h2 style="color: #111827; font-size: 24px; margin-bottom: 8px;">You've been invited!</h2>
-                    <p style="color: #4b5563; font-size: 16px; margin-bottom: 32px;">
-                        You have been invited to join the <strong>{event.organizer.company_name}</strong> team on CirclePass as a <strong>{role.replace('_', ' ').title()}</strong>.
+                <div style="max-w-md: 600px; margin: 0 auto; background-color: #ffffff; padding: 40px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+                    <p style="color: #111827; font-size: 16px; margin-bottom: 20px;">Hello {display_name},</p>
+                    
+                    <p style="color: #4b5563; font-size: 16px; margin-bottom: 20px; line-height: 1.5;">
+                        You have been invited by <strong>{event.organizer.company_name}</strong> to join <strong>{event_name}</strong> as a {role_name} on PassControl.
                     </p>
-                    <a href="{invite_link}" style="display: inline-block; background-color: #6366f1; color: #ffffff; text-decoration: none; font-weight: bold; font-size: 16px; padding: 14px 28px; border-radius: 8px; margin-bottom: 32px;">
-                        Accept Invitation
-                    </a>
-                    <hr style="border: none; border-top: 1px solid #e5e7eb; margin-bottom: 24px;" />
-                    <p style="color: #9ca3af; font-size: 14px;">
-                        If the button doesn't work, copy and paste this link into your browser:<br/>
-                        <a href="{invite_link}" style="color: #6366f1;">{invite_link}</a>
+                    
+                    <p style="color: #4b5563; font-size: 16px; margin-bottom: 30px; line-height: 1.5;">
+                        As a {role_name}, you will be able to access the PassControl scanning system and assist with verifying and checking in attendees.
                     </p>
+                    
+                    <p style="color: #4b5563; font-size: 16px; margin-bottom: 20px;">To get started, click the button below:</p>
+                    
+                    <div style="text-align: center; margin-bottom: 30px;">
+                        <a href="{invite_link}" style="display: inline-block; background-color: #6366f1; color: #ffffff; text-decoration: none; font-weight: bold; font-size: 16px; padding: 14px 28px; border-radius: 8px;">
+                            Accept Invitation & Access PassControl
+                        </a>
+                    </div>
+                    
+                    <p style="color: #4b5563; font-size: 15px; margin-bottom: 15px; line-height: 1.5;">
+                        If you already have a PassControl account, simply log in after clicking the link.
+                    </p>
+                    
+                    <p style="color: #4b5563; font-size: 15px; margin-bottom: 20px; line-height: 1.5;">
+                        If you do not have an account, you will be able to create an account using this email address and then access PassControl.
+                    </p>
+                    
+                    <p style="color: #6b7280; font-size: 14px; margin-bottom: 30px; font-style: italic; line-height: 1.5; padding-left: 15px; border-left: 4px solid #e5e7eb;">
+                        Please note that your access is limited to the PassControl scanning function for this event. You will not have access to the Organizer's other dashboard features or settings.
+                    </p>
+                    
+                    <p style="color: #111827; font-size: 16px; margin-bottom: 5px;">Thank you,</p>
+                    <p style="color: #111827; font-size: 16px; font-weight: bold; margin-top: 0;">PassControl Team</p>
                 </div>
             </body>
         </html>
@@ -111,9 +135,9 @@ class TeamMemberManagementView(APIView):
 
         try:
             send_mail(
-                subject=f"Invitation to join {event.organizer.company_name}'s Team on CirclePass",
-                message=f"You have been invited to join as {role}. Click here to accept: {invite_link}",
-                from_email=settings.DEFAULT_FROM_EMAIL if hasattr(settings, 'DEFAULT_FROM_EMAIL') else 'noreply@circlepass.com',
+                subject=f"Invitation to join {event.organizer.company_name}'s Team on PassControl",
+                message=f"You have been invited to join PassControl. Click here: {invite_link}",
+                from_email=settings.DEFAULT_FROM_EMAIL if hasattr(settings, 'DEFAULT_FROM_EMAIL') else 'noreply@thecirclepass.com',
                 recipient_list=[email],
                 html_message=html_content,
                 fail_silently=True,
