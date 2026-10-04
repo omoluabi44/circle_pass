@@ -136,7 +136,7 @@ SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET = os.environ.get('GOOGLE_CLIENT_SECRET', 'stub'
 # Paystack
 PAYSTACK_SECRET_KEY = os.environ.get('PAYSTACK_SECRET_KEY', '')
 PAYSTACK_PUBLIC_KEY = os.environ.get('PAYSTACK_PUBLIC_KEY', '')
-PAYSTACK_CALLBACK_URL = os.environ.get('PAYSTACK_CALLBACK_URL', 'http://localhost:3000/payment/callback')
+PAYSTACK_CALLBACK_URL = os.environ.get('PAYSTACK_CALLBACK_URL', 'https://thecirclepass.com/payment/callback')
 
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 # EMAIL_BACKEND = 'django.core.mail.backends.dummy.EmailBackend'
@@ -146,7 +146,7 @@ EMAIL_USE_TLS = True
 EMAIL_HOST_USER = 'emmanuelogunleye441999@gmail.com'
 EMAIL_HOST_PASSWORD = 'wqoy wnyg jknx nwem'
 DEFAULT_FROM_EMAIL = 'emmanuelogunleye441999@gmail.com'
-FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:3000')
+FRONTEND_URL = os.environ.get('FRONTEND_URL', 'https://thecirclepass.com')
 CORS_ALLOW_ALL_ORIGINS = True
 
 MEDIA_URL = '/media/'

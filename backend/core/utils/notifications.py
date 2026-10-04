@@ -50,7 +50,7 @@ def send_purchase_receipt(order, tickets):
     
     from django.template.loader import render_to_string
     
-    frontend_url = settings.FRONTEND_URL if hasattr(settings, 'FRONTEND_URL') else 'http://localhost:3000'
+    frontend_url = settings.FRONTEND_URL if hasattr(settings, 'FRONTEND_URL') else 'https://thecirclepass.com'
     
     # Give guests the public link to their first ticket; registered users get dashboard link
     is_guest = not order.attendee
