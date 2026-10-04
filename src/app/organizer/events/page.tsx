@@ -56,9 +56,9 @@ export default async function EventsPage() {
           </p>
         </div>
       ) : (
-        <div className="bg-background rounded-xl shadow-sm border border-border overflow-hidden overflow-x-auto">
+        <div className="bg-background rounded-xl shadow-sm border border-border overflow-hidden overflow-x-auto overflow-y-auto max-h-[70vh] custom-scrollbar">
           <table className="w-full text-left">
-            <thead className="bg-secondary border-b border-border">
+            <thead className="bg-secondary border-b border-border sticky top-0 z-10">
               <tr>
                 <th className="px-6 py-4 text-sm font-semibold text-muted-foreground">Event Details</th>
                 <th className="px-6 py-4 text-sm font-semibold text-muted-foreground">Status</th>
