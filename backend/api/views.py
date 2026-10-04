@@ -222,9 +222,7 @@ class EventViewSet(viewsets.ModelViewSet):
         slug = self.request.query_params.get('slug')
 
         if user.is_authenticated and hasattr(user, 'role') and not is_public:
-            if user.role == 'ADMIN':
-                qs = Event.objects.all().order_by('-id')
-            elif user.role == 'ORGANIZER':
+            if user.role in ['ORGANIZER', 'ADMIN']:
                 qs = Event.objects.filter(organizer__user=user).order_by('-id')
             else:
                 qs = Event.objects.none() # Internal request by non-organizer should see no owned events
