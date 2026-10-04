@@ -1,7 +1,19 @@
 import Link from 'next/link';
 import { Calendar, BarChart2, ArrowRight } from 'lucide-react';
+import { getSession } from '@/lib/auth';
 
-export function PlanningVotingSplit() {
+export async function PlanningVotingSplit() {
+  const session = await getSession();
+  
+  let createEventHref = "/register";
+  if (session?.user) {
+    if (session.user.role === 'ORGANIZER' || session.user.role === 'ADMIN') {
+      createEventHref = "/organizer/events/create";
+    } else {
+      createEventHref = "/dashboard";
+    }
+  }
+
   return (
     <section className="bg-primary py-20 px-4">
       <div className="container mx-auto">
@@ -16,7 +28,7 @@ export function PlanningVotingSplit() {
             <p className="text-gray-600 mb-8 text-lg text-balance">
               CirclePass makes it simple to create, sell tickets & manage your events seamlessly.
             </p>
-            <Link href="/create" className="inline-flex items-center gap-2  justify-center px-6 py-3 border-2 border-primary text-primary font-semibold rounded-xl hover:bg-primary hover:text-white transition-all">
+            <Link href={createEventHref} className="inline-flex items-center gap-2  justify-center px-6 py-3 border-2 border-primary text-primary font-semibold rounded-xl hover:bg-primary hover:text-white transition-all">
               Create an event  <ArrowRight className="w-5 h-5" />
             </Link>
           </div>
