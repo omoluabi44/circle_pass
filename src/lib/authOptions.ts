@@ -71,6 +71,8 @@ export const authOptions: NextAuthOptions = {
           const { cookies } = await import("next/headers");
           const selectedRole = cookies().get('oauth_role')?.value || 'ATTENDEE';
           
+          console.log("Attempting Google Auth to backend with:", profile.email, selectedRole, "URL:", `${API_URL}/auth/google/`);
+          
           const res = await fetch(`${API_URL}/auth/google/`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -80,11 +82,17 @@ export const authOptions: NextAuthOptions = {
               role: selectedRole
             })
           });
+          
+          console.log("Backend Google Auth response status:", res.status);
+          
           if (res.ok) {
             const data = await res.json();
             token.role = data.role;
             token.accessToken = data.access;
             token.refreshToken = data.refresh;
+            console.log("Successfully set tokens from backend!");
+          } else {
+            console.error("Backend returned error:", await res.text());
           }
         } catch (error) {
           console.error("Google auth to backend failed", error);

@@ -8,14 +8,23 @@ import { useSession } from "next-auth/react";
 import { API_URL } from "@/lib/api/config";
 
 export default function AttendeeDashboard() {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (status === "loading") return;
+    if (status === "unauthenticated") {
+      window.location.href = '/login';
+      return;
+    }
+
     const fetchDashboard = async () => {
       const token = (session as any)?.accessToken;
-      if (!token) return;
+      if (!token) {
+        setLoading(false);
+        return;
+      }
 
       try {
         const res = await fetch(`${API_URL}/attendee/dashboard/`, {
