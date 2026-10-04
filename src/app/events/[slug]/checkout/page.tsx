@@ -398,23 +398,33 @@ export default function CheckoutPage() {
                 ) : (
                   <>
                     <h3 className="text-2xl font-bold text-foreground mb-2">
-                      {successData?.payment_required ? "Payment Required" : successData?.message ? "You're on the list!" : "Ticket Sent to Your Email!"}
+                      {successData?.payment_required ? "Payment Required" : successData?.message ? "You're on the list!" : "You're in the Circle! 🎉"}
                     </h3>
-                    <p className="text-muted-foreground mb-8">
+                    <p className="text-muted-foreground mb-8 text-balance">
                       {successData?.payment_required 
                         ? "Redirecting you to complete your payment..." 
                         : successData?.message 
-                          ? "We&apos;ll notify you if tickets become available."
-                          : "We&apos;ve emailed your tickets to you. See you there!"}
+                          ? "We'll notify you if tickets become available."
+                          : "Your ticket is confirmed and has been sent to your email. You can also access it anytime from My Circle on your attendee dashboard. See you at the experience!"}
                     </p>
                   </>
                 )}
-                <button
-                  onClick={handleClose}
-                  className="px-6 py-2.5 bg-primary text-primary-foreground font-medium rounded-lg hover:bg-primary/90 transition-colors"
-                >
-                  Close
-                </button>
+                <div className="flex items-center gap-3 justify-center">
+                  {!successData?.isGuest && !successData?.payment_required && !successData?.message && (
+                    <button
+                      onClick={handleClose}
+                      className="px-6 py-2.5 bg-primary text-primary-foreground font-medium rounded-lg hover:bg-primary/90 transition-colors shadow-md"
+                    >
+                      View My Ticket
+                    </button>
+                  )}
+                  <button
+                    onClick={() => router.push(`/events/${slug}`)}
+                    className="px-6 py-2.5 bg-secondary text-foreground font-medium rounded-lg hover:bg-secondary/80 transition-colors"
+                  >
+                    Close
+                  </button>
+                </div>
               </div>
             ) : isSalesPaused ? (
               <div className="py-8 flex flex-col items-center text-center">
