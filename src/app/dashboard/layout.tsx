@@ -6,7 +6,9 @@ import { Compass, CircleUserRound, Ticket, UserCircle, LogOut, Bookmark, Users }
 import Image from "next/image";
 import { RoleSwitcher } from "@/components/ui/RoleSwitcher";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
-import { signOut } from "next-auth/react";
+import { signOut, useSession } from "next-auth/react";
+import { useState, useEffect } from "react";
+import { API_URL } from "@/lib/api/config";
 
 export default function AttendeeDashboardLayout({
   children,
@@ -14,12 +16,30 @@ export default function AttendeeDashboardLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const { data: session } = useSession();
+  const [hasStaffAccess, setHasStaffAccess] = useState(false);
+
+  useEffect(() => {
+    if (session) {
+      const token = (session as any)?.accessToken;
+      fetch(`${API_URL}/user/team-roles/`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data) && data.length > 0) {
+          setHasStaffAccess(true);
+        }
+      })
+      .catch(() => {});
+    }
+  }, [session]);
 
   const navItems = [
     { name: "Discover", href: "/events", icon: Compass },
     { name: "My Circle", href: "/dashboard", icon: CircleUserRound },
     { name: "Tickets", href: "/dashboard/tickets", icon: Ticket },
-    { name: "Staff Access", href: "/dashboard/staff", icon: Users },
+    ...(hasStaffAccess ? [{ name: "Staff Access", href: "/dashboard/staff", icon: Users }] : []),
     { name: "Profile", href: "/dashboard/profile", icon: UserCircle },
   ];
 

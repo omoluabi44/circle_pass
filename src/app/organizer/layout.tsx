@@ -8,9 +8,11 @@ import {
   LayoutDashboard, CalendarDays, Wallet, ScanLine, Users, Inbox, 
   BarChart3, UserPlus, Settings, LifeBuoy, Menu, X, LogOut 
 } from "lucide-react";
-import { signOut } from "next-auth/react";
+import { signOut, useSession } from "next-auth/react";
 import { RoleSwitcher } from "@/components/ui/RoleSwitcher";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
+import { useEffect } from "react";
+import { API_URL } from "@/lib/api/config";
 
 export default function OrganizerLayout({
   children,
@@ -19,6 +21,24 @@ export default function OrganizerLayout({
 }) {
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { data: session } = useSession();
+  const [hasStaffAccess, setHasStaffAccess] = useState(false);
+
+  useEffect(() => {
+    if (session) {
+      const token = (session as any)?.accessToken;
+      fetch(`${API_URL}/user/team-roles/`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data) && data.length > 0) {
+          setHasStaffAccess(true);
+        }
+      })
+      .catch(() => {});
+    }
+  }, [session]);
 
   const mainNav = [
     { name: "Dashboard", href: "/organizer", icon: LayoutDashboard },
@@ -32,7 +52,7 @@ export default function OrganizerLayout({
 
   const orgNav = [
     { name: "Account", href: "/organizer/account", icon: Settings },
-    { name: "Staff Access", href: "/dashboard/staff", icon: ScanLine },
+    ...(hasStaffAccess ? [{ name: "Staff Access", href: "/dashboard/staff", icon: ScanLine }] : []),
   ];
 
   const supportNav = [
