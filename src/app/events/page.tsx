@@ -25,6 +25,14 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
           {/* Big Search Bar Form */}
           <EventSearchBar initialParams={resolvedParams} />
         </div>
+
+        {/* Scroll indicator for mobile */}
+        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 flex flex-col items-center animate-bounce">
+          <span className="text-white/60 text-xs font-medium mb-1 uppercase tracking-widest">Scroll</span>
+          <svg className="w-5 h-5 text-white/60" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
+            <path d="M19 14l-7 7m0 0l-7-7m7 7V3"></path>
+          </svg>
+        </div>
       </div>
 
       {/* Discovery Section loaded below */}
