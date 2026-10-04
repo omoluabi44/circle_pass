@@ -74,12 +74,36 @@ class TeamMemberManagementView(APIView):
         # Use a fallback URL if settings.FRONTEND_URL isn't defined
         frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:3000')
         invite_link = f"{frontend_url}/invite?token={token}"
+        
+        # HTML Template for the email
+        html_content = f"""
+        <html>
+            <body style="font-family: Arial, sans-serif; background-color: #f9fafb; padding: 40px 0; margin: 0;">
+                <div style="max-w-md: 600px; margin: 0 auto; background-color: #ffffff; padding: 40px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); text-align: center;">
+                    <h2 style="color: #111827; font-size: 24px; margin-bottom: 8px;">You've been invited!</h2>
+                    <p style="color: #4b5563; font-size: 16px; margin-bottom: 32px;">
+                        You have been invited to join the <strong>{event.organizer.name}</strong> team on CirclePass as a <strong>{role.replace('_', ' ').title()}</strong>.
+                    </p>
+                    <a href="{invite_link}" style="display: inline-block; background-color: #6366f1; color: #ffffff; text-decoration: none; font-weight: bold; font-size: 16px; padding: 14px 28px; border-radius: 8px; margin-bottom: 32px;">
+                        Accept Invitation
+                    </a>
+                    <hr style="border: none; border-top: 1px solid #e5e7eb; margin-bottom: 24px;" />
+                    <p style="color: #9ca3af; font-size: 14px;">
+                        If the button doesn't work, copy and paste this link into your browser:<br/>
+                        <a href="{invite_link}" style="color: #6366f1;">{invite_link}</a>
+                    </p>
+                </div>
+            </body>
+        </html>
+        """
+
         try:
             send_mail(
                 subject=f"Invitation to join {event.organizer.name}'s Team on CirclePass",
                 message=f"You have been invited to join as {role}. Click here to accept: {invite_link}",
                 from_email=settings.DEFAULT_FROM_EMAIL if hasattr(settings, 'DEFAULT_FROM_EMAIL') else 'noreply@circlepass.com',
                 recipient_list=[email],
+                html_message=html_content,
                 fail_silently=True,
             )
         except Exception as e:
