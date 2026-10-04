@@ -16,6 +16,7 @@ function InviteContent() {
   const [state, setState] = useState<'loading' | 'success' | 'error' | 'auth_required'>('loading');
   const [message, setMessage] = useState('');
   const [organizerName, setOrganizerName] = useState('');
+  const [eventId, setEventId] = useState<number | null>(null);
 
   useEffect(() => {
     if (!token) {
@@ -48,6 +49,9 @@ function InviteContent() {
           setState('success');
           setMessage(data.detail);
           setOrganizerName(data.organizer);
+          if (data.event_id) {
+            setEventId(data.event_id);
+          }
         } else {
           setState('error');
           setMessage(data.detail || 'Failed to accept invitation.');
@@ -108,10 +112,10 @@ function InviteContent() {
               You have successfully joined the team for <strong>{organizerName}</strong>. 
             </p>
             <Link 
-              href="/dashboard"
+              href={eventId ? `/staff/scan/${eventId}` : "/dashboard"}
               className="block w-full bg-[#6366f1] text-white rounded-xl py-3.5 font-semibold hover:bg-[#5046e5] transition-colors"
             >
-              Go to Dashboard
+              {eventId ? "Open Scanner" : "Go to Dashboard"}
             </Link>
           </div>
         )}

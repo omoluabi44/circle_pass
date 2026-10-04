@@ -13,6 +13,11 @@ export function TeamManagement({ eventId }: { eventId: string }) {
   const [inviteForm, setInviteForm] = useState({ email: '', role: 'SCANNER_STAFF', scope: 'event' });
   const [inviteStatus, setInviteStatus] = useState({ loading: false, error: '', success: '' });
 
+  // History modal state
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyData, setHistoryData] = useState<any>(null);
+
   const fetchMembers = async () => {
     if (!eventId) return;
     try {
@@ -33,6 +38,25 @@ export function TeamManagement({ eventId }: { eventId: string }) {
   useEffect(() => {
     fetchMembers();
   }, [eventId]);
+
+  const handleViewHistory = async (memberId: number) => {
+    setShowHistoryModal(true);
+    setHistoryLoading(true);
+    setHistoryData(null);
+    try {
+      const token = (session as any)?.accessToken;
+      const res = await fetch(`${API_URL}/events/${eventId}/team/${memberId}/`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        setHistoryData(await res.json());
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
 
   const handleInvite = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -106,13 +130,14 @@ export function TeamManagement({ eventId }: { eventId: string }) {
               <th className="px-6 py-4 font-medium">Role</th>
               <th className="px-6 py-4 font-medium">Access Scope</th>
               <th className="px-6 py-4 font-medium">Status</th>
+              <th className="px-6 py-4 font-medium">Scans</th>
               <th className="px-6 py-4 font-medium text-right">Actions</th>
             </tr>
           </thead>
           <tbody>
             {members.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-6 py-8 text-center text-gray-500">
+                <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
                   <div className="flex flex-col items-center justify-center">
                     <Users className="w-8 h-8 text-gray-300 mb-2" />
                     <p>No team members added yet.</p>
@@ -148,7 +173,17 @@ export function TeamManagement({ eventId }: { eventId: string }) {
                       {member.status === 'ACTIVE' ? 'Active' : 'Pending'}
                     </span>
                   </td>
+                  <td className="px-6 py-4 text-gray-600 font-semibold">
+                    {member.scan_count || 0}
+                  </td>
                   <td className="px-6 py-4 text-right">
+                    <button
+                      onClick={() => handleViewHistory(member.id)}
+                      className="text-blue-600 hover:text-blue-800 px-3 py-1.5 rounded-lg hover:bg-blue-50 transition-colors mr-2 text-sm font-medium"
+                      title="View Scan History"
+                    >
+                      History
+                    </button>
                     <button
                       onClick={() => handleRevoke(member.id)}
                       className="text-red-500 hover:text-red-700 p-2 rounded-lg hover:bg-red-50 transition-colors"
@@ -237,6 +272,65 @@ export function TeamManagement({ eventId }: { eventId: string }) {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+      {/* History Modal */}
+      {showHistoryModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl w-full max-w-md shadow-xl overflow-hidden flex flex-col max-h-[80vh]">
+            <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+              <h3 className="text-lg font-semibold text-gray-900 font-heading">Scan History</h3>
+              <button onClick={() => setShowHistoryModal(false)} className="text-gray-400 hover:text-gray-600">×</button>
+            </div>
+            
+            <div className="p-6 overflow-y-auto flex-1">
+              {historyLoading ? (
+                <div className="animate-pulse space-y-4">
+                  <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+                  <div className="h-10 bg-gray-100 rounded"></div>
+                  <div className="h-10 bg-gray-100 rounded"></div>
+                </div>
+              ) : historyData ? (
+                <div>
+                  <div className="flex justify-between items-center mb-6">
+                    <div>
+                      <p className="text-sm text-gray-500">Team Member</p>
+                      <p className="font-medium text-gray-900">{historyData.member_email}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm text-gray-500">Total Scans</p>
+                      <p className="font-bold text-[#6366f1] text-xl">{historyData.total_scans}</p>
+                    </div>
+                  </div>
+                  
+                  <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3 border-b pb-2">Recent Scans (Max 50)</h4>
+                  
+                  {historyData.recent_scans.length === 0 ? (
+                    <p className="text-gray-500 text-sm text-center py-4 bg-gray-50 rounded-lg">No scans performed by this member.</p>
+                  ) : (
+                    <div className="space-y-3">
+                      {historyData.recent_scans.map((scan: any) => (
+                        <div key={scan.id} className="flex justify-between items-center p-3 rounded-lg border border-gray-100 bg-gray-50/50">
+                          <div>
+                            <p className="text-sm font-medium text-gray-900">{scan.attendee_name || 'Guest'}</p>
+                            <p className="text-xs text-gray-500">{scan.ticket_type} • {new Date(scan.scanned_at).toLocaleTimeString()}</p>
+                          </div>
+                          <span className={`text-[11px] font-medium px-2 py-1 rounded-md ${
+                            scan.status === 'Valid' ? 'bg-green-50 text-green-700' :
+                            scan.status === 'Already Used' ? 'bg-amber-50 text-amber-700' : 'bg-red-50 text-red-700'
+                          }`}>
+                            {scan.status}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <p className="text-center text-red-500">Failed to load history.</p>
+              )}
+            </div>
           </div>
         </div>
       )}

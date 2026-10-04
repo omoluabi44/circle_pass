@@ -18,6 +18,13 @@ class TeamMemberManagementView(APIView):
         
         data = []
         for member in members:
+            # Calculate scan count for this member for this event (or all events depending on need, let's do this event)
+            # Actually, total scans by this user across the organizer's events is useful.
+            scan_count = 0
+            if member.user:
+                from core.models import CheckIn
+                scan_count = CheckIn.objects.filter(scanned_by=member.user, ticket__order__event=event).count()
+
             data.append({
                 "id": member.id,
                 "email": member.email,
@@ -25,7 +32,8 @@ class TeamMemberManagementView(APIView):
                 "status": member.status,
                 "scope": "All Events" if not member.event else f"Event: {member.event.title}",
                 "user_id": member.user.id if member.user else None,
-                "created_at": member.created_at
+                "created_at": member.created_at,
+                "scan_count": scan_count
             })
         return Response(data)
 
@@ -83,6 +91,37 @@ class TeamMemberManagementView(APIView):
 class TeamMemberDetailView(APIView):
     permission_classes = [permissions.IsAuthenticated, IsOrganizer]
 
+    def get(self, request, event_id, pk):
+        event = get_object_or_404(Event, id=event_id, organizer__user=request.user)
+        member = get_object_or_404(TeamMember, pk=pk, organizer=event.organizer)
+        
+        if not member.user:
+            return Response({"recent_scans": [], "total_scans": 0})
+            
+        from core.models import CheckIn
+        # Get scans by this member for this event
+        scans = CheckIn.objects.filter(
+            scanned_by=member.user, 
+            ticket__order__event=event
+        ).select_related('ticket__ticket_type').order_by('-scanned_at')
+        
+        total_scans = scans.count()
+        recent_scans = scans[:50] # return up to 50
+        
+        data = [{
+            "id": c.id,
+            "attendee_name": c.ticket.attendee_name,
+            "ticket_type": c.ticket.ticket_type.name,
+            "status": c.status,
+            "scanned_at": c.scanned_at
+        } for c in recent_scans]
+        
+        return Response({
+            "member_email": member.email,
+            "total_scans": total_scans,
+            "recent_scans": data
+        })
+
     def delete(self, request, event_id, pk):
         event = get_object_or_404(Event, id=event_id, organizer__user=request.user)
         member = get_object_or_404(TeamMember, pk=pk, organizer=event.organizer)
@@ -111,4 +150,8 @@ class AcceptTeamInviteView(APIView):
         member.token = '' # Clear the token
         member.save()
 
-        return Response({"detail": "Invitation accepted successfully.", "organizer": member.organizer.name})
+        return Response({
+            "detail": "Invitation accepted successfully.", 
+            "organizer": member.organizer.name,
+            "event_id": member.event_id
+        })
