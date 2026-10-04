@@ -211,7 +211,7 @@ class AcceptTeamInviteView(APIView):
 
         member.user = request.user
         member.status = 'ACTIVE'
-        member.token = '' # Clear the token
+        # Token is retained for idempotency to prevent React Strict Mode 404s
         member.save()
 
         return Response({
