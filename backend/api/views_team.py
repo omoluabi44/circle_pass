@@ -219,3 +219,20 @@ class AcceptTeamInviteView(APIView):
             "organizer": member.organizer.name,
             "event_id": member.event_id
         })
+
+class UserTeamRolesView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        roles = TeamMember.objects.filter(user=request.user, status='ACTIVE')
+        data = []
+        for role in roles:
+            data.append({
+                'id': role.id,
+                'organizer_name': role.organizer.company_name,
+                'event_id': role.event.id if role.event else None,
+                'event_title': role.event.title if role.event else 'All Events',
+                'role': role.role,
+                'scope': 'event' if role.event else 'all'
+            })
+        return Response(data, status=status.HTTP_200_OK)

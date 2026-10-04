@@ -19,6 +19,7 @@ export default function AttendeeDashboardLayout({
     { name: "Discover", href: "/events", icon: Compass },
     { name: "My Circle", href: "/dashboard", icon: CircleUserRound },
     { name: "Tickets", href: "/dashboard/tickets", icon: Ticket },
+    { name: "Staff Access", href: "/dashboard/staff", icon: Users },
     { name: "Profile", href: "/dashboard/profile", icon: UserCircle },
   ];
 
