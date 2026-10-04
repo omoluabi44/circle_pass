@@ -57,7 +57,7 @@ export function EventMedia() {
 
             {/* Button */}
             <Link
-              href="#"
+              href="/events?date=past"
               className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-primary text-primary-foreground rounded-full font-bold text-lg hover:bg-primary/90 transition-all shadow-xl shadow-primary/20 hover:scale-105 group"
             >
               Browse past events

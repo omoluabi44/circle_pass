@@ -291,6 +291,8 @@ class EventViewSet(viewsets.ModelViewSet):
                 qs = qs.filter(start_time__gte=friday, start_time__lte=sunday)
             elif date_param == 'this_month':
                 qs = qs.filter(start_time__year=now.year, start_time__month=now.month)
+            elif date_param == 'past':
+                qs = qs.filter(start_time__lt=now)
 
         # Location-based Radius Search (Haversine formula in km)
         lat_param = self.request.query_params.get('lat', None)
