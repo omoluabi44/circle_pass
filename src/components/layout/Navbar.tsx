@@ -169,13 +169,22 @@ export function Navbar() {
                 </Link>
               </>
             ) : (
-              <Link
-                href="/login"
-                className="sm:hidden text-base font-medium px-4 py-3 rounded-lg hover:bg-secondary text-foreground"
-                onClick={() => setIsMobileMenuOpen(false)}
-              >
-                Login
-              </Link>
+              <>
+                <Link
+                  href="/login"
+                  className="sm:hidden text-base font-medium px-4 py-3 rounded-lg hover:bg-secondary text-foreground"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  Login
+                </Link>
+                <Link
+                  href="/register"
+                  className="sm:hidden text-base font-medium px-4 py-3 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 mt-2 text-center"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  Sign Up
+                </Link>
+              </>
             )}
 
           </nav>
