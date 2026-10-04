@@ -32,6 +32,7 @@ export default function OrganizerLayout({
 
   const orgNav = [
     { name: "Account", href: "/organizer/account", icon: Settings },
+    { name: "Staff Access", href: "/dashboard/staff", icon: ScanLine },
   ];
 
   const supportNav = [
