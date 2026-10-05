@@ -82,7 +82,7 @@ export function FAQ() {
           <h3 className="text-xl font-bold text-foreground mb-2">Further questions?</h3>
           <p className="text-muted-foreground mb-8">We're here to help you get the most out of CirclePass.</p>
           <Link
-            href="https://wa.me/2348075003645"
+            href="https://wa.me/2349135512889"
             target="_blank"
             className="inline-flex items-center justify-center bg-[#25D366] text-white font-extrabold py-3.5 px-8 rounded-xl hover:bg-[#1EBE5A] transition-colors shadow-sm w-full sm:w-auto"
           >

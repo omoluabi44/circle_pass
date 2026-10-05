@@ -16,8 +16,24 @@ export const authOptions: NextAuthOptions = {
       credentials: {
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
+        access_token: { label: "Token", type: "text" },
+        refresh_token: { label: "Token", type: "text" },
+        user_data: { label: "Data", type: "text" }
       },
       async authorize(credentials) {
+        if (credentials?.access_token && credentials?.user_data) {
+          const user = JSON.parse(credentials.user_data);
+          return {
+            id: user.id.toString(),
+            name: user.username,
+            email: user.email,
+            role: user.role,
+            isEmailVerified: true,
+            accessToken: credentials.access_token,
+            refreshToken: credentials.refresh_token,
+          };
+        }
+
         if (!credentials?.email || !credentials?.password) return null;
 
         try {

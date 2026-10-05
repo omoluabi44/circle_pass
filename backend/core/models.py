@@ -17,6 +17,18 @@ class User(AbstractUser):
     REQUIRED_FIELDS = ['username']
 
 
+
+class EmailVerificationCode(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='verification_code')
+    code = models.CharField(max_length=4)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def is_expired(self):
+        # Expires in 15 minutes
+        from django.utils import timezone
+        import datetime
+        return timezone.now() > self.created_at + datetime.timedelta(minutes=15)
+
 class AttendeeProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     phone_number = models.CharField(max_length=20, blank=True)

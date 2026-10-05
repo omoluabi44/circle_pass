@@ -40,28 +40,34 @@ def google_auth(request):
         'refresh': str(refresh),
     })
 
+from rest_framework.decorators import action
+import random
+from core.models import EmailVerificationCode
+
 class CustomUserViewSet(UserViewSet):
+    def _generate_code(self, user):
+        code = str(random.randint(1000, 9999))
+        EmailVerificationCode.objects.update_or_create(
+            user=user,
+            defaults={'code': code}
+        )
+        return code
+
     def create(self, request, *args, **kwargs):
         response = super().create(request, *args, **kwargs)
         if response.status_code == 201:
             user = User.objects.get(id=response.data['id'])
-            uid = utils.encode_uid(user.pk)
-            token = default_token_generator.make_token(user)
-            activation_url = f"https://thecirclepass.com/verify-email/{uid}/{token}"
-            response.data['activation_url'] = activation_url
+            self._generate_code(user)
         return response
 
-    from rest_framework.decorators import action
     @action(["post"], detail=False)
     def resend_activation(self, request, *args, **kwargs):
         response = super().resend_activation(request, *args, **kwargs)
         if response.status_code == 204:
             email = request.data.get("email")
             user = User.objects.get(email=email)
-            uid = utils.encode_uid(user.pk)
-            token = default_token_generator.make_token(user)
-            activation_url = f"https://thecirclepass.com/verify-email/{uid}/{token}"
-            return Response({"message": "Activation resent", "activation_url": activation_url}, status=status.HTTP_200_OK)
+            self._generate_code(user)
+            return Response({"message": "Activation resent"}, status=status.HTTP_200_OK)
         return response
 
     @action(["post"], detail=False)
@@ -487,3 +493,54 @@ class SupportTicketViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
+
+
+class VerifyCodeView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request, *args, **kwargs):
+        email = request.data.get('email')
+        code = request.data.get('code')
+        
+        if not email or not code:
+            return Response({"detail": "Email and code are required."}, status=status.HTTP_400_BAD_REQUEST)
+            
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            return Response({"detail": "User not found."}, status=status.HTTP_404_NOT_FOUND)
+            
+        if user.is_active:
+            return Response({"detail": "User is already active."}, status=status.HTTP_400_BAD_REQUEST)
+            
+        try:
+            verification = user.verification_code
+        except EmailVerificationCode.DoesNotExist:
+            return Response({"detail": "No verification code found."}, status=status.HTTP_400_BAD_REQUEST)
+            
+        if verification.is_expired():
+            return Response({"detail": "Code has expired. Please request a new one."}, status=status.HTTP_400_BAD_REQUEST)
+            
+        if verification.code != code:
+            return Response({"detail": "Invalid code."}, status=status.HTTP_400_BAD_REQUEST)
+            
+        # Success
+        user.is_active = True
+        user.save(update_fields=['is_active'])
+        verification.delete()
+        
+        # Generate JWT tokens
+        from rest_framework_simplejwt.tokens import RefreshToken
+        refresh = RefreshToken.for_user(user)
+        
+        return Response({
+            "detail": "Email verified successfully.",
+            "access": str(refresh.access_token),
+            "refresh": str(refresh),
+            "user": {
+                "id": user.id,
+                "email": user.email,
+                "role": user.role,
+                "username": user.username
+            }
+        }, status=status.HTTP_200_OK)
