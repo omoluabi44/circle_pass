@@ -66,7 +66,8 @@ export default function CheckoutPage() {
     );
   }, [event?.ticket_types, totalCapacity, totalSold]);
   
-  const isWaitlistActive = Boolean(event?.waitlist_enabled && allSoldOut);
+  const isPast = event ? new Date() > new Date(event.end_time) : false;
+  const isWaitlistActive = Boolean(event?.waitlist_enabled && (allSoldOut || isPast));
 
   const [timeLeft, setTimeLeft] = useState(600);
   
@@ -447,9 +448,9 @@ export default function CheckoutPage() {
                 <div className="w-16 h-16 bg-primary/10 text-primary rounded-full flex items-center justify-center mb-6">
                   <AlertCircle className="w-8 h-8" />
                 </div>
-                <h3 className="text-xl font-bold text-foreground mb-2 text-center">Event Sold Out</h3>
+                <h3 className="text-xl font-bold text-foreground mb-2 text-center">{isPast ? "Event Ended" : "Event Sold Out"}</h3>
                 <p className="text-muted-foreground mb-8 text-center max-w-sm">
-                  Tickets are currently sold out. Join the waitlist to be notified if spots open up.
+                  {isPast ? "This event has ended. Join the waitlist to be notified if it re-opens." : "Tickets are currently sold out. Join the waitlist to be notified if spots open up."}
                 </p>
                 
                 <form onSubmit={handleJoinWaitlist} className="w-full max-w-sm space-y-4">

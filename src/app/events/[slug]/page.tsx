@@ -363,16 +363,7 @@ export default function EventDetailsPage() {
                             <span className="relative z-10">Sales Paused</span>
                           </button>
                         );
-                      } else if (isPast) {
-                        return (
-                          <button 
-                            disabled
-                            className="w-full py-4 bg-muted text-muted-foreground rounded-xl font-bold text-lg cursor-not-allowed flex items-center justify-center gap-2"
-                          >
-                            <span className="relative z-10">Event Over</span>
-                          </button>
-                        );
-                      } else if (isSoldOut && waitlistEnabled) {
+                      } else if ((isPast || isSoldOut) && waitlistEnabled) {
                         return (
                           <Link 
                             href={`/events/${slug}/checkout`}
@@ -381,6 +372,15 @@ export default function EventDetailsPage() {
                             <Ticket className="w-5 h-5 relative z-10" />
                             <span className="relative z-10">Join Waitlist</span>
                           </Link>
+                        );
+                      } else if (isPast) {
+                        return (
+                          <button 
+                            disabled
+                            className="w-full py-4 bg-muted text-muted-foreground rounded-xl font-bold text-lg cursor-not-allowed flex items-center justify-center gap-2"
+                          >
+                            <span className="relative z-10">Event Over</span>
+                          </button>
                         );
                       } else if (isSoldOut) {
                         return (
