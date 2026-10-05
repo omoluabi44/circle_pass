@@ -5,7 +5,7 @@ import Link from "next/link";
 
 export function WhatsAppWidget() {
   // Replace with the actual WhatsApp number/link
-  const whatsappUrl = "https://wa.me/2341234567890?text=Hello%2C%20I%20need%20support%20with%20CirclePass";
+  const whatsappUrl = "https://wa.me/2349135512889";
 
   return (
     <div className="fixed bottom-24 md:bottom-6 right-4 md:right-6 z-50">
