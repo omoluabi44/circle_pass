@@ -128,8 +128,8 @@ class EventSerializer(serializers.ModelSerializer):
         fields = (
             'id', 'organizer', 'organizer_name', 'organizer_logo', 'organizer_instagram', 'organizer_website', 'category', 'venue',
             'title', 'slug', 'description', 'cover_image', 'capacity', 'event_type',
-            'country', 'state', 'city', 'organizer_contact', 'emergency_contact', 
-            'age_restriction', 'dress_code', 'lineup', 'personalized_dp_enabled',
+            'country', 'state', 'city', 'location_name', 'organizer_contact', 'emergency_contact', 
+            'instagram_handle', 'tiktok_handle', 'age_restriction', 'dress_code', 'lineup', 'personalized_dp_enabled',
             'is_online', 'status', 'absorb_fees', 'start_time', 'end_time', 'ticket_types',
             'sales_paused', 'waitlist_enabled', 'is_followed', 'follower_count'
         )
@@ -182,7 +182,8 @@ class EventCreateUpdateSerializer(serializers.ModelSerializer):
         model = Event
         fields = (
             'id', 'category', 'category_name', 'venue', 'venue_name', 'title', 'description', 'cover_image', 'capacity',
-            'event_type', 'country', 'state', 'city', 'organizer_contact', 'emergency_contact', 
+            'event_type', 'country', 'state', 'city', 'location_name', 'organizer_contact', 'emergency_contact', 
+            'instagram_handle', 'tiktok_handle', 'has_onsite_services',
             'age_restriction', 'dress_code', 'lineup', 'personalized_dp_enabled', 'sales_paused', 'waitlist_enabled',
             'is_online', 'status', 'absorb_fees', 'start_time', 'end_time', 'ticket_types',
         )

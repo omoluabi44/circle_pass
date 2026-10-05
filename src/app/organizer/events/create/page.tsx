@@ -8,8 +8,49 @@ import { Save, Send, AlertCircle, Plus, Trash2, ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { toast } from "react-hot-toast";
 import { uploadToS3 } from "@/utils/s3Upload";
+import { useLoadScript, Autocomplete } from "@react-google-maps/api";
+
 
 export default function CreateEventPage() {
+  const { isLoaded } = useLoadScript({
+    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "",
+    libraries: ["places"],
+  });
+
+  const [autocomplete, setAutocomplete] = useState<google.maps.places.Autocomplete | null>(null);
+
+  const onLoad = (autoC: google.maps.places.Autocomplete) => setAutocomplete(autoC);
+  const onPlaceChanged = () => {
+    if (autocomplete !== null) {
+      const place = autocomplete.getPlace();
+      if (place && place.address_components) {
+        let city = "";
+        let state = "";
+        let country = "";
+        let lga = "";
+        
+        place.address_components.forEach(component => {
+          const types = component.types;
+          if (types.includes("locality")) city = component.long_name;
+          if (types.includes("administrative_area_level_2") || types.includes("locality")) lga = component.long_name;
+          if (types.includes("administrative_area_level_1")) state = component.long_name;
+          if (types.includes("country")) country = component.long_name;
+        });
+
+        // Use the main venue name (e.g. Landmark Centre) or fallback to full formatted address
+        const venueName = place.name || place.formatted_address || "";
+        
+        setFormData(prev => ({
+          ...prev,
+          venue: venueName + (lga && lga !== city ? `, ${lga}` : ""),
+          city: city || lga,
+          state,
+          country
+        }));
+      }
+    }
+  };
+
   const { data: session } = useSession();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -54,6 +95,9 @@ export default function CreateEventPage() {
     lineup: "",
     personalized_dp_enabled: false,
     has_onsite_services: false,
+  instagram_handle: "",
+    tiktok_handle: "",
+    location_name: "",
   });
 
   const [ticketTypes, setTicketTypes] = useState([
@@ -84,8 +128,18 @@ export default function CreateEventPage() {
   };
 
   const validateForm = () => {
-    if (!formData.title || !formData.start_time || !formData.end_time) {
-      toast.error("Please fill out all required fields (Title, Start Time, End Time).");
+        if (formData.start_time && formData.end_time) {
+      if (new Date(formData.end_time) <= new Date(formData.start_time)) {
+        toast.error("End time must be after the start time.");
+        return false;
+      }
+      if (new Date(formData.start_time) < new Date()) {
+        toast.error("Start time cannot be in the past.");
+        return false;
+      }
+    }
+if (!formData.title || !formData.start_time || !formData.end_time || !formData.organizer_contact) {
+      toast.error("Please fill out all required fields (Title, Start Time, End Time, Organizer Contact).");
       return false;
     }
     const totalTickets = ticketTypes.reduce((acc, curr) => acc + Number(curr.quantity), 0);
@@ -150,6 +204,9 @@ export default function CreateEventPage() {
       payload.append('lineup', formData.lineup);
       payload.append('personalized_dp_enabled', String(formData.personalized_dp_enabled));
       payload.append('has_onsite_services', String(formData.has_onsite_services));
+      payload.append('instagram_handle', formData.instagram_handle);
+      payload.append('tiktok_handle', formData.tiktok_handle);
+      payload.append('location_name', formData.location_name);
       
       if (formData.cover_image) {
         const coverImageUrl = await uploadToS3(formData.cover_image as File, 'event_covers', session.accessToken as string);
@@ -199,7 +256,7 @@ export default function CreateEventPage() {
         
         {/* Basic Info */}
         <section>
-          <h2 className="text-xl font-semibold text-foreground mb-4 border-b pb-2">Basic Info</h2>
+          <h2 className="text-xl font-semibold text-foreground mb-4 border-b pb-2">Basic Information</h2>
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-muted-foreground mb-1">Event Title *</label>
@@ -208,7 +265,7 @@ export default function CreateEventPage() {
             </div>
             <div>
               <label className="block text-sm font-medium text-muted-foreground mb-1">Description</label>
-              <textarea rows={4} className="w-full border border-border rounded-lg p-2.5 focus:ring-2 focus:ring-primary outline-none"
+              <textarea rows={6} className="w-full border border-border rounded-lg p-2.5 focus:ring-2 focus:ring-primary outline-none"
                 value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} />
             </div>
 
@@ -244,19 +301,51 @@ export default function CreateEventPage() {
             {formData.event_type !== 'ONLINE' && (
               <div className="space-y-4 border border-border rounded-lg p-4 bg-secondary/20">
                 <h3 className="font-medium text-sm text-foreground">Location Details</h3>
+                
                 <div>
                   <label className="block text-sm font-medium text-muted-foreground mb-1">Venue & Google Maps Location *</label>
-                  <input type="text" placeholder="e.g. Landmark Centre, Lagos" className="w-full border border-border rounded-lg p-2.5 outline-none"
-                    value={formData.venue} onChange={e => setFormData({...formData, venue: e.target.value})} />
+                  {isLoaded ? (
+                    <Autocomplete onLoad={onLoad} onPlaceChanged={onPlaceChanged}>
+                      <input 
+                        type="text" 
+                        placeholder="Search for venue or address..." 
+                        className="w-full border border-border rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-primary bg-background text-foreground"
+                        value={formData.venue} 
+                        onChange={e => setFormData({...formData, venue: e.target.value})} 
+                      />
+                    </Autocomplete>
+                  ) : (
+                    <input 
+                      type="text" 
+                      placeholder="Loading Google Maps..." 
+                      className="w-full border border-border rounded-lg p-2.5 outline-none bg-background text-foreground opacity-50"
+                      disabled
+                    />
+                  )}
                 </div>
-                <div className="grid grid-cols-3 gap-4">
+
+                <div>
+                  <label className="block text-sm font-medium text-muted-foreground mb-1">Location Name (Optional)</label>
+                  <input type="text" placeholder="e.g. Main Hall, Hall B" className="w-full border border-border rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-primary"
+                    value={formData.location_name} onChange={e => setFormData({...formData, location_name: e.target.value})} />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-muted-foreground mb-1">Country</label>
-                    <input type="text" className="w-full border border-border rounded-lg p-2.5 outline-none"
-                      value={formData.country} onChange={e => setFormData({...formData, country: e.target.value})} />
+                    <select className="w-full border border-border rounded-lg p-2.5 outline-none bg-background text-foreground"
+                      value={formData.country} onChange={e => setFormData({...formData, country: e.target.value})}>
+                      <option value="">Select Country</option>
+                      <option value="Nigeria">Nigeria</option>
+                      <option value="Ghana">Ghana</option>
+                      <option value="Kenya">Kenya</option>
+                      <option value="South Africa">South Africa</option>
+                      <option value="United Kingdom">United Kingdom</option>
+                      <option value="United States">United States</option>
+                    </select>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-muted-foreground mb-1">State</label>
+                    <label className="block text-sm font-medium text-muted-foreground mb-1">State/Region</label>
                     <input type="text" className="w-full border border-border rounded-lg p-2.5 outline-none"
                       value={formData.state} onChange={e => setFormData({...formData, state: e.target.value})} />
                   </div>
@@ -288,7 +377,7 @@ export default function CreateEventPage() {
             <div className="md:col-span-2">
               <label className="block text-sm font-medium text-muted-foreground mb-1">Maximum Capacity</label>
               <input type="number" className="w-full border border-border rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-primary"
-                value={formData.capacity} onChange={e => setFormData({...formData, capacity: parseInt(e.target.value) || 0})} />
+                value={formData.capacity || ""} onChange={e => setFormData({...formData, capacity: parseInt(e.target.value) || 0})} />
               <p className="text-sm text-muted-foreground mt-1">The maximum number of people that can attend across all ticket types.</p>
             </div>
           </div>
@@ -296,10 +385,10 @@ export default function CreateEventPage() {
 
         {/* Additional Details */}
         <section>
-          <h2 className="text-xl font-semibold text-foreground mb-4 border-b pb-2">Additional Details</h2>
+          <h2 className="text-xl font-semibold text-foreground mb-4 border-b pb-2">Additional Details <span className="text-sm font-normal text-muted-foreground ml-2">(Optional)</span></h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label className="block text-sm font-medium text-muted-foreground mb-1">Organizer Contact Info</label>
+              <label className="block text-sm font-medium text-muted-foreground mb-1">Organizer Contact Info <span className="text-primary">*</span></label>
               <input type="text" placeholder="Email or Phone number" className="w-full border border-border rounded-lg p-2.5 outline-none"
                 value={formData.organizer_contact} onChange={e => setFormData({...formData, organizer_contact: e.target.value})} />
             </div>
@@ -307,6 +396,16 @@ export default function CreateEventPage() {
               <label className="block text-sm font-medium text-muted-foreground mb-1">Emergency Contact</label>
               <input type="text" placeholder="Where needed" className="w-full border border-border rounded-lg p-2.5 outline-none"
                 value={formData.emergency_contact} onChange={e => setFormData({...formData, emergency_contact: e.target.value})} />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-muted-foreground mb-1">Instagram Handle</label>
+              <input type="text" placeholder="e.g. @circlepass" className="w-full border border-border rounded-lg p-2.5 outline-none"
+                value={formData.instagram_handle} onChange={e => setFormData({...formData, instagram_handle: e.target.value})} />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-muted-foreground mb-1">TikTok Handle</label>
+              <input type="text" placeholder="e.g. @circlepass" className="w-full border border-border rounded-lg p-2.5 outline-none"
+                value={formData.tiktok_handle} onChange={e => setFormData({...formData, tiktok_handle: e.target.value})} />
             </div>
             <div>
               <label className="block text-sm font-medium text-muted-foreground mb-1">Age Restriction</label>
@@ -322,39 +421,6 @@ export default function CreateEventPage() {
               <label className="block text-sm font-medium text-muted-foreground mb-1">Lineup / Artists</label>
               <textarea rows={2} placeholder="List performers or guests if applicable" className="w-full border border-border rounded-lg p-2.5 outline-none"
                 value={formData.lineup} onChange={e => setFormData({...formData, lineup: e.target.value})} />
-            </div>
-          </div>
-        </section>
-
-        {/* Event Settings & Features */}
-        <section>
-          <h2 className="text-xl font-semibold text-foreground mb-4 border-b pb-2">Event Settings & Features</h2>
-          <div className="space-y-4">
-            <div className="flex flex-col gap-2">
-              <label className="flex items-center gap-2 cursor-pointer w-fit">
-                <input type="checkbox" className="w-5 h-5 text-primary rounded" 
-                  checked={formData.absorb_fees} onChange={e => setFormData({...formData, absorb_fees: e.target.checked})} />
-                <span className="text-sm font-medium text-foreground">Absorb Service Fee</span>
-              </label>
-              <p className="text-sm text-muted-foreground">If checked, the 5% service fee will be deducted from your payout rather than added to the ticket price.</p>
-            </div>
-            
-            <div className="flex flex-col gap-2">
-              <label className="flex items-center gap-2 cursor-pointer w-fit">
-                <input type="checkbox" className="w-5 h-5 text-primary rounded" 
-                  checked={formData.personalized_dp_enabled} onChange={e => setFormData({...formData, personalized_dp_enabled: e.target.checked})} />
-                <span className="text-sm font-medium text-foreground">Enable Personalized DP</span>
-              </label>
-              <p className="text-sm text-muted-foreground">Allow attendees to generate a custom display picture (DP) with their name and your event banner.</p>
-            </div>
-
-            <div className="flex flex-col gap-2 pt-2">
-              <label className="flex items-center gap-2 cursor-pointer w-fit">
-                <input type="checkbox" className="w-5 h-5 text-primary rounded" 
-                  checked={formData.has_onsite_services} onChange={e => setFormData({...formData, has_onsite_services: e.target.checked})} />
-                <span className="text-sm font-medium text-foreground">Enable On-site Services</span>
-              </label>
-              <p className="text-sm text-muted-foreground">This feature provides dedicated on-site staff for check-in and event management. It charges an additional 13% of the ticket price.</p>
             </div>
           </div>
         </section>
@@ -417,6 +483,32 @@ export default function CreateEventPage() {
             ))}
           </div>
         </section>
+        {/* Event Settings & Features */}
+        <section>
+          <h2 className="text-xl font-semibold text-foreground mb-4 border-b pb-2">Event Settings & Features</h2>
+          <div className="space-y-4">
+            <div className="flex flex-col gap-2">
+              <label className="flex items-center gap-2 cursor-pointer w-fit">
+                <input type="checkbox" className="w-5 h-5 text-primary rounded" 
+                  checked={formData.absorb_fees} onChange={e => setFormData({...formData, absorb_fees: e.target.checked})} />
+                <span className="text-sm font-medium text-foreground">Absorb Service Fee</span>
+              </label>
+              <p className="text-sm text-muted-foreground">If checked, the 5% service fee will be deducted from your payout rather than added to the ticket price.</p>
+            </div>
+            
+            
+
+            <div className="flex flex-col gap-2 pt-2">
+              <label className="flex items-center gap-2 cursor-pointer w-fit">
+                <input type="checkbox" className="w-5 h-5 text-primary rounded" 
+                  checked={formData.has_onsite_services} onChange={e => { setFormData({...formData, has_onsite_services: e.target.checked}); if (e.target.checked) { toast.success("Admin has been notified for onsite services request.", { icon: "??" }); } }} />
+                <span className="text-sm font-medium text-foreground">Enable On-site Services</span>
+              </label>
+              <p className="text-sm text-muted-foreground">This feature provides dedicated on-site staff for check-in and event management. It charges an additional 13% of the ticket price.</p>
+            </div>
+          </div>
+        </section>
+
 
       </div>
 

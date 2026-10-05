@@ -97,6 +97,9 @@ class Event(models.Model):
     
     # Additional Details
     organizer_contact = models.CharField(max_length=255, blank=True, help_text="Email or phone for attendee inquiries.")
+    instagram_handle = models.CharField(max_length=100, blank=True, help_text="Instagram handle for the event")
+    tiktok_handle = models.CharField(max_length=100, blank=True, help_text="TikTok handle for the event")
+    location_name = models.CharField(max_length=255, blank=True, help_text="Optional name of the location")
     emergency_contact = models.CharField(max_length=255, blank=True, help_text="Emergency contact info.")
     age_restriction = models.CharField(max_length=50, blank=True, help_text="e.g., '18+', 'None', '21 and over'")
     dress_code = models.CharField(max_length=100, blank=True, help_text="e.g., 'Casual', 'Black Tie', 'No specific dress code'")
