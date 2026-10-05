@@ -1,6 +1,6 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import StubView, OrganizerProfileViewSet, CustomUserViewSet, EventViewSet, EventCategoryViewSet, OrganizerVerificationView, google_auth, WaitlistEntryCreateView, PublicOrganizerProfileView
+from .views import StubView, OrganizerProfileViewSet, CustomUserViewSet, EventViewSet, EventCategoryViewSet, OrganizerVerificationView, google_auth, WaitlistEntryCreateView, PublicOrganizerProfileView, VerifyCodeView
 from .views_checkout import CheckoutView
 from .views_payment import PaystackWebhookView, PaymentVerifyView
 from .views_wallet import OrganizerWalletView, WalletTransactionListView
@@ -67,7 +67,7 @@ urlpatterns = [
     path('auth/', include('djoser.urls.jwt')),
     path('auth/social/', include('social_django.urls', namespace='social')),
     path('auth/google/', google_auth, name='google_auth'),
-    path('auth/verify-code/', views.VerifyCodeView.as_view(), name='verify_code'),
+    path('auth/verify-code/', VerifyCodeView.as_view(), name='verify_code'),
     
     # Waitlist
     path('events/<int:event_id>/waitlist/', WaitlistEntryCreateView.as_view(), name='event_waitlist'),
