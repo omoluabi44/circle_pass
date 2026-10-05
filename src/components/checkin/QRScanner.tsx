@@ -130,7 +130,7 @@ export function QRScanner({ eventId, onSuccess }: QRScannerProps) {
           if (scannerRef.current) {
             await scannerRef.current.start(
               selectedCamera,
-              { fps: 10, qrbox: { width: 250, height: 250 }, formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE] },
+              { fps: 10, qrbox: { width: 250, height: 250 } },
               onScanSuccess,
               onScanFailure
             );

@@ -374,13 +374,13 @@ export default function EventDetailsPage() {
                         );
                       } else if (isSoldOut && waitlistEnabled) {
                         return (
-                          <button 
-                            onClick={() => setIsCheckoutOpen(true)}
+                          <Link 
+                            href={`/events/${slug}/checkout`}
                             className="w-full py-4 bg-orange-500 text-white rounded-xl font-bold text-lg hover:bg-orange-600 transition shadow-[0_4px_14px_0_rgba(249,115,22,0.39)] flex items-center justify-center gap-2 relative overflow-hidden group"
                           >
                             <Ticket className="w-5 h-5 relative z-10" />
                             <span className="relative z-10">Join Waitlist</span>
-                          </button>
+                          </Link>
                         );
                       } else if (isSoldOut) {
                         return (

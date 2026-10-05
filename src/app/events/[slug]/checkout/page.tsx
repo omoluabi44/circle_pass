@@ -177,7 +177,7 @@ export default function CheckoutPage() {
       setSuccess(false);
       setSuccessData(null);
       setGuestStep(false);
-      setGuestData({ name: '', email: '', phone: '' });
+      setGuestData({ name: '', email: '', phone: '', password: '' });
       if (wasSuccess) {
         if (data?.isGuest && data?.tickets && data.tickets.length > 0) {
           router.push(`/t/${data.tickets[0].qr_token}`);
