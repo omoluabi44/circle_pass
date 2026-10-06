@@ -348,7 +348,7 @@ export default function WalletPage() {
             <p className="text-muted-foreground text-xs font-semibold uppercase tracking-wide mb-2">All-Time Earnings</p>
             <p className="text-2xl font-bold text-foreground">{formatCurrency(wallet.total_earnings)}</p>
             <div className="flex items-center gap-1 mt-1 text-xs text-green-500 font-medium">
-              <ArrowUpRight className="w-3 h-3" /><span>All time revenue</span>
+              <ArrowUpRight className="w-3 h-3" /><span>Total net earnings</span>
             </div>
           </div>
 
