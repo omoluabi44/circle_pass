@@ -19,11 +19,8 @@ class OrganizerWalletView(APIView):
     def get(self, request):
         try:
             from core.models import OrganizerProfile, OrganizerWallet
-            if getattr(request.user, 'role', '') == 'ADMIN':
-                wallet = OrganizerWallet.objects.first()
-            else:
-                profile = OrganizerProfile.objects.get(user=request.user)
-                wallet, _ = OrganizerWallet.objects.get_or_create(organizer=profile)
+            profile = OrganizerProfile.objects.get(user=request.user)
+            wallet, _ = OrganizerWallet.objects.get_or_create(organizer=profile)
             
             if not wallet:
                 raise Exception("No wallet")
@@ -64,11 +61,7 @@ class WalletTransactionListView(generics.ListAPIView):
         return WalletTransactionSerializer
 
     def get_queryset(self):
-        if getattr(self.request.user, 'role', '') == 'ADMIN':
-            wallet = OrganizerWallet.objects.first()
-            if not wallet:
-                return WalletTransaction.objects.none()
-            return WalletTransaction.objects.filter(wallet=wallet).order_by('-created_at')
+
 
         return WalletTransaction.objects.filter(
             wallet__organizer__user=self.request.user
