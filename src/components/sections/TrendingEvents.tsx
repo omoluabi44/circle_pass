@@ -127,7 +127,7 @@ export function TrendingEvents() {
 
                 {/* Details */}
                 <div className="flex flex-col flex-grow min-w-0">
-                  <h3 className="font-bold text-lg text-foreground truncate mb-2 group-hover:text-primary transition-colors">
+                  <h3 className="font-bold text-lg text-foreground uppercase truncate mb-2 group-hover:text-primary transition-colors">
                     {event.title}
                   </h3>
                   
