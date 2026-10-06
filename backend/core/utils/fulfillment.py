@@ -45,8 +45,14 @@ def fulfill_order(order, payment=None):
         # CirclePass keeps its 5% commission, and pays Paystack's 1.5%+₦100 fee from that 5%.
         # We never credit from pending; funds go straight to available_balance.
         if payment and payment.amount > 0:
-            organizer_credit = int(payment.amount * 0.95)
-            cp_fee = payment.amount - organizer_credit  # 5% retained by CirclePass
+            if order_fresh.fee_amount > 0:
+                # Buyer paid the fee. CirclePass takes exactly what was charged as the fee.
+                cp_fee = order_fresh.fee_amount
+                organizer_credit = payment.amount - cp_fee
+            else:
+                # Organizer absorbed the fee. CirclePass takes 5% of the final payment.
+                cp_fee = int(payment.amount * 0.05)
+                organizer_credit = payment.amount - cp_fee
 
             wallet, _ = OrganizerWallet.objects.get_or_create(organizer=order_fresh.event.organizer)
             OrganizerWallet.objects.filter(pk=wallet.pk).update(
