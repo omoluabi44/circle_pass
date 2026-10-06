@@ -1,6 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import { Trash2 } from "lucide-react";
+import { toast } from "react-hot-toast";
+import { useSession } from "next-auth/react";
+import { deleteAdminUser } from "@/lib/api/admin";
+
 
 interface User {
   id: number;
@@ -10,12 +15,32 @@ interface User {
   date_joined: string;
 }
 
-export default function UserListTabs({ users }: { users: User[] }) {
+export default function UserListTabs({ users: initialUsers }: { users: User[] }) {
+  const { data: session } = useSession();
   const [activeTab, setActiveTab] = useState<string>("ALL");
+  const [localUsers, setLocalUsers] = useState<User[]>(initialUsers);
+  const [isDeleting, setIsDeleting] = useState<number | null>(null);
 
   const filteredUsers = activeTab === "ALL" 
-    ? users 
-    : users.filter(u => u.role === activeTab);
+    ? localUsers 
+    : localUsers.filter(u => u.role === activeTab);
+
+  const handleDelete = async (userId: number) => {
+    if (!confirm("Are you sure you want to completely delete this user? This cannot be undone.")) return;
+    if (!session?.accessToken) return;
+    
+    setIsDeleting(userId);
+    try {
+      await deleteAdminUser(session.accessToken, userId);
+      setLocalUsers(prev => prev.filter(u => u.id !== userId));
+      toast.success("User deleted successfully.");
+    } catch (err: any) {
+      toast.error(err.message || "Failed to delete user.");
+    } finally {
+      setIsDeleting(null);
+    }
+  };
+
 
   return (
     <div>
@@ -48,7 +73,7 @@ export default function UserListTabs({ users }: { users: User[] }) {
           <tbody className="divide-y divide-gray-100">
             {filteredUsers.length === 0 ? (
               <tr>
-                <td colSpan={4} className="px-4 py-8 text-center text-muted-foreground">
+                <td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">
                   No users found in this category.
                 </td>
               </tr>
@@ -68,6 +93,16 @@ export default function UserListTabs({ users }: { users: User[] }) {
                   </td>
                   <td className="px-4 py-3 text-muted-foreground">
                     {new Date(u.date_joined).toLocaleDateString()}
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    <button 
+                      onClick={() => handleDelete(u.id)}
+                      disabled={isDeleting === u.id}
+                      className="p-2 text-destructive hover:bg-destructive/10 rounded-lg transition-colors disabled:opacity-50"
+                      title="Delete User"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                   </td>
                 </tr>
               ))
