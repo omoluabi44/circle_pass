@@ -285,7 +285,7 @@ if (!formData.title || !formData.start_time || !formData.end_time || !formData.o
                 <select className="w-full border border-border rounded-lg p-2.5 outline-none bg-background text-foreground"
                   value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})}>
                   <option value="" disabled>Select a category</option>
-                  {categories.filter((cat: any) => ["Music", "Comedy", "Sports", "Festivals", "Nightlife", "Tech", "Technology", "Conference", "Seminar"].includes(cat.name)).map((cat: any) => (
+                  {categories.filter((cat: any) => ["Music", "Comedy", "Sports", "Sport", "Festivals", "Festival", "Nightlife", "Tech", "Technology", "Conference", "Seminar"].includes(cat.name)).map((cat: any) => (
                     <option key={cat.id} value={cat.id || cat.name}>{cat.name}</option>
                   ))}
                 </select>
