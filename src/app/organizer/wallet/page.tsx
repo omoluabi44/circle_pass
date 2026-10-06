@@ -274,6 +274,19 @@ export default function WalletPage() {
   };
 
   // ── Submit Payout ────────────────────────────────────────────────────────────
+    const handleDeleteBank = async (id: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!token) return;
+    if (!confirm("Are you sure you want to remove this bank account?")) return;
+    try {
+      await deleteBankAccount(token, id);
+      setBankAccounts(prev => prev.filter(a => a.id !== id));
+      if (selectedAccount?.id === id) setSelectedAccount(null);
+    } catch (err: any) {
+      alert(err.message || "Failed to delete bank account");
+    }
+  };
+
   const handleConfirmPayout = async () => {
     if (!token || !selectedAccount || !feePreview) return;
     setSubmitting(true); setSubmitError("");
