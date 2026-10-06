@@ -1,29 +1,35 @@
-with open('backend/api/email.py', 'r', encoding='utf-8') as f:
+with open('backend/api/views.py', 'r', encoding='utf-8') as f:
     text = f.read()
 
-replacement = '''class CustomActivationEmail(email.ActivationEmail):
-    template_name = 'email/custom_activation.html'
+target = """    def perform_create(self, serializer, *args, **kwargs):
+        user = serializer.save(*args, **kwargs)
+        self._generate_code(user)
+        # Now send the signal which triggers the email
+        from djoser import signals
+        signals.user_registered.send(
+            sender=self.__class__, user=user, request=self.request
+        )"""
 
-    def get_context_data(self):
-        context = super().get_context_data()
-        context['url'] = context['url'] + '?next=/dashboard/tickets'
-        # Pass the verification code to the template
-        user = context.get('user')
-        if user and hasattr(user, 'verification_code'):
-            context['code'] = user.verification_code.code
-        else:
-            context['code'] = '0000'
-        return context'''
+replacement = """    def perform_create(self, serializer, *args, **kwargs):
+        user = serializer.save(*args, **kwargs)
+        self._generate_code(user)
+        
+        from djoser import signals
+        from djoser.compat import get_user_email
+        from djoser.conf import settings as djoser_settings
+        
+        signals.user_registered.send(
+            sender=self.__class__, user=user, request=self.request
+        )
 
-text = text.replace('''class CustomActivationEmail(email.ActivationEmail):
-    template_name = 'email/custom_activation.html'
+        context = {"user": user}
+        to = [get_user_email(user)]
+        if djoser_settings.SEND_ACTIVATION_EMAIL:
+            djoser_settings.EMAIL.activation(self.request, context).send(to)
+        elif djoser_settings.SEND_CONFIRMATION_EMAIL:
+            djoser_settings.EMAIL.confirmation(self.request, context).send(to)"""
 
-    def get_context_data(self):
-        # ActivationEmail provides context: user, uid, token, url
-        context = super().get_context_data()
-        # Append ?next=/dashboard/tickets to the activation URL
-        context['url'] = context['url'] + '?next=/dashboard/tickets'
-        return context''', replacement)
+text = text.replace(target, replacement)
 
-with open('backend/api/email.py', 'w', encoding='utf-8') as f:
+with open('backend/api/views.py', 'w', encoding='utf-8') as f:
     f.write(text)
