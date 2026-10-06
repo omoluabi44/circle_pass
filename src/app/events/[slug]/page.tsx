@@ -3,7 +3,8 @@
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
-import { Calendar, MapPin, Clock, Share2, Ticket, ArrowLeft, Users, Bookmark, Music2, Link as LinkIcon, MessageCircle } from "lucide-react";
+import { Calendar, MapPin, Clock, Share2, Ticket, ArrowLeft, Users, Bookmark, Music2, Link as LinkIcon, MessageCircle } , QrCode } from "lucide-react";
+import { QRCodeCanvas } from "qrcode.react";
 import { InstagramIcon } from "@/components/ui/InstagramIcon";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
@@ -31,6 +32,23 @@ export default function EventDetailsPage() {
   const [isMessageModalOpen, setIsMessageModalOpen] = useState(false);
   const [messageText, setMessageText] = useState("");
   const [isSendingMessage, setIsSendingMessage] = useState(false);
+
+  const downloadQRCode = () => {
+    const canvas = document.getElementById("event-qr-code") as HTMLCanvasElement;
+    if (canvas) {
+      const pngUrl = canvas
+        .toDataURL("image/png")
+        .replace("image/png", "image/octet-stream");
+      const downloadLink = document.createElement("a");
+      downloadLink.href = pngUrl;
+      downloadLink.download = `event-${event?.slug || "share"}-qr.png`;
+      document.body.appendChild(downloadLink);
+      downloadLink.click();
+      document.body.removeChild(downloadLink);
+      setIsShareOpen(false);
+      toast.success("QR Code downloaded!");
+    }
+  };
 
   useEffect(() => {
     // Fetch event details
@@ -182,6 +200,15 @@ export default function EventDetailsPage() {
 
   return (
     <div className="min-h-screen bg-background">
+      <div style={{ display: 'none' }}>
+        <QRCodeCanvas 
+          id="event-qr-code" 
+          value={typeof window !== 'undefined' ? window.location.href : `https://thecirclepass.com/events/${event.slug}`} 
+          size={512} 
+          level={"H"}
+          includeMargin={true}
+        />
+      </div>
       {/* Hero Banner (Placeholder Image) */}
       <div className="relative w-full h-[70vh] lg:h-screen bg-muted overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent z-10" />
@@ -268,6 +295,13 @@ export default function EventDetailsPage() {
                         >
                           <Music2 className="w-4 h-4 text-foreground" /> TikTok
                         </a>
+                          <div className="h-px bg-border my-1" />
+                          <button 
+                            onClick={downloadQRCode}
+                            className="flex items-center gap-3 w-full px-4 py-3 hover:bg-secondary text-sm font-medium transition-colors text-primary"
+                          >
+                            <QrCode className="w-4 h-4" /> Download QR Code
+                          </button>
                       </div>
                     )}
                   </div>
