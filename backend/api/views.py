@@ -53,12 +53,14 @@ class CustomUserViewSet(UserViewSet):
         )
         return code
 
-    def create(self, request, *args, **kwargs):
-        response = super().create(request, *args, **kwargs)
-        if response.status_code == 201:
-            user = User.objects.get(id=response.data['id'])
-            self._generate_code(user)
-        return response
+    def perform_create(self, serializer, *args, **kwargs):
+        user = serializer.save(*args, **kwargs)
+        self._generate_code(user)
+        # Now send the signal which triggers the email
+        from djoser import signals
+        signals.user_registered.send(
+            sender=self.__class__, user=user, request=self.request
+        )
 
     @action(["post"], detail=False)
     def resend_activation(self, request, *args, **kwargs):

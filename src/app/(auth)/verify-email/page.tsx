@@ -70,6 +70,9 @@ function VerifyEmailContent() {
     setIsLoading(true);
     try {
       const res = await fetch(`${API_URL}/auth/verify-code/`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, code: fullCode })
       });
       
       const data = await res.json();
@@ -107,6 +110,9 @@ function VerifyEmailContent() {
     if (!email) return;
     try {
       const res = await fetch(`${API_URL}/auth/users/resend_activation/`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email })
       });
       if (res.ok) {
         toast.success("New code sent!");
