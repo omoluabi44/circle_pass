@@ -467,7 +467,7 @@ class PayoutSerializer(serializers.ModelSerializer):
 
 class PayoutRequestSerializer(serializers.Serializer):
     """Validates an organizer's payout withdrawal request."""
-    amount = serializers.IntegerField(min_value=100_000, help_text='Amount in kobo. Minimum ₦1,000.')
+    amount = serializers.IntegerField(min_value=10_000, help_text='Amount in kobo. Minimum 100.')
     bank_account_id = serializers.IntegerField(help_text='ID of a saved OrganizerBankAccount.')
 
 
