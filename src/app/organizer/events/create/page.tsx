@@ -16,6 +16,32 @@ export default function CreateEventPage() {
   const [suggestions, setSuggestions] = useState<any[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [formData, setFormData] = useState({
+    title: "",
+    description: "",
+    category: "",
+    event_type: "PHYSICAL",
+    is_online: false,
+    venue: "",
+    country: "",
+    state: "",
+    city: "",
+    start_time: "",
+    end_time: "",
+    capacity: 0,
+    absorb_fees: false,
+    cover_image: null as File | null,
+    organizer_contact: "",
+    emergency_contact: "",
+    age_restriction: "",
+    dress_code: "",
+    lineup: "",
+    personalized_dp_enabled: false,
+    has_onsite_services: false,
+  instagram_handle: "",
+    tiktok_handle: "",
+    location_name: "",
+  });
 
   useEffect(() => {
     if (!locationQuery || locationQuery.length < 3 || locationQuery === formData.venue) {
@@ -82,32 +108,7 @@ export default function CreateEventPage() {
     fetchCats();
   }, []);
 
-  const [formData, setFormData] = useState({
-    title: "",
-    description: "",
-    category: "",
-    event_type: "PHYSICAL",
-    is_online: false,
-    venue: "",
-    country: "",
-    state: "",
-    city: "",
-    start_time: "",
-    end_time: "",
-    capacity: 0,
-    absorb_fees: false,
-    cover_image: null as File | null,
-    organizer_contact: "",
-    emergency_contact: "",
-    age_restriction: "",
-    dress_code: "",
-    lineup: "",
-    personalized_dp_enabled: false,
-    has_onsite_services: false,
-  instagram_handle: "",
-    tiktok_handle: "",
-    location_name: "",
-  });
+
 
   const [ticketTypes, setTicketTypes] = useState([
     { name: "General Admission", price: 0, quantity: 100, tier: "FREE", description: "" }
