@@ -86,10 +86,10 @@ export function TrendingEvents() {
           </Link>
         </div>
 
-        {/* Grid */}
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {/* Grid (Desktop) / Scroll (Mobile) */}
+        <div className="flex overflow-x-auto md:grid md:grid-cols-2 lg:grid-cols-3 gap-6 pb-6 snap-x snap-mandatory custom-scrollbar -mx-4 px-4 md:mx-0 md:px-0">
           {trendingEvents.map((event) => (
-            <Link href={`/events/${event.slug}`} key={event.id} className="group flex flex-col bg-card rounded-2xl overflow-hidden border border-border shadow-sm hover:shadow-xl transition-all duration-300">
+            <Link href={`/events/${event.slug}`} key={event.id} className="shrink-0 snap-start w-[85vw] sm:w-[60vw] md:w-auto group flex flex-col bg-card rounded-2xl overflow-hidden border border-border shadow-sm hover:shadow-xl transition-all duration-300">
               {/* Image Area */}
               <div className="relative w-full aspect-[4/3] bg-muted overflow-hidden">
                 <img 
