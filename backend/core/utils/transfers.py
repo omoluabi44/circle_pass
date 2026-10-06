@@ -36,11 +36,17 @@ def create_transfer_recipient(bank_code: str, account_number: str, account_name:
         'currency': 'NGN',
     }
     response = requests.post(url, json=payload, headers=_headers(), timeout=30)
-    response.raise_for_status()
-
-    data = response.json()
+    
+    try:
+        data = response.json()
+    except Exception:
+        response.raise_for_status()
+        return None
+        
     if not data.get('status'):
         raise ValueError(f"Paystack error: {data.get('message', 'Unknown error')}")
+        
+    response.raise_for_status()
 
     return data['data']['recipient_code']
 
@@ -62,11 +68,17 @@ def initiate_transfer(recipient_code: str, amount_kobo: int, reference: str) -> 
         'reason': f'CirclePass payout {reference}',
     }
     response = requests.post(url, json=payload, headers=_headers(), timeout=30)
-    response.raise_for_status()
-
-    data = response.json()
+    
+    try:
+        data = response.json()
+    except Exception:
+        response.raise_for_status()
+        return None
+        
     if not data.get('status'):
         raise ValueError(f"Paystack error: {data.get('message', 'Unknown error')}")
+        
+    response.raise_for_status()
 
     return data['data']['transfer_code']
 
