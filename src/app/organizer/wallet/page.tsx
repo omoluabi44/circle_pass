@@ -240,7 +240,7 @@ export default function WalletPage() {
   useEffect(() => {
     if (!amountNaira || !token) { setFeePreview(null); return; }
     const kobo = Math.round(parseFloat(amountNaira) * 100);
-    if (isNaN(kobo) || kobo < 100_000) { setFeePreview(null); return; }
+    if (isNaN(kobo) || kobo < 10_000) { setFeePreview(null); return; }
     const t = setTimeout(async () => {
       setFeeLoading(true);
       try {
@@ -305,7 +305,7 @@ export default function WalletPage() {
   );
 
   const amountKobo = amountNaira ? Math.round(parseFloat(amountNaira) * 100) : 0;
-  const canProceedAmount = amountKobo >= 100_000 && !!feePreview && !feeLoading;
+  const canProceedAmount = amountKobo >= 10_000 && !!feePreview && !feeLoading;
 
   return (
     <div className="p-6 md:p-8 max-w-5xl mx-auto">
@@ -594,7 +594,7 @@ export default function WalletPage() {
                         className="w-full border border-border rounded-lg pl-8 pr-4 py-2.5 text-sm focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
                       />
                     </div>
-                    <p className="text-xs text-muted-foreground mt-1">Minimum ₦1,000</p>
+                    <p className="text-xs text-muted-foreground mt-1">Minimum ?100</p>
                   </div>
 
                   {/* Live fee preview */}
