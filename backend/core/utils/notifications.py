@@ -82,8 +82,7 @@ Name: {name}
 Email: {recipient}
 Order Number: {order_number}
 
-Your ticket QR code will be activated 3 hours before the exact start time of the event.
-You can also access your ticket anytime by clicking the link below:
+You can view and download your digital ticket QR code anytime by clicking the link below:
 {ticket_link}
 
 The CirclePass Team"""

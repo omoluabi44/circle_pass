@@ -8,47 +8,56 @@ import { Save, Send, AlertCircle, Plus, Trash2, ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { toast } from "react-hot-toast";
 import { uploadToS3 } from "@/utils/s3Upload";
-import { useLoadScript, Autocomplete } from "@react-google-maps/api";
+
 
 
 export default function CreateEventPage() {
-  const { isLoaded } = useLoadScript({
-    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "",
-    libraries: ["places"],
-  });
+  const [locationQuery, setLocationQuery] = useState("");
+  const [suggestions, setSuggestions] = useState<any[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(false);
 
-  const [autocomplete, setAutocomplete] = useState<google.maps.places.Autocomplete | null>(null);
-
-  const onLoad = (autoC: google.maps.places.Autocomplete) => setAutocomplete(autoC);
-  const onPlaceChanged = () => {
-    if (autocomplete !== null) {
-      const place = autocomplete.getPlace();
-      if (place && place.address_components) {
-        let city = "";
-        let state = "";
-        let country = "";
-        let lga = "";
-        
-        place.address_components.forEach(component => {
-          const types = component.types;
-          if (types.includes("locality")) city = component.long_name;
-          if (types.includes("administrative_area_level_2") || types.includes("locality")) lga = component.long_name;
-          if (types.includes("administrative_area_level_1")) state = component.long_name;
-          if (types.includes("country")) country = component.long_name;
-        });
-
-        // Use the main venue name (e.g. Landmark Centre) or fallback to full formatted address
-        const venueName = place.name || place.formatted_address || "";
-        
-        setFormData(prev => ({
-          ...prev,
-          venue: venueName + (lga && lga !== city ? `, ${lga}` : ""),
-          city: city || lga,
-          state,
-          country
-        }));
-      }
+  useEffect(() => {
+    if (!locationQuery || locationQuery.length < 3 || locationQuery === formData.venue) {
+      setSuggestions([]);
+      return;
     }
+
+    const timer = setTimeout(async () => {
+      setIsSearching(true);
+      try {
+        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(locationQuery)}&addressdetails=1&limit=5`);
+        const data = await res.json();
+        setSuggestions(data);
+        setShowSuggestions(true);
+      } catch (err) {
+        console.error("Location search failed", err);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 600);
+
+    return () => clearTimeout(timer);
+  }, [locationQuery, formData.venue]);
+
+  const handleSelectLocation = (place: any) => {
+    const address = place.address || {};
+    const city = address.city || address.town || address.village || address.county || "";
+    const state = address.state || address.region || "";
+    const country = address.country || "";
+    const venueName = place.display_name.split(',')[0];
+    const fullVenue = venueName + (city && city !== venueName ? `, ${city}` : "");
+
+    setFormData(prev => ({
+      ...prev,
+      venue: fullVenue,
+      city: city,
+      state: state,
+      country: country
+    }));
+    
+    setLocationQuery(fullVenue);
+    setShowSuggestions(false);
   };
 
   const { data: session } = useSession();

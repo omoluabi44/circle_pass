@@ -52,7 +52,7 @@ export default function PublicTicketView() {
   }
 
   const startDate = new Date(ticket.event.start_time);
-  const isPending = ticket.status === 'ISSUED'; // ISSUED means it hasn't been activated yet (3 hours before)
+
 
   return (
     <div className="min-h-screen bg-background py-12 px-4 sm:px-6">
@@ -110,12 +110,6 @@ export default function PublicTicketView() {
               </div>
 
               <div className="flex flex-col items-center p-6 bg-secondary/30 rounded-2xl w-full sm:w-auto">
-                {isPending ? (
-                  <div className="w-40 h-40 bg-secondary flex flex-col items-center justify-center rounded-xl text-center p-4 border-2 border-dashed border-border">
-                    <Clock className="w-8 h-8 text-muted-foreground mb-2" />
-                    <p className="text-sm font-medium text-muted-foreground">QR Available 3hrs before event</p>
-                  </div>
-                ) : (
                   <>
                     <div className="bg-white p-3 rounded-xl shadow-sm mb-4">
                       <QRCodeSVG value={ticket.qr_token} size={160} />
@@ -124,7 +118,6 @@ export default function PublicTicketView() {
                       ACTIVE
                     </span>
                   </>
-                )}
               </div>
             </div>
 

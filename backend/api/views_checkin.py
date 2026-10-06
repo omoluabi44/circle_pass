@@ -1,8 +1,6 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status, permissions
-from django.utils import timezone
-from datetime import timedelta
 from django.db import transaction
 from django.db.models import Q
 
@@ -63,12 +61,7 @@ class CheckInScanView(APIView):
                 return Response({"detail": "You do not have permission to scan tickets for this event."}, status=status.HTTP_403_FORBIDDEN)
 
             
-            # 3. Apply lazy activation just in case it wasn't triggered yet
-            if ticket.status == 'ISSUED':
-                activation_threshold = ticket.order.event.start_time - timedelta(hours=3)
-                if timezone.now() >= activation_threshold:
-                    ticket.status = 'ACTIVE'
-                    ticket.save(update_fields=['status'])
+
             
             # 4. Check status and process transition
             scan_status = 'Invalid'
@@ -84,9 +77,7 @@ class CheckInScanView(APIView):
             elif ticket.status == 'INVALIDATED':
                 scan_status = 'Invalid'
                 response_detail = "This ticket is invalidated."
-            elif ticket.status == 'ISSUED':
-                scan_status = 'Invalid'
-                response_detail = "This ticket is not yet active (activates 3 hours before event)."
+
             elif ticket.status == 'ACTIVE':
                 # Success path
                 ticket.status = 'USED'

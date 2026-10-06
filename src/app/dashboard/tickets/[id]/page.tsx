@@ -91,13 +91,7 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
         {/* QR Code Section */}
         <div className="p-8 flex flex-col items-center justify-center border-b border-dashed border-border bg-white">
           <div className="relative bg-white p-4 rounded-xl shadow-sm border border-border w-64 h-64 flex items-center justify-center">
-            {isIssued ? (
-              <div className="absolute inset-0 bg-background/80 backdrop-blur-sm rounded-xl flex flex-col items-center justify-center p-4 text-center z-10">
-                <Lock className="w-10 h-10 text-muted-foreground mb-3" />
-                <p className="font-semibold text-foreground text-sm">QR Code Locked</p>
-                <p className="text-xs text-muted-foreground mt-1">Unlocks exactly 3 hours before the event starts.</p>
-              </div>
-            ) : isUsed ? (
+            {isUsed ? (
               <div className="absolute inset-0 bg-background/80 backdrop-blur-sm rounded-xl flex flex-col items-center justify-center p-4 text-center z-10">
                 <CheckCircle className="w-12 h-12 text-green-500 mb-3" />
                 <p className="font-bold text-foreground text-lg">Checked In</p>
@@ -111,7 +105,7 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
               size={200}
               level="H"
               includeMargin={false}
-              className={isIssued || isUsed ? "opacity-30 filter blur-sm" : ""}
+              className={isUsed ? "opacity-30 filter blur-sm" : ""}
             />
           </div>
           <p className="mt-4 text-sm font-mono text-muted-foreground tracking-widest">{ticket.id.toString().padStart(8, '0')}</p>
@@ -137,7 +131,7 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
             <Info className="w-5 h-5 text-primary shrink-0 mt-0.5" />
             <p className="text-sm text-muted-foreground">
               Please present this QR code at the entrance. Turn up your screen brightness for faster scanning. 
-              {isIssued && " Your code will automatically unlock 3 hours prior to the event."}
+
             </p>
           </div>
         </div>

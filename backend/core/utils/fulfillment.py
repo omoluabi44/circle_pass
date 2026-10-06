@@ -32,7 +32,7 @@ def fulfill_order(order, payment=None):
                     ticket_type=item.ticket_type,
                     attendee_name=order_fresh.guest_name or (order_fresh.attendee.user.get_full_name() if order_fresh.attendee else ''),
                     attendee_email=order_fresh.guest_email or (order_fresh.attendee.user.email if order_fresh.attendee else ''),
-                    status='ISSUED',
+                    status='ACTIVE',
                     qr_token=generate_secure_qr_token(),
                     issued_at=timezone.now(),
                 )
