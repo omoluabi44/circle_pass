@@ -96,7 +96,7 @@ class PayoutFeePreviewView(APIView):
         except (ValueError, TypeError):
             return Response({'detail': 'amount must be a valid integer (kobo).'}, status=400)
 
-        if amount_kobo < 100_000:  # Minimum ₦1,000
+        if amount_kobo < 10_000:  # Minimum ₦1,000
             return Response({'detail': 'Minimum withdrawal amount is ₦1,000.'}, status=400)
 
         payout_charge = calculate_paystack_transfer_fee(amount_kobo)

@@ -587,7 +587,7 @@ export default function WalletPage() {
                     <div className="relative">
                       <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground font-semibold">₦</span>
                       <input
-                        type="number" min="1000" step="100"
+                        type="number" min="100" step="100"
                         value={amountNaira}
                         onChange={e => setAmountNaira(e.target.value)}
                         placeholder="0.00"
