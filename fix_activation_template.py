@@ -1,4 +1,4 @@
-{% load i18n %}
+text = """{% load i18n %}
 
 {% block subject %}
 Verify your CirclePass Account
@@ -53,3 +53,7 @@ The {{ site_name }} Team
   </div>
 </div>
 {% endblock html_body %}
+"""
+
+with open('backend/templates/email/custom_activation.html', 'w', encoding='utf-8') as f:
+    f.write(text)
