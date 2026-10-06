@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
-import { Calendar, MapPin, Clock, Share2, Ticket, ArrowLeft, Users, Bookmark, Music2, Link as LinkIcon, MessageCircle } , QrCode } from "lucide-react";
+import { Calendar, MapPin, Clock, Share2, Ticket, ArrowLeft, Users, Bookmark, Music2, Link as LinkIcon, MessageCircle , QrCode } from "lucide-react";
 import { QRCodeCanvas } from "qrcode.react";
 import { InstagramIcon } from "@/components/ui/InstagramIcon";
 import Link from "next/link";
