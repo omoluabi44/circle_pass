@@ -52,7 +52,7 @@ export default function TicketsPage() {
   const openEditModal = (ticket: any) => {
     setEditingTicketId(ticket.id);
     setName(ticket.name);
-    setPrice(ticket.price.toString());
+    setPrice((ticket.price / 100).toString());
     setQuantity(ticket.quantity.toString());
     setTier(ticket.tier);
     setShowModal(true);
@@ -90,7 +90,7 @@ export default function TicketsPage() {
       const ticketTypeData: any = {
         name,
         tier,
-        price: Number(price) || 0,
+        price: (Number(price) || 0) * 100,
         quantity: Number(quantity),
         description: "",
         is_active: true
@@ -160,7 +160,7 @@ export default function TicketsPage() {
                     {ticket.is_sold_out && <span className="px-2 py-0.5 text-xs bg-destructive/10 text-destructive rounded-full">Sold out</span>}
                   </td>
                   <td className="p-4 text-sm text-muted-foreground">{ticket.tier}</td>
-                  <td className="p-4 text-sm text-foreground">₦{Number(ticket.price).toLocaleString()}</td>
+                  <td className="p-4 text-sm text-foreground">₦{(Number(ticket.price) / 100).toLocaleString()}</td>
                   <td className="p-4 text-sm text-foreground">
                     {ticket.quantity_sold || 0} / {ticket.quantity}
                   </td>
