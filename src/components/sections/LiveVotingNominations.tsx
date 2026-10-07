@@ -9,7 +9,6 @@ export function LiveVotingNominations() {
 
   return (
     <section className="py-24 px-4 bg-cover bg-center bg-no-repeat relative" id="voting" style={{ backgroundImage: "url('/voting_section.PNG')" }}>
-      <div className="absolute inset-0 bg-black/60 z-0" />
       <div className="container mx-auto relative z-10">
         {/* Toggle Button */}
         <div className="flex justify-center mb-12">
