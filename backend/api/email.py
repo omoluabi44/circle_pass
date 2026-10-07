@@ -13,4 +13,35 @@ class CustomActivationEmail(email.ActivationEmail):
             context['code'] = user.verification_code.code
         else:
             context['code'] = '0000'
+            
+        context['frontend_url'] = getattr(settings, 'FRONTEND_URL', 'https://thecirclepass.com')
+        return context
+
+
+class CustomPasswordResetEmail(email.PasswordResetEmail):
+    template_name = 'email/password_reset.html'
+
+    def get_context_data(self):
+        context = super().get_context_data()
+        user = context.get('user')
+        domain = getattr(settings, 'DOMAIN', 'thecirclepass.com')
+        uid = context.get('uid')
+        token = context.get('token')
+        frontend_url = getattr(settings, 'FRONTEND_URL', 'https://thecirclepass.com')
+
+        context['first_name'] = user.first_name or user.username or 'There'
+        context['reset_url'] = f"{frontend_url}/reset-password/{uid}/{token}"
+        context['frontend_url'] = frontend_url
+        return context
+
+
+class CustomConfirmationEmail(email.ConfirmationEmail):
+    template_name = 'email/account_created.html'
+
+    def get_context_data(self):
+        context = super().get_context_data()
+        user = context.get('user')
+        frontend_url = getattr(settings, 'FRONTEND_URL', 'https://thecirclepass.com')
+        context['first_name'] = user.first_name or user.username or 'There'
+        context['frontend_url'] = frontend_url
         return context

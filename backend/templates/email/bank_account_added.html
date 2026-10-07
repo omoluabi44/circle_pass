@@ -1,0 +1,121 @@
+﻿<div style="font-family: 'Roboto', Arial, sans-serif; background-color: #f9fafb; padding: 40px 20px;">
+  <div style="max-width: 520px; margin: 0 auto; background: #ffffff; border-radius: 16px; padding: 40px 32px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); border: 1px solid #e5e7eb;">
+    
+    <!-- Header Logo -->
+    <div style="text-align: center; margin-bottom: 24px;">
+      <table cellpadding="0" cellspacing="0" border="0" align="center">
+        <tr>
+          <td>
+            <img src="{{ frontend_url }}/logo.png" alt="Circlepass Logo" style="height: 40px; display: block; margin-right: 8px;">
+          </td>
+          <td>
+            <span style="font-family: 'Fredoka', sans-serif; font-size: 28px; font-weight: 600; color: #3730a3;">Circlepass</span>
+          </td>
+        </tr>
+      </table>
+    </div>
+
+    <!-- Title -->
+    <h1 style="text-align: center; font-size: 24px; font-weight: 700; color: #1f2937; margin: 0 0 16px 0;">
+      Your bank account has been added
+    </h1>
+    
+    <!-- Separator line -->
+    <div style="text-align: center; margin-bottom: 32px;">
+      <div style="width: 48px; height: 2px; background-color: #3730a3; display: inline-block;"></div>
+    </div>
+
+    <!-- Body -->
+    <p style="color: #1f2937; font-size: 15px; margin: 0 0 16px 0; line-height: 1.6;">
+      Hi {{ first_name }},
+    </p>
+    <p style="color: #4b5563; font-size: 15px; margin: 0 0 24px 0; line-height: 1.6;">
+      Great news! You've successfully added a new bank account to your Circlepass profile. You can now use it for seamless payouts and transactions.
+    </p>
+
+    <!-- Details Box -->
+    <div style="background-color: #f5f3ff; border: 1px solid #ede9fe; border-radius: 12px; padding: 24px; margin-bottom: 32px;">
+      
+      <!-- Row 1: Bank Name -->
+      <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom: 16px;">
+        <tr>
+          <td width="36" valign="top">
+            <span style="font-size: 24px; color: #4338ca;">🏦</span>
+          </td>
+          <td valign="top">
+            <div style="font-size: 11px; font-weight: 600; color: #6b7280; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 4px;">Bank Name</div>
+            <div style="font-size: 16px; font-weight: 600; color: #1f2937;">{{ bank_name }}</div>
+          </td>
+        </tr>
+      </table>
+      
+      <hr style="border: 0; border-top: 1px solid #ede9fe; margin: 0 0 16px 0;">
+      
+      <!-- Row 2: Account Number -->
+      <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom: 16px;">
+        <tr>
+          <td width="36" valign="top">
+            <span style="font-size: 24px; color: #4338ca;">💳</span>
+          </td>
+          <td valign="top">
+            <div style="font-size: 11px; font-weight: 600; color: #6b7280; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 4px;">Account Number</div>
+            <div style="font-size: 16px; font-weight: 600; color: #1f2937;">{{ masked_account_number }}</div>
+          </td>
+        </tr>
+      </table>
+
+      <hr style="border: 0; border-top: 1px solid #ede9fe; margin: 0 0 16px 0;">
+      
+      <!-- Row 3: Status -->
+      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          <td width="36" valign="top">
+            <div style="background-color: #4338ca; color: white; width: 24px; height: 24px; border-radius: 50%; text-align: center; line-height: 24px; font-size: 14px;">✓</div>
+          </td>
+          <td valign="top">
+            <div style="font-size: 11px; font-weight: 600; color: #6b7280; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 4px;">Status</div>
+            <div style="font-size: 16px; font-weight: 600; color: #1f2937;">Verified</div>
+          </td>
+        </tr>
+      </table>
+
+    </div>
+
+    <!-- Button -->
+    <div style="text-align: center; margin-bottom: 24px;">
+      <a href="{{ frontend_url }}/organizer/wallet" style="display: block; width: 100%; box-sizing: border-box; background-color: #3730a3; color: #ffffff; font-weight: 600; font-size: 16px; text-decoration: none; padding: 16px; border-radius: 8px; text-align: center;">
+        View Account Details
+      </a>
+    </div>
+
+    <!-- Security Warning -->
+    <p style="color: #374151; font-size: 13px; line-height: 1.5; margin: 0 0 24px 0;">
+      If you didn't make this change, please secure your account immediately or contact support.
+    </p>
+
+    <!-- Sign off -->
+    <p style="color: #1f2937; font-size: 15px; margin: 0 0 32px 0; line-height: 1.5;">
+      Best,<br>
+      The Circlepass team
+    </p>
+
+    <!-- Divider -->
+    <hr style="border: 0; border-top: 1px solid #e5e7eb; margin: 0 0 24px 0;">
+
+    <!-- Footer Logo -->
+    <div style="text-align: center;">
+      <table cellpadding="0" cellspacing="0" border="0" align="center">
+        <tr>
+          <td>
+            <img src="{{ frontend_url }}/logo.png" alt="Circlepass Logo" style="height: 24px; display: block; margin-right: 6px;">
+          </td>
+          <td>
+            <span style="font-family: 'Fredoka', sans-serif; font-size: 20px; font-weight: 600; color: #3730a3;">Circlepass</span>
+          </td>
+        </tr>
+      </table>
+    </div>
+
+  </div>
+</div>
+

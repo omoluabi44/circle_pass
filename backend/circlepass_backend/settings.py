@@ -115,6 +115,8 @@ DJOSER = {
     'ACTIVATION_URL': 'verify-email/{uid}/{token}',
     'EMAIL': {
         'activation': 'api.email.CustomActivationEmail',
+        'password_reset': 'api.email.CustomPasswordResetEmail',
+        'confirmation': 'api.email.CustomConfirmationEmail',
     },
     'SERIALIZERS': {
         'user_create': 'api.serializers.UserCreateSerializer',

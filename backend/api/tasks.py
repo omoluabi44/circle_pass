@@ -241,51 +241,65 @@ The CirclePass Team"""
 @shared_task
 def send_event_announcement_email(announcement_id):
     from core.models import EventAnnouncement, Order
+    from django.template.loader import render_to_string
     try:
         announcement = EventAnnouncement.objects.get(id=announcement_id)
         event = announcement.event
-        
+        organizer_name = event.organizer.company_name or 'The Organizer'
+        frontend_url = getattr(settings, 'FRONTEND_URL', 'https://thecirclepass.com')
+        event_slug = getattr(event, 'slug', event.id)
+
         # Get all completed orders for this event
-        orders = Order.objects.filter(event=event, status='COMPLETED')
-        
-        # Collect unique emails
-        emails = set()
+        orders = Order.objects.filter(event=event, status='COMPLETED').select_related(
+            'attendee__user'
+        )
+
+        # Build per-recipient entries {email: name}
+        recipients = {}
         for order in orders:
             if order.guest_email:
-                emails.add(order.guest_email)
+                name = (order.guest_name or 'Guest').split(' ')[0]
+                recipients[order.guest_email] = name
             elif order.attendee and order.attendee.user.email:
-                emails.add(order.attendee.user.email)
-                
-        if not emails:
+                user = order.attendee.user
+                name = (user.get_full_name() or user.username or 'Guest').split(' ')[0]
+                recipients[user.email] = name
+
+        if not recipients:
             return "No attendees to notify."
-            
-        subject = f"Announcement: {announcement.title} - {event.title}"
-        title = f"Message from {event.organizer.company_name}"
-        
-        message = (
-            f"Hello,\n\n"
-            f"The organizer of '{event.title}' has posted a new announcement:\n\n"
-            f"<strong>{announcement.title}</strong>\n"
-            f"{'-'*40}\n"
-            f"{announcement.message}\n\n"
-            f"Best regards,\n"
-            f"CirclePass on behalf of {event.organizer.company_name}"
-        )
-        
-        # Send mass HTML email
+
+        subject = f"Announcement: {announcement.title} — {event.title}"
+
         connection = get_connection()
         messages = []
-        html_content = get_html_email(title, message)
-        
-        for email in emails:
-            msg = EmailMultiAlternatives(subject, message, settings.DEFAULT_FROM_EMAIL, [email], connection=connection)
+
+        for email_addr, first_name in recipients.items():
+            context = {
+                'attendee_name': first_name,
+                'organizer_name': organizer_name,
+                'announcement_message': announcement.message,
+                'event_slug': event_slug,
+                'frontend_url': frontend_url,
+            }
+            html_content = render_to_string('email/event_announcement.html', context)
+            plain_text = (
+                f"Hi {first_name},\n\n"
+                f"An announcement from {organizer_name}:\n\n"
+                f"{announcement.message}\n\n"
+                f"Best regards,\nThe {organizer_name} Team"
+            )
+            msg = EmailMultiAlternatives(
+                subject, plain_text, settings.DEFAULT_FROM_EMAIL, [email_addr],
+                connection=connection
+            )
             msg.attach_alternative(html_content, "text/html")
             messages.append(msg)
-            
+
         if messages:
             connection.send_messages(messages)
-            
-        return f"Announcement {announcement_id} sent to {len(emails)} attendees."
+
+        return f"Announcement {announcement_id} sent to {len(recipients)} attendees."
     except Exception as e:
         import traceback
         return str(traceback.format_exc())
+

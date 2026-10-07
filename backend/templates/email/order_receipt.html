@@ -1,60 +1,116 @@
 <div style="font-family: 'Roboto', Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 12px; overflow: hidden; border: 1px solid #e5e7eb;">
-  <div style="background: #6366f1; padding: 32px; text-align: center;">
-    <h1 style="color: #ffffff; font-family: 'Fredoka', sans-serif; font-size: 28px; margin: 0;">CirclePass</h1>
+  <div style="padding: 32px; border-bottom: 1px solid #e5e7eb;">
+    <table width="100%" cellpadding="0" cellspacing="0" border="0">
+      <tr>
+        <td width="48" style="vertical-align: middle;">
+          <img src="{{ frontend_url }}/logo.png" alt="CirclePass Logo" style="height: 48px; width: auto; border-radius: 50%;">
+        </td>
+        <td style="vertical-align: middle; padding-left: 12px;">
+          <div style="font-family: 'Fredoka', sans-serif; font-size: 24px; font-weight: bold; color: #1a1a1a;">CirclePass</div>
+          <div style="font-size: 14px; color: #6b7280; margin-top: 2px;">Your pass to great experiences.</div>
+        </td>
+      </tr>
+    </table>
   </div>
 
   <div style="padding: 32px;">
-    <h2 style="color: #1a1a1a; font-size: 24px; margin-top: 0;">Your Ticket is Confirmed!</h2>
-
-    <p style="color: #4a4a4a; font-size: 16px; line-height: 1.6;">
-      Hello <strong>{{ first_name }}</strong>,
+    <h1 style="color: #1a1a1a; font-size: 32px; margin: 0 0 8px 0; line-height: 1.2;">
+      Your ticket is confirmed, <span style="color: #6366f1;">{{ first_name }}</span>.
+    </h1>
+    <p style="color: #4a4a4a; font-size: 18px; margin: 0 0 32px 0;">
+      We'll see you at {{ event.title }}.
     </p>
 
-    <p style="color: #4a4a4a; font-size: 16px; line-height: 1.6;">
-      Thank you for purchasing your ticket with CirclePass. Your ticket has been successfully confirmed.
-    </p>
+    {% for ticket in tickets %}
+    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom: 24px;">
+      <tr>
+        <!-- Event Image (left column) -->
+        <td width="50%" valign="top" style="padding-right: 16px;">
+          {% if event.cover_image %}
+            <img src="{{ event.cover_image }}" alt="{{ event.title }}" style="width: 100%; border-radius: 12px; object-fit: cover; aspect-ratio: 4/3;">
+          {% else %}
+            <div style="width: 100%; padding-bottom: 75%; background-color: #f3f4f6; border-radius: 12px;"></div>
+          {% endif %}
+        </td>
+        <!-- Info (right column) -->
+        <td width="50%" valign="top">
+          <div style="margin-bottom: 16px;">
+            <table cellpadding="0" cellspacing="0" border="0">
+              <tr>
+                <td>
+                  <p style="margin: 0; font-size: 14px; font-weight: bold; color: #1a1a1a;">{{ event.start_date|date:"l, j M Y" }}</p>
+                  <p style="margin: 4px 0 0 0; font-size: 13px; color: #6b7280;">{{ event.start_date|date:"g:i A" }} - {{ event.end_date|date:"g:i A" }}</p>
+                  <p style="margin: 4px 0 0 0; font-size: 13px; color: #6b7280;">{{ event.location }}</p>
+                </td>
+              </tr>
+            </table>
+          </div>
 
-    <div style="background: #f3f4f6; border-radius: 8px; padding: 16px; margin: 24px 0;">
-      <h3 style="margin-top: 0; color: #1a1a1a; font-size: 16px;">Your Ticket Details</h3>
-      <p style="color: #4a4a4a; font-size: 14px; margin: 4px 0;"><strong>Name:</strong> {{ name }}</p>
-      <p style="color: #4a4a4a; font-size: 14px; margin: 4px 0;"><strong>Email:</strong> {{ email }}</p>
-      <p style="color: #4a4a4a; font-size: 14px; margin: 4px 0;"><strong>Order Number:</strong> {{ order_number }}</p>
+          <div style="border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; background-color: #ffffff;">
+            <div style="font-size: 11px; font-weight: bold; color: #8b5cf6; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 8px;">Your Ticket</div>
+            <div style="font-size: 16px; font-weight: bold; color: #1a1a1a; margin-bottom: 4px; text-transform: uppercase;">{{ ticket.ticket_type.name }}</div>
+            <div style="font-size: 14px; color: #4a4a4a;">1 x Admission Ticket</div>
+          </div>
+        </td>
+      </tr>
+    </table>
+
+    <div style="text-align: center; margin: 40px 0;">
+      <div style="display: inline-block; padding: 16px; background: #ffffff; border-radius: 16px; border: 1px solid #e5e7eb; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
+        <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data={{ ticket.qr_token }}" alt="QR Code" style="width: 200px; height: 200px; display: block;">
+      </div>
+      <div style="margin-top: 16px; font-size: 18px; font-weight: bold; color: #1a1a1a; letter-spacing: 1px; font-family: monospace;">
+        {{ ticket.qr_token|upper }}
+      </div>
+      <div style="margin-top: 12px; font-size: 14px; color: #6b7280;">
+        <span style="display: inline-block; background-color: #f3f4f6; padding: 4px 8px; border-radius: 4px; border: 1px solid #e5e7eb;">
+          Present this QR code at the entrance.
+        </span>
+      </div>
     </div>
+    
+    {% if not forloop.last %}
+    <hr style="border: 0; border-top: 1px solid #e5e7eb; margin: 32px 0;">
+    {% endif %}
+    {% endfor %}
 
-    <h3 style="color: #1a1a1a; font-size: 18px; margin-top: 32px;">Your QR Code</h3>
-    <p style="color: #4a4a4a; font-size: 15px; line-height: 1.6;">
-      Your ticket QR code is now <strong>active and ready to use</strong>.
-    </p>
-    <p style="color: #4a4a4a; font-size: 15px; line-height: 1.6;">
-      You can view and present your digital ticket QR code at the event entrance by clicking the link below.
-    </p>
-
-    <div style="text-align: center; margin: 32px 0;">
+    <div style="text-align: center; margin-top: 32px;">
       <a href="{{ ticket_link }}"
          style="display: inline-block; background: #6366f1; color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-size: 16px; font-weight: 600;">
-        Access My Ticket / Sign In to Attendee Dashboard
+        Access My Tickets Online
       </a>
     </div>
 
-    <p style="color: #6b7280; font-size: 14px; line-height: 1.6;">
-      Please keep this email for your records and ensure you have access to the email address used for your ticket purchase.
-    </p>
-    
     {% if is_guest %}
-    <p style="color: #6b7280; font-size: 14px; line-height: 1.6; margin-top: 16px; border-top: 1px solid #e5e7eb; pt-4;">
+    <p style="color: #6b7280; font-size: 14px; line-height: 1.6; margin-top: 32px; text-align: center;">
       <strong>Want to manage all your tickets in one place?</strong><br>
-      <a href="{{ signup_link }}" style="color: #6366f1; text-decoration: none; font-weight: 500;">Sign up for a free CirclePass Attendee Account</a> using this email address!
+      <a href="{{ signup_link }}" style="color: #6366f1; text-decoration: none; font-weight: 500;">Sign up for a free CirclePass Attendee Account</a>
     </p>
     {% endif %}
 
   </div>
 
-  <div style="background: #f9fafb; padding: 24px 32px; text-align: center; border-top: 1px solid #e5e7eb;">
-    <p style="color: #9ca3af; font-size: 14px; margin: 0 0 8px 0;">
-      We look forward to having you at the event.
-    </p>
-    <p style="color: #9ca3af; font-size: 14px; font-weight: 500; margin: 0;">
-      Warm regards,<br>The CirclePass Team
-    </p>
+  <div style="padding: 24px 32px; border-top: 1px solid #e5e7eb;">
+    <table width="100%" cellpadding="0" cellspacing="0" border="0">
+      <tr>
+        <td width="50%" valign="middle">
+          <table cellpadding="0" cellspacing="0" border="0">
+            <tr>
+              <td width="32">
+                <img src="{{ frontend_url }}/logo.png" alt="CirclePass Logo" style="height: 32px; width: auto; border-radius: 50%;">
+              </td>
+              <td style="padding-left: 8px;">
+                <div style="font-family: 'Fredoka', sans-serif; font-size: 16px; font-weight: bold; color: #1a1a1a;">CirclePass</div>
+                <div style="font-size: 11px; color: #6b7280;">Your pass to great experiences.</div>
+              </td>
+            </tr>
+          </table>
+        </td>
+        <td width="50%" valign="middle" align="right">
+          <div style="font-size: 12px; color: #6b7280; margin-bottom: 4px;">Need help with your ticket?</div>
+          <div style="font-size: 13px; font-weight: 500; color: #1a1a1a;">support@circlepass.com</div>
+        </td>
+      </tr>
+    </table>
   </div>
 </div>

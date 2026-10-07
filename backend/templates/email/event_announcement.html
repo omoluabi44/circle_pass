@@ -1,0 +1,83 @@
+﻿<div style="font-family: 'Roboto', Arial, sans-serif; background-color: #ffffff; max-width: 600px; margin: 0 auto; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden;">
+
+  <!-- Header -->
+  <div style="padding: 20px 28px; border-bottom: 1px solid #e5e7eb;">
+    <table width="100%" cellpadding="0" cellspacing="0" border="0">
+      <tr>
+        <!-- Logo (Left) -->
+        <td valign="middle">
+          <table cellpadding="0" cellspacing="0" border="0">
+            <tr>
+              <td style="padding-right: 8px;">
+                <img src="{{ frontend_url }}/logo.png" alt="CirclePass Logo" style="height: 32px; display: block;">
+              </td>
+              <td>
+                <span style="font-family: 'Fredoka', sans-serif; font-size: 22px; font-weight: 700; color: #1f2937;">CirclePass</span>
+              </td>
+            </tr>
+          </table>
+        </td>
+        <!-- Official Badge (Right) -->
+        <td valign="middle" align="right">
+          <div style="display: inline-block; border: 1px solid #e5e7eb; border-radius: 20px; padding: 6px 14px; font-size: 13px; color: #374151; font-weight: 500;">
+            &#128737; Official announcement
+          </div>
+        </td>
+      </tr>
+    </table>
+  </div>
+
+  <!-- Body -->
+  <div style="padding: 32px 28px;">
+
+    <!-- Greeting -->
+    <h1 style="font-size: 26px; font-weight: 700; color: #111827; margin: 0 0 8px 0; line-height: 1.3;">
+      Hi {{ attendee_name }},
+    </h1>
+    <p style="font-size: 15px; color: #6b7280; margin: 0 0 24px 0;">
+      An announcement from {{ organizer_name }}
+    </p>
+
+    <!-- Message Box -->
+    <div style="background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 10px; padding: 24px; margin-bottom: 32px;">
+      <p style="font-size: 15px; color: #374151; line-height: 1.7; margin: 0; white-space: pre-line;">{{ announcement_message }}</p>
+      <p style="font-size: 15px; color: #374151; line-height: 1.7; margin: 24px 0 0 0;">
+        Best regards,<br>
+        The {{ organizer_name }} Team
+      </p>
+    </div>
+
+    <!-- View Event Button -->
+    <div style="text-align: center; margin-bottom: 8px;">
+      <a href="{{ frontend_url }}/events/{{ event_slug }}" style="display: inline-block; background-color: #2563eb; color: #ffffff; font-weight: 600; font-size: 16px; text-decoration: none; padding: 16px 56px; border-radius: 8px;">
+        View Event
+      </a>
+    </div>
+
+  </div>
+
+  <!-- Footer -->
+  <div style="border-top: 1px solid #e5e7eb; padding: 24px 28px; text-align: center;">
+    <p style="color: #9ca3af; font-size: 12px; margin: 0 0 12px 0; line-height: 1.6;">
+      Sent via CirclePass on behalf of {{ organizer_name }}.<br>
+      This is an official email from CirclePass.
+    </p>
+
+    <table cellpadding="0" cellspacing="0" border="0" align="center" style="margin-bottom: 12px;">
+      <tr>
+        <td style="padding-right: 6px;">
+          <img src="{{ frontend_url }}/logo.png" alt="CirclePass Logo" style="height: 24px; display: block;">
+        </td>
+        <td>
+          <span style="font-family: 'Fredoka', sans-serif; font-size: 18px; font-weight: 700; color: #1f2937;">CirclePass</span>
+        </td>
+      </tr>
+    </table>
+
+    <p style="color: #9ca3af; font-size: 12px; margin: 0; line-height: 1.6;">
+      You received this email because you&apos;re registered for an event.<br>
+      <a href="{{ frontend_url }}/settings/notifications" style="color: #2563eb; text-decoration: none;">Unsubscribe</a> if you no longer wish to receive these emails.
+    </p>
+  </div>
+
+</div>

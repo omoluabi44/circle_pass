@@ -1,0 +1,114 @@
+﻿<div style="font-family: 'Roboto', Arial, sans-serif; background-color: #f9fafb; padding: 40px 20px;">
+  <div style="max-width: 520px; margin: 0 auto; background: #ffffff; border-radius: 16px; padding: 40px 32px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); border: 1px solid #e5e7eb;">
+    
+    <!-- Header Logo -->
+    <div style="text-align: center; margin-bottom: 24px;">
+      <table cellpadding="0" cellspacing="0" border="0" align="center">
+        <tr>
+          <td>
+            <img src="{{ frontend_url }}/logo.png" alt="Circlepass Logo" style="height: 40px; display: block; margin-right: 8px;">
+          </td>
+          <td>
+            <span style="font-family: 'Fredoka', sans-serif; font-size: 28px; font-weight: 600; color: #3730a3;">Circlepass</span>
+          </td>
+        </tr>
+      </table>
+    </div>
+
+    <!-- Title -->
+    <h1 style="text-align: center; font-size: 24px; font-weight: 700; color: #1f2937; margin: 0 0 24px 0;">
+      Reminder: Your upcoming event.
+    </h1>
+
+    <!-- Body -->
+    <p style="color: #1f2937; font-size: 15px; margin: 0 0 16px 0; line-height: 1.6;">
+      Hi {{ first_name }},
+    </p>
+    <p style="color: #4b5563; font-size: 15px; margin: 0 0 24px 0; line-height: 1.6;">
+      This is a friendly reminder about your upcoming event. We're excited to see you there!
+    </p>
+
+    <!-- Details Box -->
+    <div style="background-color: #f5f3ff; border: 1px solid #ede9fe; border-radius: 12px; padding: 24px; margin-bottom: 32px;">
+      
+      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          <!-- Icon (Left) -->
+          <td width="72" valign="top" style="padding-right: 16px;">
+            <div style="width: 72px; height: 72px; border-radius: 12px; display: flex; align-items: center; justify-content: center;">
+              <!-- Using SVG icon since it's prominent in the design. If it doesn't render in some clients, it falls back gracefully -->
+              <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#3730a3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                <line x1="16" y1="2" x2="16" y2="6"></line>
+                <line x1="8" y1="2" x2="8" y2="6"></line>
+                <line x1="3" y1="10" x2="21" y2="10"></line>
+                <path d="M14 16a2 2 0 1 1-4 0 2 2 0 0 1 4 0Z"></path>
+              </svg>
+            </div>
+          </td>
+          <!-- Event details (Right) -->
+          <td valign="top">
+            <div style="font-size: 18px; font-weight: 700; color: #1f2937; margin-bottom: 8px;">{{ event.title }}</div>
+            
+            <div style="font-size: 14px; color: #4b5563; margin-bottom: 4px; line-height: 1.5;">
+              {{ event.start_date|date:"l, F j, Y" }}
+            </div>
+            
+            <div style="font-size: 14px; color: #4b5563; margin-bottom: 4px; line-height: 1.5;">
+              {{ event.start_date|date:"g:i A" }} - {{ event.end_date|date:"g:i A T" }}
+            </div>
+            
+            {% if event.venue %}
+            <div style="font-size: 14px; color: #4b5563; margin-bottom: 4px; line-height: 1.5;">
+              {{ event.venue.name }}<br>
+              {{ event.venue.location }}
+            </div>
+            {% endif %}
+            
+            <div style="font-size: 14px; color: #4b5563; display: flex; align-items: center; margin-top: 4px;">
+              <span style="color: #3730a3; margin-right: 4px; font-size: 16px;">📍</span> {{ event.state }}, {{ event.country }}
+            </div>
+          </td>
+        </tr>
+      </table>
+
+    </div>
+
+    <!-- Button -->
+    <div style="text-align: center; margin-bottom: 24px;">
+      <a href="{{ frontend_url }}/events/{{ event.id }}" style="display: block; width: 100%; box-sizing: border-box; background-color: #3730a3; color: #ffffff; font-weight: 600; font-size: 16px; text-decoration: none; padding: 16px; border-radius: 8px; text-align: center;">
+        View Event Details
+      </a>
+    </div>
+
+    <!-- Manage Booking -->
+    <p style="color: #1f2937; font-size: 13px; line-height: 1.5; margin: 0 0 24px 0;">
+      Need to make changes? <a href="{{ frontend_url }}/dashboard/tickets" style="color: #3730a3; text-decoration: underline;">Manage your booking</a> or <a href="{{ frontend_url }}/support" style="color: #3730a3; text-decoration: underline;">contact support</a> anytime.
+    </p>
+
+    <!-- Sign off -->
+    <p style="color: #1f2937; font-size: 15px; margin: 0 0 32px 0; line-height: 1.5;">
+      See you soon,<br>
+      The Circlepass team,
+    </p>
+
+    <!-- Divider -->
+    <hr style="border: 0; border-top: 1px solid #e5e7eb; margin: 0 0 24px 0;">
+
+    <!-- Footer Logo -->
+    <div style="text-align: center;">
+      <table cellpadding="0" cellspacing="0" border="0" align="center">
+        <tr>
+          <td>
+            <img src="{{ frontend_url }}/logo.png" alt="Circlepass Logo" style="height: 24px; display: block; margin-right: 6px;">
+          </td>
+          <td>
+            <span style="font-family: 'Fredoka', sans-serif; font-size: 20px; font-weight: 600; color: #3730a3;">Circlepass</span>
+          </td>
+        </tr>
+      </table>
+    </div>
+
+  </div>
+</div>
+

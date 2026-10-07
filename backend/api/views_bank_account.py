@@ -88,6 +88,14 @@ class OrganizerBankAccountListCreateView(APIView):
                 is_default=is_first,  # First account becomes default automatically
             )
 
+        # Step 4: Send Notification Email
+        try:
+            from core.utils.notifications import send_bank_account_added_email
+            send_bank_account_added_email(account)
+        except Exception as e:
+            # We don't want email failure to break the API response
+            pass
+
         return Response(
             OrganizerBankAccountSerializer(account).data,
             status=status.HTTP_201_CREATED,
