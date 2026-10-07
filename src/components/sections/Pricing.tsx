@@ -16,7 +16,6 @@ export function Pricing() {
       id="pricing"
       style={{ backgroundImage: 'url("/pricing_section.JPG")' }}
     >
-      <div className="absolute inset-0 bg-white/90 dark:bg-black/90 z-0" />
       <div className="container mx-auto max-w-4xl text-center relative z-10">
         
         {/* Tag */}
