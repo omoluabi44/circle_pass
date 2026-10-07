@@ -20,6 +20,7 @@ export default function PricingPage() {
         <p className="text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto">
           For paid events, CirclePass charges a simple <span className="font-semibold text-foreground">5% service fee per paid ticket</span>.
         </p>
+      </div>
       </section>
 
       {/* Pricing Cards */}

@@ -69,6 +69,9 @@ def send_purchase_receipt(order, tickets):
         'ticket_link': ticket_link,
         'is_guest': is_guest,
         'signup_link': signup_link,
+        'event': order.event,
+        'tickets': tickets,
+        'frontend_url': frontend_url,
     }
     
     html_message = render_to_string('email/order_receipt.html', context)

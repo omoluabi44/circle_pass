@@ -133,6 +133,7 @@ export default function AboutUsPage() {
             Create an Event
           </Link>
         </div>
+        </div>
       </section>
 
       {/* Footer / Contact */}
