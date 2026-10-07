@@ -14,7 +14,7 @@ export function Pricing() {
     <section 
       className="relative py-24 px-4 bg-cover bg-center bg-no-repeat" 
       id="pricing"
-      style={{ backgroundImage: 'url("/circlepass_bg.png")' }}
+      style={{ backgroundImage: 'url("/pricing_section.JPG")' }}
     >
       <div className="absolute inset-0 bg-white/90 dark:bg-black/90 z-0" />
       <div className="container mx-auto max-w-4xl text-center relative z-10">

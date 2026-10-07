@@ -111,7 +111,8 @@ export default function AboutUsPage() {
       </section>
 
       {/* Call to Action */}
-      <section className="max-w-4xl mx-auto px-4 py-24 text-center space-y-8">
+      <section className="w-full bg-cover bg-center bg-no-repeat relative py-24 px-4" style={{ backgroundImage: "url(\'/your_next_experience_section_in_about_us.PNG\')" }}>
+        <div className="max-w-4xl mx-auto text-center space-y-8 relative z-10">
         <h3 className="text-4xl md:text-5xl font-extrabold tracking-tight">YOUR NEXT EXPERIENCE IS WAITING.</h3>
         <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
           Whether you're creating something worth showing up for or looking for what's next, CirclePass brings you closer to the experience.

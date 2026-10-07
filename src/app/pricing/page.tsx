@@ -10,7 +10,7 @@ export default function PricingPage() {
   return (
     <main className="min-h-screen bg-background pb-20">
       {/* Hero Section */}
-      <section className="pt-24 pb-16 px-4 max-w-7xl mx-auto text-center">
+      <section className="pt-24 pb-16 px-4 w-full bg-cover bg-center bg-no-repeat relative" style={{ backgroundImage: "url(\'/paid_event_pricing_page.PNG\')" }}><div className="max-w-7xl mx-auto text-center relative z-10">
         <h1 className="text-4xl md:text-5xl font-bold font-logo text-primary mb-6">
           Simple pricing. No surprises.
         </h1>

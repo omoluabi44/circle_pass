@@ -8,7 +8,7 @@ export function LiveVotingNominations() {
   const [activeTab, setActiveTab] = useState<'voting' | 'nomination'>('voting');
 
   return (
-    <section className="py-24 px-4 bg-background" id="voting">
+    <section className="py-24 px-4 bg-background bg-cover bg-center bg-no-repeat" id="voting" style={{ backgroundImage: "url(\'/voting_section.PNG\')" }}>
       <div className="container mx-auto">
         {/* Toggle Button */}
         <div className="flex justify-center mb-12">
