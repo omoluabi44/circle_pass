@@ -10,7 +10,8 @@ import {
   ScanLine, 
   Megaphone, 
   Percent, 
-  Settings 
+  Settings, 
+  Edit 
 } from "lucide-react";
 
 export default function EventManageNav({ eventId }: { eventId: string }) {
@@ -18,6 +19,7 @@ export default function EventManageNav({ eventId }: { eventId: string }) {
   
   const navItems = [
     { name: "Overview", href: `/organizer/events/${eventId}/overview`, icon: LayoutDashboard },
+    { name: "Edit", href: `/organizer/events/${eventId}/edit`, icon: Edit },
     { name: "Tickets", href: `/organizer/events/${eventId}/tickets`, icon: Ticket },
     { name: "Attendees", href: `/organizer/events/${eventId}/attendees`, icon: Users },
     { name: "PassControl", href: `/organizer/events/${eventId}/passcontrol`, icon: ScanLine },

@@ -146,13 +146,19 @@ export async function getEventOverview(token: string, eventId: string | number) 
 }
 
 export async function updateEvent(token: string, eventId: string | number, data: any) {
+  const isFormData = data instanceof FormData;
+  const headers: Record<string, string> = {
+    'Authorization': `Bearer ${token}`
+  };
+  
+  if (!isFormData) {
+    headers['Content-Type'] = 'application/json';
+  }
+
   const res = await fetch(`${API_URL}/events/${eventId}/`, {
     method: 'PATCH',
-    headers: {
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify(data)
+    headers,
+    body: isFormData ? data : JSON.stringify(data)
   });
   
   if (!res.ok) {
