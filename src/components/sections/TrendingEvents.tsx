@@ -94,7 +94,7 @@ export function TrendingEvents() {
               <div className="relative w-full aspect-[4/3] bg-muted overflow-hidden">
                 {/* Blurred Background */}
                 <div 
-                  className="absolute inset-0 bg-cover bg-center blur-md scale-110"
+                  className="absolute inset-0 bg-cover bg-center blur-sm scale-110"
                   style={{ backgroundImage: `url(${event.image})` }}
                 />
                 {/* Main Image */}
