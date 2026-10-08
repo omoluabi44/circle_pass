@@ -77,7 +77,7 @@ function CategoryCard({ cat }: { cat: { name: string; sub: string; img: string; 
   return (
     <div className="shrink-0 snap-start w-[160px] sm:w-[180px] md:w-[220px] lg:w-[260px]">
       <Link
-        href="#"
+        href={`/events?category=${cat.name.toUpperCase()}`}
         className="group relative block w-full aspect-[3/4] rounded-[24px] overflow-hidden bg-muted border border-border hover:border-primary/50 transition-all duration-300 shadow-sm hover:shadow-xl"
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
