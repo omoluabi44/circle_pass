@@ -17,6 +17,7 @@ export default function EventForm({ initialData, eventId }: { initialData?: any;
   const [suggestions, setSuggestions] = useState<any[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [eventStatus, setEventStatus] = useState("DRAFT");
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -73,6 +74,7 @@ export default function EventForm({ initialData, eventId }: { initialData?: any;
         tiktok_handle: initialData.tiktok_handle || "",
         location_name: initialData.location_name || "",
       }));
+      setEventStatus(initialData.status || "DRAFT");
       
       if (initialData.venue === "TBA") {
         setIsTBA(true);
@@ -296,7 +298,7 @@ if (!formData.title || !formData.start_time || !formData.end_time || !formData.o
       
       const targetId = eventId || event.id;
       
-      if (submitAfterSave) {
+      if (submitAfterSave && eventStatus !== 'PUBLISHED' && eventStatus !== 'UNDER_REVIEW') {
         await submitEvent(session.accessToken as string, targetId);
         toast.success(eventId ? "Event updated and published!" : "Event created and published successfully!");
       } else {
@@ -626,19 +628,25 @@ if (!formData.title || !formData.start_time || !formData.end_time || !formData.o
       </div>
 
       <div className="mt-8 flex justify-end gap-4">
-        <button 
-          onClick={() => handleSave(false)} 
-          disabled={loading}
-          className="px-6 py-3 border border-border text-muted-foreground font-medium rounded-lg hover:bg-secondary transition flex items-center gap-2"
-        >
-          <Save className="w-5 h-5" /> Save as Draft
-        </button>
+        {eventStatus !== 'PUBLISHED' && eventStatus !== 'UNDER_REVIEW' && (
+          <button 
+            onClick={() => handleSave(false)} 
+            disabled={loading}
+            className="px-6 py-3 border border-border text-muted-foreground font-medium rounded-lg hover:bg-secondary transition flex items-center gap-2"
+          >
+            <Save className="w-5 h-5" /> Save as Draft
+          </button>
+        )}
         <button 
           onClick={() => handleSave(true)} 
           disabled={loading}
           className="px-6 py-3 bg-primary text-primary-foreground font-medium rounded-lg hover:bg-primary/90 transition flex items-center gap-2 shadow-sm"
         >
-          <Send className="w-5 h-5" /> {loading ? "Processing..." : "Save & Publish"}
+          {eventStatus === 'PUBLISHED' || eventStatus === 'UNDER_REVIEW' ? (
+            <><Save className="w-5 h-5" /> {loading ? "Processing..." : "Save Changes"}</>
+          ) : (
+            <><Send className="w-5 h-5" /> {loading ? "Processing..." : "Save & Publish"}</>
+          )}
         </button>
       </div>
 
