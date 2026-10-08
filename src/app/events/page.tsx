@@ -7,10 +7,15 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
   return (
     <div className="min-h-screen bg-background">
       {/* Massive Search & Filter Header */}
-      <div 
-        className="text-background pt-32 pb-36 px-4 relative overflow-hidden bg-cover bg-center"
-        style={{ backgroundImage: 'url("/hero_event_pass.jpg")' }}
-      >
+      <div className="text-background pt-32 pb-36 px-4 relative overflow-hidden">
+        <video
+          src="/video1.mp4"
+          autoPlay
+          loop
+          muted
+          playsInline
+          className="absolute inset-0 w-full h-full object-cover z-0"
+        />
         <div className="absolute inset-0 bg-black/70 z-0" />
         <div className="absolute inset-0 bg-gradient-to-br from-primary/30 via-transparent to-transparent opacity-60 mix-blend-screen z-0" />
         
