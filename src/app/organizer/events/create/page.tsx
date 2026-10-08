@@ -110,7 +110,7 @@ export default function CreateEventPage() {
 
 
 
-  const [ticketTypes, setTicketTypes] = useState([
+  const [ticketTypes, setTicketTypes] = useState<any[]>([
     { name: "General Admission", price: 0, quantity: 100, tier: "FREE", description: "" }
   ]);
 
@@ -164,11 +164,13 @@ if (!formData.title || !formData.start_time || !formData.end_time || !formData.o
         toast.error("All ticket types must have a name.");
         return false;
       }
-      if (ticket.quantity <= 0) {
+      const q = parseInt(ticket.quantity as any) || 0;
+      const p = parseInt(ticket.price as any) || 0;
+      if (q <= 0) {
         toast.error("All ticket types must have a quantity greater than 0.");
         return false;
       }
-      if (ticket.tier !== 'FREE' && ticket.price <= 0) {
+      if (ticket.tier !== 'FREE' && p <= 0) {
         toast.error(`Ticket '${ticket.name}' must have a price greater than ₦0.`);
         return false;
       }
@@ -189,7 +191,8 @@ if (!formData.title || !formData.start_time || !formData.end_time || !formData.o
     try {
       const ticketsWithKobo = ticketTypes.map(t => ({
         ...t,
-        price: t.price * 100
+        quantity: parseInt(t.quantity as any) || 0,
+        price: (parseInt(t.price as any) || 0) * 100
       }));
       
       const payload = new FormData();
@@ -486,12 +489,12 @@ if (!formData.title || !formData.start_time || !formData.end_time || !formData.o
                   <div className="w-32">
                     <label className="block text-xs font-medium text-muted-foreground mb-1">Price (₦)</label>
                     <input type="number" className="w-full border border-border rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-primary disabled:opacity-50 disabled:bg-muted"
-                      value={ticket.price} onChange={e => handleTicketChange(index, 'price', parseInt(e.target.value) || 0)} disabled={ticket.tier === 'FREE'} />
+                      value={ticket.price} onChange={e => handleTicketChange(index, 'price', e.target.value === '' ? '' : parseInt(e.target.value))} disabled={ticket.tier === 'FREE'} />
                   </div>
                   <div className="w-32">
                     <label className="block text-xs font-medium text-muted-foreground mb-1">Quantity</label>
                     <input type="number" className="w-full border border-border rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-primary"
-                      value={ticket.quantity} onChange={e => handleTicketChange(index, 'quantity', parseInt(e.target.value) || 0)} />
+                      value={ticket.quantity} onChange={e => handleTicketChange(index, 'quantity', e.target.value === '' ? '' : parseInt(e.target.value))} />
                   </div>
                   {ticketTypes.length > 1 && (
                     <button type="button" onClick={() => removeTicketType(index)} className="p-2 text-destructive hover:bg-destructive/10 rounded-lg transition mb-0.5">

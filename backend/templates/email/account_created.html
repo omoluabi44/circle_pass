@@ -1,4 +1,15 @@
-﻿<div style="font-family: 'Roboto', Arial, sans-serif; background-color: #ffffff; max-width: 600px; margin: 0 auto;">
+﻿{% block subject %}Your CirclePass account has been created{% endblock subject %}
+
+{% block text_body %}
+Hi {{ first_name }},
+
+Thank you for joining CirclePass. Your account is now active and ready to use. You can discover events, buy tickets, and manage everything in one place.
+
+Explore Events: {{ frontend_url }}/events
+{% endblock text_body %}
+
+{% block html_body %}
+<div style="font-family: 'Roboto', Arial, sans-serif; background-color: #ffffff; max-width: 600px; margin: 0 auto;">
 
   <!-- Header -->
   <div style="text-align: center; padding: 40px 32px 24px 32px; border-bottom: 1px solid #f3f4f6;">
@@ -67,3 +78,5 @@
   </div>
 
 </div>
+
+{% endblock html_body %}
