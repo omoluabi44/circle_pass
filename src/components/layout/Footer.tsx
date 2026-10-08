@@ -35,7 +35,7 @@ export function Footer() {
         <div className="container mx-auto px-4 grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-6">
           <div className="lg:col-span-3 space-y-4 pr-0 lg:pr-4">
             <Logo className="flex items-center space-x-2 mb-4" />
-            <p className="text-muted-foreground text-sm max-w-xs">
+            <p className="text-muted-foreground text-sm max-w-xs hidden md:block">
               Your Pass to the next experience. Discover events, activate Voting, get your digital pass & show up for experiences that matter.
             </p>
             <div className="flex gap-4 pt-2">
