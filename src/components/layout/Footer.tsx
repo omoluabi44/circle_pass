@@ -1,6 +1,8 @@
 import Link from 'next/link';
 import { Logo } from '@/components/ui/Logo';
 import { Music2 } from 'lucide-react';
+import { FooterNewsletter } from '@/components/layout/FooterNewsletter';
+
 
 const InstagramIcon = ({ className }: { className?: string }) => (
   <svg
@@ -30,8 +32,8 @@ export function Footer() {
       <div className="absolute inset-0 bg-primary/10 z-0" />
 
       <div className="relative z-10">
-        <div className="container mx-auto px-4 grid grid-cols-1 md:grid-cols-5 gap-8">
-          <div className="col-span-2 space-y-4">
+        <div className="container mx-auto px-4 grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-6">
+          <div className="lg:col-span-3 space-y-4 pr-0 lg:pr-4">
             <Logo className="flex items-center space-x-2 mb-4" />
             <p className="text-muted-foreground text-sm max-w-xs">
               Your Pass to the next experience. Discover events, activate Voting, get your digital pass & show up for experiences that matter.
@@ -46,7 +48,11 @@ export function Footer() {
             </div>
           </div>
           
-          <div className="md:col-span-3 grid grid-cols-3 gap-2 sm:gap-4 md:gap-8 mt-6 md:mt-0">
+          <div className="lg:col-span-3 mt-6 lg:mt-0">
+            <FooterNewsletter />
+          </div>
+          
+          <div className="lg:col-span-6 grid grid-cols-3 gap-2 sm:gap-4 md:gap-8 mt-6 lg:mt-0">
             <div className="space-y-3 md:space-y-4">
               <h4 className="font-semibold text-[13px] sm:text-base md:text-lg text-foreground">Explore</h4>
               <ul className="space-y-2 text-[11px] sm:text-xs md:text-sm text-muted-foreground">
