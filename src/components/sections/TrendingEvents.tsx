@@ -104,7 +104,7 @@ export function TrendingEvents() {
                   className="relative w-full h-full object-contain z-10"
                 />
                 {/* Status Badge */}
-                <div className={`absolute top-4 left-4 text-xs font-bold px-3 py-1.5 rounded-full shadow-md flex items-center gap-1.5 ${
+                <div className={`absolute z-20 top-4 left-4 text-xs font-bold px-3 py-1.5 rounded-full shadow-md flex items-center gap-1.5 ${
                   event.status === 'live' 
                     ? 'bg-success text-success-foreground' 
                     : 'bg-primary/90 text-primary-foreground'
@@ -118,7 +118,7 @@ export function TrendingEvents() {
                   {event.status === 'live' ? 'Live' : 'Upcoming'}
                 </div>
                 {event.isSponsored && (
-                  <div className="absolute top-4 right-4 bg-warning text-warning-foreground text-xs font-semibold px-3 py-1.5 rounded-full shadow-md flex items-center gap-1">
+                  <div className="absolute z-20 top-4 right-4 bg-warning text-warning-foreground text-xs font-semibold px-3 py-1.5 rounded-full shadow-md flex items-center gap-1">
                     <Crown className="w-3.5 h-3.5" />
                     Sponsored
                   </div>
