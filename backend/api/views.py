@@ -30,6 +30,12 @@ def google_auth(request):
         'is_active': True
     })
     
+    # PERMANENT FIX: If the user registered manually but didn't verify their email,
+    # and then logs in via Google, Google has verified their email. So activate them automatically!
+    if not created and not user.is_active:
+        user.is_active = True
+        user.save(update_fields=['is_active'])
+    
     refresh = RefreshToken.for_user(user)
     return Response({
         'id': user.id,
