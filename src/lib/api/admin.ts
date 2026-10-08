@@ -166,3 +166,15 @@ export async function deleteAdminUser(token: string, userId: number) {
   if (!res.ok) throw new Error('Failed to delete user');
   return true;
 }
+
+
+export async function deleteAdminEvent(token: string, eventId: number) {
+  const res = await fetch(`${API_URL}/admin/events/${eventId}/`, {
+    method: 'DELETE',
+    headers: {
+      Authorization: `Bearer ${token}`
+    }
+  });
+  if (!res.ok) throw new Error('Failed to delete event');
+  return true;
+}
