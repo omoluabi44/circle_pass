@@ -13,6 +13,7 @@ import { uploadToS3 } from "@/utils/s3Upload";
 
 export default function CreateEventPage() {
   const [locationQuery, setLocationQuery] = useState("");
+  const [isTBA, setIsTBA] = useState(false);
   const [suggestions, setSuggestions] = useState<any[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -137,7 +138,22 @@ export default function CreateEventPage() {
     }
   };
 
-  const validateForm = () => {
+  const validateForm = (isPublishing: boolean) => {
+
+    if (!isPublishing) {
+      if (!formData.title) {
+        toast.error("You must at least provide an Event Title to save a draft.");
+        return false;
+      }
+      if (formData.start_time && formData.end_time) {
+        if (new Date(formData.end_time) <= new Date(formData.start_time)) {
+          toast.error("End time must be after the start time.");
+          return false;
+        }
+      }
+      return true;
+    }
+
         if (formData.start_time && formData.end_time) {
       if (new Date(formData.end_time) <= new Date(formData.start_time)) {
         toast.error("End time must be after the start time.");
@@ -180,7 +196,7 @@ if (!formData.title || !formData.start_time || !formData.end_time || !formData.o
   };
 
   const handleSave = async (submitAfterSave: boolean) => {
-    if (!validateForm()) return;
+    if (!validateForm(submitAfterSave)) return;
     if (!session?.accessToken) {
       toast.error("Not authenticated.");
       return;
@@ -313,7 +329,26 @@ if (!formData.title || !formData.start_time || !formData.end_time || !formData.o
             
             {formData.event_type !== 'ONLINE' && (
               <div className="space-y-4 border border-border rounded-lg p-4 bg-secondary/20">
-                <h3 className="font-medium text-sm text-foreground">Location Details</h3>
+                <h3 className="font-medium text-sm text-foreground mb-4">Location Details</h3>
+                  <div className="flex items-center gap-2 mb-4 bg-background p-3 rounded-lg border border-border">
+                    <input 
+                      type="checkbox" 
+                      id="isTBA" 
+                      checked={isTBA} 
+                      onChange={(e) => {
+                        setIsTBA(e.target.checked);
+                        if (e.target.checked) {
+                          setFormData(prev => ({ ...prev, venue: "TBA", city: "TBA", state: "TBA", country: "Nigeria", location_name: "To Be Announced" }));
+                          setLocationQuery("");
+                        } else {
+                          setFormData(prev => ({ ...prev, venue: "", city: "", state: "", location_name: "" }));
+                        }
+                      }} 
+                      className="w-4 h-4 text-primary rounded border-border"
+                    />
+                    <label htmlFor="isTBA" className="text-sm font-medium text-foreground">Venue is To Be Announced (TBA)</label>
+                  </div>
+
                 
                 <div>
                   <label className="block text-sm font-medium text-muted-foreground mb-1">Venue Location *</label>
