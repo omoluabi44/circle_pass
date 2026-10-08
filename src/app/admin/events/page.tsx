@@ -102,8 +102,8 @@ export default async function AdminEventsPage({ searchParams }: { searchParams: 
                     <Link href={`/events/${e.slug || e.id}`} target="_blank" className="px-3 py-1.5 bg-secondary text-foreground text-xs font-bold rounded-lg hover:bg-secondary/80 transition-colors">
                       View
                     </Link>
-                    {e.status === 'UNDER_REVIEW' && session.accessToken && (
-                      <ClientEventButtons id={e.id} token={session.accessToken} />
+                    {session.accessToken && (
+                      <ClientEventButtons id={e.id} token={session.accessToken} status={e.status} />
                     )}
                   </td>
                 </tr>

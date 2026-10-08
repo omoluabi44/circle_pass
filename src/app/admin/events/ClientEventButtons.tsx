@@ -5,7 +5,7 @@ import { approveEvent, rejectEvent, deleteAdminEvent } from "@/lib/api/admin";
 import { CheckCircle, XCircle, Trash2, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 
-export default function ClientEventButtons({ id, token }: { id: number; token: string }) {
+export default function ClientEventButtons({ id, token, status }: { id: number; token: string; status?: string }) {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
@@ -52,22 +52,26 @@ export default function ClientEventButtons({ id, token }: { id: number; token: s
     return <Loader2 className="w-5 h-5 animate-spin text-primary" />;
   }
 
-  return (
+    return (
     <div className="flex gap-2">
-      <button 
-        onClick={handleApprove}
-        title="Approve Event"
-        className="p-1.5 bg-success/10 text-success rounded-lg hover:bg-success/20 transition-colors"
-      >
-        <CheckCircle className="w-4 h-4" />
-      </button>
-      <button 
-        onClick={handleReject}
-        title="Reject Event"
-        className="p-1.5 bg-destructive/10 text-destructive rounded-lg hover:bg-destructive/20 transition-colors"
-      >
-        <XCircle className="w-4 h-4" />
-      </button>
+      {status === 'UNDER_REVIEW' && (
+        <>
+          <button 
+            onClick={handleApprove}
+            title="Approve Event"
+            className="p-1.5 bg-success/10 text-success rounded-lg hover:bg-success/20 transition-colors"
+          >
+            <CheckCircle className="w-4 h-4" />
+          </button>
+          <button 
+            onClick={handleReject}
+            title="Reject Event"
+            className="p-1.5 bg-destructive/10 text-destructive rounded-lg hover:bg-destructive/20 transition-colors"
+          >
+            <XCircle className="w-4 h-4" />
+          </button>
+        </>
+      )}
       <button 
         onClick={handleDelete}
         title="Delete Event"
