@@ -31,8 +31,8 @@ import { TawkChat } from "@/components/providers/TawkChat";
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" suppressHydrationWarning className={`${roboto.variable} ${fredoka.variable} font-sans text-foreground bg-background flex flex-col min-h-screen`}>
-      <body className="flex flex-col min-h-screen">
+    <html lang="en" suppressHydrationWarning className={`${roboto.variable} ${fredoka.variable} font-sans text-foreground bg-background flex flex-col min-h-screen overflow-x-hidden relative`}>
+      <body className="flex flex-col min-h-screen overflow-x-hidden relative">
         <StyledComponentsRegistry>
           <AuthProvider>
             <CartProvider>
