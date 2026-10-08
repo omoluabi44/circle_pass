@@ -12,13 +12,10 @@ class OrganizerContactsView(generics.ListAPIView):
 
     def get_queryset(self):
         user = self.request.user
-        if getattr(user, 'role', '') == 'ADMIN':
-            qs = Ticket.objects.filter(order__status='COMPLETED')
-        else:
-            qs = Ticket.objects.filter(
-                order__event__organizer__user=user,
-                order__status='COMPLETED'
-            )
+        qs = Ticket.objects.filter(
+            order__event__organizer__user=user,
+            order__status='COMPLETED'
+        )
         qs = qs.select_related('order__event', 'ticket_type').order_by('-order__created_at')
 
         # Optional filtering by event_id
@@ -73,10 +70,7 @@ class OrganizerFollowersView(generics.ListAPIView):
 
     def get_queryset(self):
         user = self.request.user
-        if getattr(user, 'role', '') == 'ADMIN':
-            qs = FollowedOrganizer.objects.all()
-        else:
-            qs = FollowedOrganizer.objects.filter(organizer__user=user)
+        qs = FollowedOrganizer.objects.filter(organizer__user=user)
         
         search = self.request.query_params.get('search')
         if search:
