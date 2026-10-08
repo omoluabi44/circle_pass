@@ -287,16 +287,23 @@ if (!formData.title || !formData.start_time || !formData.end_time || !formData.o
       
       payload.append('ticket_types', JSON.stringify(ticketsWithKobo));
 
-      const event = await createEvent(session.accessToken as string, payload);
+            let event;
+      if (eventId) {
+        event = await updateEvent(session.accessToken as string, eventId, payload);
+      } else {
+        event = await createEvent(session.accessToken as string, payload);
+      }
+      
+      const targetId = eventId || event.id;
       
       if (submitAfterSave) {
-        await submitEvent(session.accessToken as string, event.id);
-        toast.success("Event created and published successfully!");
+        await submitEvent(session.accessToken as string, targetId);
+        toast.success(eventId ? "Event updated and published!" : "Event created and published successfully!");
       } else {
-        toast.success("Event saved as draft successfully!");
+        toast.success(eventId ? "Event updated successfully!" : "Event saved as draft successfully!");
       }
-
-      router.push("/organizer/events");
+      
+      router.push(`/organizer/events/${targetId}/overview`);
       router.refresh();
     } catch (err: any) {
       toast.error(err.message || "Something went wrong.");
