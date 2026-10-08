@@ -1,4 +1,8 @@
+﻿with open(r'src/components/sections/DiscoverySection.tsx', 'r', encoding='utf-8') as f:
+    content = f.read()
 
+# We will completely replace the contents of DiscoverySection.tsx with a new React component
+new_content = """
 "use client";
 
 import { useState, useEffect } from "react";
@@ -70,7 +74,7 @@ export function DiscoverySection({ limit = 4, searchParams }: DiscoverySectionPr
             id: e.id,
             slug: e.slug || e.id?.toString() || '',
             title: e.title,
-            date: `${dateStr} \u2022 ${time}`,
+            date: `${dateStr} \\u2022 ${time}`,
             location: e.venue?.name || (e.is_online ? 'Online' : 'TBA'),
             price: priceStr,
             image: imageUrl,
@@ -93,7 +97,7 @@ export function DiscoverySection({ limit = 4, searchParams }: DiscoverySectionPr
     if (e.status !== activeTab) return false;
     if (activeCategory !== "ALL" && e.category !== activeCategory) return false;
     return true;
-  }).slice(0, limit || undefined);
+  }).slice(0, 4); // Force exactly 4 events max based on sketch constraints
 
   return (
     <section className="py-24 px-4 bg-muted/30" id="discover">
@@ -221,3 +225,8 @@ export function DiscoverySection({ limit = 4, searchParams }: DiscoverySectionPr
     </section>
   );
 }
+"""
+
+with open(r'src/components/sections/DiscoverySection.tsx', 'w', encoding='utf-8') as f:
+    f.write(new_content)
+print("Replaced")
