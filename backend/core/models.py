@@ -103,8 +103,8 @@ class Event(models.Model):
     city = models.CharField(max_length=100, blank=True)
     
     # Timing & Capacity
-    start_time = models.DateTimeField()
-    end_time = models.DateTimeField()
+    start_time = models.DateTimeField(null=True, blank=True)
+    end_time = models.DateTimeField(null=True, blank=True)
     capacity = models.IntegerField(default=0)
     
     # Additional Details

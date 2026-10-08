@@ -11,6 +11,7 @@
   "dependencies": {
     "@cred/neopop-web": "^1.0.0",
     "@paystack/inline-js": "^2.25.0",
+    "@sentry/nextjs": "^11.5.0",
     "@tailwindcss/postcss": "^4.3.3",
     "@types/js-cookie": "^3.0.6",
     "@types/qrcode.react": "^1.0.5",

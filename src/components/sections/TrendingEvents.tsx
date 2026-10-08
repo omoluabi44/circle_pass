@@ -92,10 +92,17 @@ export function TrendingEvents() {
             <Link href={`/events/${event.slug}`} key={event.id} className="shrink-0 snap-start w-[85vw] sm:w-[60vw] md:w-auto group flex flex-col bg-card rounded-2xl overflow-hidden border border-border shadow-sm hover:shadow-xl transition-all duration-300">
               {/* Image Area */}
               <div className="relative w-full aspect-[4/3] bg-muted overflow-hidden">
+                {/* Blurred Background */}
+                <div 
+                  className="absolute inset-0 bg-cover bg-center blur-2xl scale-125 opacity-80"
+                  style={{ backgroundImage: `url(${event.image})` }}
+                />
+                <div className="absolute inset-0 bg-black/10 z-[1]" />
+                {/* Main Image */}
                 <img 
                   src={event.image}
                   alt={event.title}
-                  className="w-full h-full object-contain"
+                  className="relative w-full h-full object-contain z-10"
                 />
                 {/* Status Badge */}
                 <div className={`absolute top-4 left-4 text-xs font-bold px-3 py-1.5 rounded-full shadow-md flex items-center gap-1.5 ${

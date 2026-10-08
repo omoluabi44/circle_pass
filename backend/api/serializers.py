@@ -177,6 +177,8 @@ class EventCreateUpdateSerializer(serializers.ModelSerializer):
     category = serializers.PrimaryKeyRelatedField(
         queryset=EventCategory.objects.all(), required=False, allow_null=True
     )
+    start_time = serializers.DateTimeField(required=False, allow_null=True)
+    end_time = serializers.DateTimeField(required=False, allow_null=True)
 
     class Meta:
         model = Event
