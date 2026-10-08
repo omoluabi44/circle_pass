@@ -14,10 +14,11 @@ export async function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
-  // 1. Direct cookie check (Bulletproof fallback for Edge runtime bugs)
-  const hasSessionCookie = 
-    req.cookies.has("next-auth.session-token") || 
-    req.cookies.has("__Secure-next-auth.session-token");
+  // 1. Direct cookie check (Bulletproof fallback for Edge runtime bugs & chunked cookies)
+  const hasSessionCookie = req.cookies.getAll().some(c => 
+    c.name.startsWith("next-auth.session-token") || 
+    c.name.startsWith("__Secure-next-auth.session-token")
+  );
 
   // 2. Attempt to decode the JWT 
   const token = await getToken({
