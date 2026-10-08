@@ -216,12 +216,14 @@ export function DiscoverySection({ limit, searchParams }: DiscoverySectionProps)
         </div>
 
         {/* CTA Button */}
-        <Link 
-          href="/events"
-          className="inline-flex items-center justify-center px-10 py-4 bg-primary text-primary-foreground font-bold rounded-xl hover:bg-primary/90 transition-colors shadow-md text-lg"
-        >
-          See all events
-        </Link>
+        {limit && (
+          <Link 
+            href="/events"
+            className="inline-flex items-center justify-center px-10 py-4 bg-primary text-primary-foreground font-bold rounded-xl hover:bg-primary/90 transition-colors shadow-md text-lg"
+          >
+            See all events
+          </Link>
+        )}
       </div>
     </section>
   );
