@@ -11,6 +11,15 @@ import { uploadToS3 } from "@/utils/s3Upload";
 
 
 
+
+function getLocalDatetimeString(dateString: string | null | undefined) {
+  if (!dateString) return "";
+  const d = new Date(dateString);
+  if (isNaN(d.getTime())) return "";
+  const pad = (n: number) => n.toString().padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
 export default function EventForm({ initialData, eventId }: { initialData?: any; eventId?: string }) {
   const [locationQuery, setLocationQuery] = useState("");
   const [isTBA, setIsTBA] = useState(false);
@@ -59,8 +68,8 @@ export default function EventForm({ initialData, eventId }: { initialData?: any;
         country: initialData.country || "",
         state: initialData.state || "",
         city: initialData.city || "",
-        start_time: initialData.start_time ? new Date(initialData.start_time).toISOString().slice(0, 16) : "",
-        end_time: initialData.end_time ? new Date(initialData.end_time).toISOString().slice(0, 16) : "",
+        start_time: getLocalDatetimeString(initialData.start_time),
+        end_time: getLocalDatetimeString(initialData.end_time),
         capacity: initialData.capacity || 0,
         absorb_fees: initialData.absorb_fees || false,
         organizer_contact: initialData.organizer_contact || "",
@@ -266,8 +275,8 @@ if (!formData.title || !formData.start_time || !formData.end_time || !formData.o
       payload.append('country', formData.country);
       payload.append('state', formData.state);
       payload.append('city', formData.city);
-      if (formData.start_time) payload.append('start_time', formData.start_time);
-      if (formData.end_time) payload.append('end_time', formData.end_time);
+      if (formData.start_time) payload.append('start_time', new Date(formData.start_time).toISOString());
+      if (formData.end_time) payload.append('end_time', new Date(formData.end_time).toISOString());
       payload.append('capacity', String(formData.capacity));
       payload.append('absorb_fees', String(formData.absorb_fees));
       
