@@ -214,9 +214,9 @@ export default function PricingPage() {
             <p className="text-muted-foreground mb-8">
               Tell us what you're planning, what you need, and the scale of your event. We'll work with you on the right solution and provide a tailored quote.
             </p>
-            <Link href="/contact" className="block w-full bg-primary text-primary-foreground text-center font-semibold py-3 rounded-xl hover:bg-primary/90 transition-colors">
+            <a href="https://wa.me/2349135512889" target="_blank" rel="noopener noreferrer" className="block w-full bg-primary text-primary-foreground text-center font-semibold py-3 rounded-xl hover:bg-primary/90 transition-colors">
               Talk to Us
-            </Link>
+            </a>
           </div>
         </div>
       </section>
