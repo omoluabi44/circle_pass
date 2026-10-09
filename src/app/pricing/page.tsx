@@ -170,13 +170,16 @@ export default function PricingPage() {
       </section>
 
       {/* No Subscription Section */}
-      <section className="bg-secondary/50 py-16 px-4 mb-20 border-y border-border">
+      <section 
+        className="py-16 px-4 mb-20 border-y border-border bg-cover bg-center bg-no-repeat"
+        style={{ backgroundImage: "url('/background_A.jpg')" }}
+      >
         <div className="max-w-4xl mx-auto text-center">
-          <h2 className="text-2xl md:text-3xl font-bold mb-4">No Monthly Subscription</h2>
-          <p className="text-lg text-muted-foreground mb-4">
+          <h2 className="text-2xl md:text-3xl font-bold mb-4 text-white">No Monthly Subscription</h2>
+          <p className="text-lg text-white/90 mb-4">
             There's no monthly subscription or setup fee to use CirclePass. You pay the CirclePass service fee when you sell paid tickets.
           </p>
-          <p className="text-sm text-muted-foreground italic">
+          <p className="text-sm text-white/70 italic">
             Payment processing fees are inclusive.
           </p>
         </div>
