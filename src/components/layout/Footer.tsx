@@ -37,7 +37,7 @@ export function Footer() {
           <div className="lg:col-span-6 flex flex-col lg:flex-row gap-4 lg:gap-6">
             <div className="lg:w-1/2 space-y-0 lg:space-y-4 pr-0 lg:pr-4">
               <Logo className="flex items-center space-x-2" />
-              <p className="text-muted-foreground text-sm max-w-xs hidden lg:block mt-4">
+              <p className="text-foreground/90 text-sm max-w-xs hidden lg:block mt-4">
                 Your Pass to the next experience. Discover events, activate Voting, get your digital pass & show up for experiences that matter.
               </p>
             </div>
@@ -45,10 +45,10 @@ export function Footer() {
             <div className="lg:w-1/2 flex flex-col gap-4 mt-2 lg:mt-0">
               <FooterNewsletter />
               <div className="flex gap-4">
-                <Link href="https://www.instagram.com/circle.pass?stkn=MW1kMzhucnZ5enN1aQ==" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary transition-colors flex items-center gap-1.5 font-medium">
+                <Link href="https://www.instagram.com/circle.pass?stkn=MW1kMzhucnZ5enN1aQ==" target="_blank" rel="noopener noreferrer" className="text-foreground/90 hover:text-primary transition-colors flex items-center gap-1.5 font-medium">
                   <InstagramIcon className="w-4 h-4" /> Instagram
                 </Link>
-                <Link href="https://www.tiktok.com/@circle.pass?_r=1&_t=ZS-99xQ4N6hnPO" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary transition-colors flex items-center gap-1.5 font-medium">
+                <Link href="https://www.tiktok.com/@circle.pass?_r=1&_t=ZS-99xQ4N6hnPO" target="_blank" rel="noopener noreferrer" className="text-foreground/90 hover:text-primary transition-colors flex items-center gap-1.5 font-medium">
                   <Music2 className="w-4 h-4" /> TikTok
                 </Link>
               </div>
@@ -58,7 +58,7 @@ export function Footer() {
           <div className="lg:col-span-6 grid grid-cols-3 gap-2 sm:gap-4 md:gap-8 mt-4 lg:mt-0">
             <div className="space-y-3 md:space-y-4">
               <h4 className="font-semibold text-[13px] sm:text-base md:text-lg text-foreground">Explore</h4>
-              <ul className="space-y-2 text-[11px] sm:text-xs md:text-sm text-muted-foreground">
+              <ul className="space-y-2 text-[11px] sm:text-xs md:text-sm text-foreground/90">
                 <li><Link href="/events" className="hover:text-primary transition-colors">Browse events</Link></li>
                 <li><Link href="/coming-soon" className="hover:text-primary transition-colors">Voting</Link></li>
                 <li><Link href="/coming-soon" className="hover:text-primary transition-colors">Nominations</Link></li>
@@ -69,7 +69,7 @@ export function Footer() {
 
             <div className="space-y-3 md:space-y-4">
               <h4 className="font-semibold text-[13px] sm:text-base md:text-lg text-foreground">Organisers</h4>
-              <ul className="space-y-2 text-[11px] sm:text-xs md:text-sm text-muted-foreground">
+              <ul className="space-y-2 text-[11px] sm:text-xs md:text-sm text-foreground/90">
                 <li><Link href="/organizer" className="hover:text-primary transition-colors">For organisers</Link></li>
                 <li><Link href="/organizer/events/create" className="hover:text-primary transition-colors">Create event</Link></li>
               </ul>
@@ -77,7 +77,7 @@ export function Footer() {
 
             <div className="space-y-3 md:space-y-4">
               <h4 className="font-semibold text-[13px] sm:text-base md:text-lg text-foreground">Company</h4>
-              <ul className="space-y-2 text-[11px] sm:text-xs md:text-sm text-muted-foreground">
+              <ul className="space-y-2 text-[11px] sm:text-xs md:text-sm text-foreground/90">
                 <li><Link href="/about" className="hover:text-primary transition-colors">About</Link></li>
                 <li><Link href="/how-it-works" className="hover:text-primary transition-colors">How it works</Link></li>
                 <li><Link href="/#faq" className="hover:text-primary transition-colors">FAQ</Link></li>
@@ -86,7 +86,7 @@ export function Footer() {
             </div>
           </div>
         </div>
-        <div className="container mx-auto px-4 mt-12 pt-8 border-t border-black/10 text-sm text-muted-foreground text-center flex flex-col md:flex-row justify-between items-center gap-4">
+        <div className="container mx-auto px-4 mt-12 pt-8 border-t border-black/10 text-sm text-foreground/90 text-center flex flex-col md:flex-row justify-between items-center gap-4">
           <p>&copy; {new Date().getFullYear()} CirclePass. All rights reserved.</p>
           <div className="flex gap-6">
             <Link href="#" className="hover:text-primary transition-colors">Legal Terms</Link>

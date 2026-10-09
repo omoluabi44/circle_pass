@@ -1,11 +1,14 @@
-with open(r'src/components/layout/Footer.tsx', 'r', encoding='utf-8') as f:
-    text = f.read()
+import os
 
-text = text.replace(
-    '<p className="text-muted-foreground text-sm max-w-xs">',
-    '<p className="text-muted-foreground text-sm max-w-xs hidden md:block">'
-)
+files_to_check = ['src/components/layout/Footer.tsx', 'src/components/layout/FooterNewsletter.tsx']
 
-with open(r'src/components/layout/Footer.tsx', 'w', encoding='utf-8') as f:
-    f.write(text)
-print("Replaced")
+for file in files_to_check:
+    with open(file, 'r', encoding='utf-8') as f:
+        text = f.read()
+    
+    text = text.replace('text-muted-foreground', 'text-foreground/90')
+    
+    with open(file, 'w', encoding='utf-8') as f:
+        f.write(text)
+
+print("Replaced footer text colors")
