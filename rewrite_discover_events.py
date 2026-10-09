@@ -1,4 +1,8 @@
+with open(r'src/components/sections/DiscoverEvents.tsx', 'r', encoding='utf-8') as f:
+    text = f.read()
 
+# We completely rewrite the DiscoverEvents.tsx file
+new_content = """
 "use client";
 
 import { useRef, useState, useEffect, useCallback } from 'react';
@@ -139,3 +143,8 @@ export function DiscoverEvents() {
     </section>
   );
 }
+"""
+
+with open(r'src/components/sections/DiscoverEvents.tsx', 'w', encoding='utf-8') as f:
+    f.write(new_content)
+print("Replaced")
