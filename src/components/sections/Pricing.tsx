@@ -24,7 +24,7 @@ export function Pricing() {
         </div>
         
         {/* Header */}
-        <h2 className="text-4xl md:text-5xl lg:text-6xl font-extrabold text-foreground mb-16 tracking-tight">
+        <h2 className="text-4xl md:text-5xl lg:text-6xl font-extrabold text-white mb-16 tracking-tight">
           Simple pricing, No hidden fees.
         </h2>
         
