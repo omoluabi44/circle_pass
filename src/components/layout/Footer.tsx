@@ -25,7 +25,7 @@ export function Footer() {
   return (
     <footer 
       className="relative border-t py-12 mt-20 bg-cover bg-center bg-no-repeat"
-      style={{ backgroundImage: 'url("/circlepass_bg.png")' }}
+      style={{ backgroundImage: "url('/background_C.jpg')" }}
     >
       {/* Light overlay with a very light primary color tint */}
       <div className="absolute inset-0 bg-background/90 z-0" />

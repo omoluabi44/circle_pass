@@ -15,7 +15,7 @@ export async function PlanningVotingSplit() {
   }
 
   return (
-    <section className=" py-20 px-4 bg-cover bg-center bg-no-repeat relative" style={{ backgroundImage: "url(\'/planning_your_first_events_section.PNG\')" }}>
+    <section className=" py-20 px-4 bg-cover bg-center bg-no-repeat relative" style={{ backgroundImage: "url('/background_A.jpg')" }}>
       <div className="container mx-auto">
         <div className="grid md:grid-cols-2 gap-8 lg:gap-12 max-w-6xl mx-auto">
 

@@ -64,8 +64,7 @@ export function Features() {
   return (
     <section className="relative w-full py-24 md:py-32 bg-background overflow-hidden">
       {/* Abstract Background Blobs */}
-      <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary/10 rounded-full blur-[100px] pointer-events-none" />
-      <div className="absolute bottom-[-10%] right-[-5%] w-[30%] h-[50%] bg-primary/10 rounded-full blur-[100px] pointer-events-none" />
+      
 
       <div className="container mx-auto max-w-[1400px] relative z-10 px-4">
         

@@ -18,7 +18,7 @@ export function EventMedia() {
 
 
   return (
-    <section className="py-24 px-4 bg-secondary/10">
+    <section className="py-24 px-4 bg-background">
       <div className="container mx-auto max-w-6xl">
         <div className="bg-primary/5 border border-primary/10 shadow-sm rounded-[2.5rem] overflow-hidden flex flex-col md:flex-row items-center gap-10 md:gap-16 p-6 md:p-12 lg:p-16">
 

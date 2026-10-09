@@ -3,12 +3,12 @@ import Link from 'next/link';
 export function SimpleWay() {
   return (
     <section 
-      className="relative py-24 px-4 text-center bg-cover bg-center bg-no-repeat"
-      style={{ backgroundImage: 'url("/circlepass_bg.png")' }}
+      className="relative py-24 px-4 text-center bg-background"
+      
     >
       {/* Light overlay with a very light primary color tint */}
-      <div className="absolute inset-0 bg-background/85 z-0" />
-      <div className="absolute inset-0 bg-primary/10 z-0" />
+      
+      
       
       <div className="container mx-auto max-w-3xl relative z-10 text-primary">
         <h2 className="text-4xl md:text-5xl font-bold mb-6 text-balance text-foreground">

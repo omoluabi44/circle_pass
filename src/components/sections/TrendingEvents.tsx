@@ -74,7 +74,7 @@ export function TrendingEvents() {
   }, []);
 
   return (
-    <section className="w-full bg-cover bg-center bg-no-repeat pt-16 pb-24 px-4 md:px-8 border-t border-border" style={{ backgroundImage: "url(\'/trendingEventBG.PNG\')" }}>
+    <section className="w-full bg-cover bg-center bg-no-repeat pt-16 pb-24 px-4 md:px-8 border-t border-border" style={{ backgroundImage: "url('/background_A.jpg')" }}>
       <div className="container mx-auto max-w-7xl">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">

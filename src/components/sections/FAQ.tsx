@@ -35,7 +35,7 @@ export function FAQ() {
   ];
 
   return (
-    <section className="py-24 px-4 bg-secondary" id="faq">
+    <section className="py-24 px-4 bg-cover bg-center bg-no-repeat" style={{ backgroundImage: "url('/background_B.jpg')" }} id="faq">
       <div className="container mx-auto max-w-3xl">
         <div className="text-center mb-16">
           <h2 className="text-3xl md:text-4xl font-extrabold text-foreground tracking-tight mb-4">
