@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { Music2, MapPin, Calendar, CheckCircle, Link as LinkIcon, MessageCircle } from "lucide-react";
+import { Music2, MapPin, Calendar, CheckCircle, Link as LinkIcon } from "lucide-react";
 import { InstagramIcon } from "@/components/ui/InstagramIcon";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
@@ -160,12 +160,6 @@ export default function OrganizerProfilePage() {
             </div>
             
             <div className="shrink-0 flex gap-3 w-full md:w-auto">
-              <Link
-                href={`/dashboard/inbox?new=${id}`}
-                className="flex-1 md:flex-none flex items-center justify-center gap-2 px-6 py-2.5 rounded-full font-bold bg-secondary text-foreground hover:bg-secondary/80 transition-all border border-border"
-              >
-                <MessageCircle className="w-4 h-4" /> Message
-              </Link>
               <button 
                 onClick={handleFollow}
                 className={`flex-1 md:flex-none px-6 py-2.5 rounded-full font-bold transition-all ${isFollowing ? 'bg-secondary text-foreground' : 'bg-primary text-primary-foreground hover:bg-primary/90'}`}
