@@ -27,30 +27,13 @@ export default function AboutUsPage() {
         </div>
 
         {/* Mockup / Graphic side */}
-        <div className="bg-secondary/30 border border-border rounded-3xl p-8 lg:p-12 aspect-square md:aspect-auto md:h-[500px] flex flex-col justify-center items-center text-center relative overflow-hidden group">
-          <div className="absolute -left-6 top-10 rotate-[-12deg] w-40 h-56 bg-background rounded-xl border border-border shadow-2xl flex items-center justify-center p-4 transition-transform duration-500 group-hover:rotate-[-5deg]">
-            <span className="text-sm font-bold text-muted-foreground">Site Mockup</span>
-          </div>
-
-          <div className="z-10 ml-auto mr-4 space-y-6 text-right">
-            <ul className="space-y-4 text-lg font-semibold text-foreground">
-              <li className="flex items-center justify-end gap-3">
-                Create your event
-                <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center text-sm">1</div>
-              </li>
-              <li className="flex items-center justify-end gap-3">
-                Publish your event
-                <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center text-sm">2</div>
-              </li>
-              <li className="flex items-center justify-end gap-3">
-                Sell your tickets
-                <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center text-sm">3</div>
-              </li>
-            </ul>
-            <div className="text-primary font-black text-xl italic mt-6">
-              3 easy steps
-            </div>
-          </div>
+        <div className="relative w-full aspect-[4/3] md:aspect-square md:h-[500px] rounded-3xl overflow-hidden border border-border shadow-2xl">
+          <Image
+            src="/image-folders/about us page/mock_up.jpg"
+            alt="CirclePass Mockup"
+            fill
+            className="object-cover"
+          />
         </div>
       </section>
 
