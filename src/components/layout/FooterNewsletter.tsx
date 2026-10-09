@@ -79,7 +79,6 @@ export function FooterNewsletter() {
       {status === "error" && (
         <p className="text-destructive text-xs mt-1">{message}</p>
       )}
-      )}
     </div>
   );
 }
