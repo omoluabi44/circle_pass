@@ -46,7 +46,7 @@ export default function AttendeeDashboardLayout({
   return (
     <div className="bg-secondary/30 text-foreground min-h-screen flex flex-col md:flex-row font-sans">
       {/* Sidebar (Desktop) / Bottom Nav (Mobile) */}
-      <aside className="w-full md:w-64 bg-background border-r border-border flex flex-col h-screen sticky top-0 hidden md:flex">
+      <aside className="w-full md:w-64 bg-background border-r border-border flex flex-col h-screen sticky top-0 self-start hidden md:flex">
         <div className="flex-1 overflow-y-auto p-5 scrollbar-hide">
           <Link href="/">
             <img src="/logo.png" alt="CirclePass Logo" className="h-8 w-auto object-contain mb-4 mx-4" />

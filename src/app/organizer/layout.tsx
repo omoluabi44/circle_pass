@@ -80,7 +80,7 @@ export default function OrganizerLayout({
   return (
     <div className="bg-secondary/30 text-foreground min-h-screen flex font-sans">
       {/* Sidebar */}
-      <aside className="w-64 bg-background border-r border-border flex flex-col hidden lg:flex h-screen sticky top-0">
+      <aside className="w-64 bg-background border-r border-border flex flex-col hidden lg:flex h-screen sticky top-0 self-start">
         <div className="p-6 border-b border-border">
           <Link href="/" className="flex items-center mb-4">
             <img src="/logo.png" alt="CirclePass Logo" className="h-8 w-auto object-contain" />

@@ -23,7 +23,7 @@ export default function AdminLayout({
 
   return (
     <div className="bg-secondary/30 text-foreground min-h-screen flex font-sans">
-      <aside className="w-72 bg-background border-r border-border flex flex-col h-screen sticky top-0 overflow-hidden hidden lg:flex">
+      <aside className="w-72 bg-background border-r border-border flex flex-col h-screen sticky top-0 self-start overflow-hidden hidden lg:flex">
         <div className="p-5 border-b border-border/50 shrink-0">
           <Link href="/" className="text-2xl font-bold text-logo mb-4 px-2 font-logo flex items-center hover:opacity-80 transition-opacity">
             CirclePass <span className="text-sm font-normal text-muted-foreground ml-2 px-2 py-0.5 bg-secondary rounded-full border border-border">Admin</span>
