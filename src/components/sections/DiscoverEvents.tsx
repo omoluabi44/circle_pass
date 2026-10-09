@@ -95,7 +95,7 @@ function CategoryCard({ cat }: { cat: { name: string; sub: string; img: string; 
             <Icon className="w-5 h-5 text-white/90" />
             <h3 className="font-bold text-lg text-white">{cat.name}</h3>
           </div>
-          <p className="text-white/70 text-sm font-medium pl-7">{cat.sub}</p>
+          
         </div>
       </Link>
     </div>
@@ -108,7 +108,7 @@ export function DiscoverEvents() {
     { name: "Comedy", sub: "192 events", img: "/image-folders/commedy/IMG_0780.jpg", icon: Mic },
     { name: "Sports", sub: "156 events", img: "/image-folders/football/IMG_0786.jpg", icon: Trophy },
     { name: "Festivals", sub: "121 events", img: "/image-folders/festival/IMG_0772.jpg", icon: Sparkles },
-    { name: "Socials", sub: "98 events", img: "/image-folders/nightlife/IMG_0775.jpg", icon: Wine },
+    { name: "Nightlife", sub: "98 events", img: "/image-folders/nightlife/IMG_0775.jpg", icon: Wine },
     { name: "Tech", sub: "45 events", img: "/image-folders/tech/IMG_4478.JPG", icon: Briefcase },
     { name: "Conference", sub: "32 events", img: "/image-folders/conference/IMG_4477.JPG", icon: Briefcase },
     { name: "Seminar", sub: "28 events", img: "/image-folders/seminar/IMG_4479.JPG", icon: Briefcase },
@@ -117,7 +117,7 @@ export function DiscoverEvents() {
   return (
     <section id="events" className="w-full bg-background pt-24 pb-20 px-4 md:px-8">
       <div className="container mx-auto max-w-7xl">
-        
+
         {/* Header - Matching Mockup */}
         <div className="mb-10 flex flex-col items-start border-l-4 border-primary pl-4 md:pl-5">
           <h2 className="text-3xl md:text-5xl font-extrabold tracking-tight text-foreground mb-2">
