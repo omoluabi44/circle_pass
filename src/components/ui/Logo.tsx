@@ -5,17 +5,19 @@ interface LogoProps {
   withLink?: boolean;
   imageClassName?: string;
   textClassName?: string;
+  imageSrc?: string;
 }
 
 export function Logo({
   className = "flex items-center space-x-2",
   withLink = true,
   imageClassName = "h-8 w-auto object-contain",
-  textClassName = "text-xl tracking-tight text-logo font-logo whitespace-nowrap"
+  textClassName = "text-xl tracking-tight text-logo font-logo whitespace-nowrap",
+  imageSrc = "/logo.png"
 }: LogoProps) {
   const content = (
     <>
-      <img src="/logo.png" alt="CirclePass Logo" className={imageClassName} />
+      <img src={imageSrc} alt="CirclePass Logo" className={imageClassName} />
       <span className={textClassName}>CirclePass</span>
     </>
   );
