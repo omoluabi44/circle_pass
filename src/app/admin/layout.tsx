@@ -25,9 +25,9 @@ export default function AdminLayout({
     <div className="bg-secondary/30 text-foreground min-h-screen flex font-sans">
       <aside className="w-72 bg-background border-r border-border flex flex-col h-screen sticky top-0 overflow-hidden hidden lg:flex">
         <div className="p-5 border-b border-border/50 shrink-0">
-          <div className="text-2xl font-bold text-logo mb-4 px-2 font-logo flex items-center">
+          <Link href="/" className="text-2xl font-bold text-logo mb-4 px-2 font-logo flex items-center hover:opacity-80 transition-opacity">
             CirclePass <span className="text-sm font-normal text-muted-foreground ml-2 px-2 py-0.5 bg-secondary rounded-full border border-border">Admin</span>
-          </div>
+          </Link>
           <div className="px-1">
             <RoleSwitcher />
           </div>
@@ -124,9 +124,9 @@ export default function AdminLayout({
       
       {/* Mobile Top Nav */}
       <div className="lg:hidden bg-background border-b border-border p-4 flex justify-between items-center fixed top-0 w-full z-40">
-        <div className="text-xl font-bold text-logo font-logo flex items-center">
+        <Link href="/" className="text-xl font-bold text-logo font-logo flex items-center hover:opacity-80 transition-opacity">
           CirclePass
-        </div>
+        </Link>
         <button onClick={() => setMobileMenuOpen(true)} className="p-2 bg-secondary rounded-lg">
           <Menu className="w-5 h-5 text-foreground" />
         </button>
@@ -139,9 +139,9 @@ export default function AdminLayout({
           <div className="relative w-72 bg-background h-full flex flex-col overflow-y-auto shadow-xl">
             <div className="p-5 border-b border-border/50 flex flex-col gap-4">
               <div className="flex items-center justify-between">
-                <div className="text-2xl font-bold text-logo font-logo flex items-center">
+                <Link href="/" onClick={() => setMobileMenuOpen(false)} className="text-2xl font-bold text-logo font-logo flex items-center hover:opacity-80 transition-opacity">
                   CirclePass
-                </div>
+                </Link>
                 <button onClick={() => setMobileMenuOpen(false)} className="p-2">
                   <X className="w-5 h-5 text-foreground" />
                 </button>
