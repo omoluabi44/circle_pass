@@ -8,7 +8,6 @@ import { EventMedia } from "@/components/sections/EventMedia";
 import { LiveVotingNominations } from "@/components/sections/LiveVotingNominations";
 import { Features } from "@/components/sections/Features";
 import { Pricing } from "@/components/sections/Pricing";
-import { Newsletter } from "@/components/sections/Newsletter";
 import { FAQ } from "@/components/sections/FAQ";
 
 export default function Home() {
@@ -24,7 +23,6 @@ export default function Home() {
       <LiveVotingNominations />
       <Features />
       <Pricing />
-      <Newsletter />
       <FAQ />
     </>
   );
