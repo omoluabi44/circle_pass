@@ -38,10 +38,10 @@ export function FAQ() {
     <section className="py-24 px-4 bg-cover bg-center bg-no-repeat" style={{ backgroundImage: "url('/background_B.jpg')" }} id="faq">
       <div className="container mx-auto max-w-3xl">
         <div className="text-center mb-16">
-          <h2 className="text-3xl md:text-4xl font-extrabold text-foreground tracking-tight mb-4">
+          <h2 className="text-3xl md:text-4xl font-extrabold text-slate-900 tracking-tight mb-4">
             Frequently Asked Questions
           </h2>
-          <p className="text-lg text-muted-foreground font-medium">
+          <p className="text-lg text-slate-600 font-medium">
             Everything you need to know about the product and billing.
           </p>
         </div>
@@ -52,23 +52,23 @@ export function FAQ() {
             return (
               <div
                 key={idx}
-                className={`border border-border/60 rounded-2xl overflow-hidden transition-all duration-300 ${isOpen ? 'bg-card shadow-sm border-primary/20' : 'bg-transparent hover:bg-card/50'}`}
+                className={`border border-slate-300 rounded-2xl overflow-hidden transition-all duration-300 ${isOpen ? 'bg-white shadow-sm border-primary/40' : 'bg-transparent hover:bg-white/50'}`}
               >
                 <button
                   onClick={() => setOpenIdx(isOpen ? null : idx)}
                   className="w-full text-left px-6 py-5 flex items-center justify-between focus:outline-none gap-4"
                 >
-                  <span className={`font-bold text-[17px] transition-colors ${isOpen ? 'text-primary' : 'text-foreground'}`}>
+                  <span className={`font-bold text-[17px] transition-colors ${isOpen ? 'text-primary' : 'text-slate-900'}`}>
                     {faq.q}
                   </span>
-                  <div className={`shrink-0 w-8 h-8 rounded-full flex items-center justify-center transition-colors ${isOpen ? 'bg-primary/10 text-primary' : 'bg-secondary text-muted-foreground'}`}>
+                  <div className={`shrink-0 w-8 h-8 rounded-full flex items-center justify-center transition-colors ${isOpen ? 'bg-primary/10 text-primary' : 'bg-slate-100 text-slate-600'}`}>
                     {isOpen ? <Minus className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
                   </div>
                 </button>
                 <div
                   className={`px-6 overflow-hidden transition-all duration-300 ease-in-out ${isOpen ? 'max-h-40 pb-6 opacity-100' : 'max-h-0 opacity-0'}`}
                 >
-                  <p className="text-muted-foreground leading-relaxed text-[15px] max-w-2xl pr-4">
+                  <p className="text-slate-600 leading-relaxed text-[15px] max-w-2xl pr-4">
                     {faq.a}
                   </p>
                 </div>
@@ -79,8 +79,8 @@ export function FAQ() {
 
         <div className="bg-primary/5 rounded-3xl p-8 md:p-10 text-center border border-primary/10 flex flex-col items-center">
           <MessageCircle className="w-12 h-12 text-primary mb-5" />
-          <h3 className="text-xl font-bold text-foreground mb-2">Further questions?</h3>
-          <p className="text-muted-foreground mb-8">We're here to help you get the most out of CirclePass.</p>
+          <h3 className="text-xl font-bold text-slate-900 mb-2">Further questions?</h3>
+          <p className="text-slate-600 mb-8">We're here to help you get the most out of CirclePass.</p>
           <Link
             href="https://wa.me/2349135512889"
             target="_blank"
