@@ -537,6 +537,20 @@ class SupportTicketViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
 
+    def perform_update(self, serializer):
+        old_status = self.get_object().status
+        instance = serializer.save()
+        
+        if old_status != instance.status:
+            from core.models import Notification
+            status_display = dict(instance.STATUS_CHOICES).get(instance.status, instance.status)
+            Notification.objects.create(
+                user=instance.user,
+                type='SYSTEM',
+                title=f"Support Ticket Update: {status_display}",
+                message=f"Your support ticket regarding '{instance.issue_type}' is now marked as {status_display}."
+            )
+
 
 class VerifyCodeView(APIView):
     permission_classes = [permissions.AllowAny]

@@ -42,10 +42,14 @@ class SendMessageToOrganizerView(APIView):
             
         sender_name = request.user.get_full_name() or request.user.username or request.user.email
         
+        title = f"Message from {sender_name} (Event: {event.title})"
+        if len(title) > 250:
+            title = title[:247] + "..."
+            
         Notification.objects.create(
             user=event.organizer.user,
             type='EVENT',
-            title=f"Message from {sender_name} (Event: {event.title})",
+            title=title,
             message=f"{sender_name} ({request.user.email}):\n\n{message_text}"
         )
         
