@@ -19,7 +19,7 @@ export function Pricing() {
       <div className="container mx-auto max-w-4xl text-center relative z-10">
         
         {/* Tag */}
-        <div className="inline-block border-2 border-primary text-primary font-bold px-6 py-2 rounded-lg mb-8 tracking-wider uppercase">
+        <div className="inline-block border-2 border-white text-white font-bold px-6 py-2 rounded-lg mb-8 tracking-wider uppercase">
           Pricing
         </div>
         
