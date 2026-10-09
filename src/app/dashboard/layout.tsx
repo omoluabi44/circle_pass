@@ -115,7 +115,7 @@ export default function AttendeeDashboardLayout({
       <div className="md:hidden bg-background border-b border-border p-4 flex flex-col gap-2">
         <div className="flex items-center justify-between">
           <div className="w-10"></div>
-          <img src="/logo.png" alt="CirclePass Logo" className="h-8 w-auto object-contain" />
+          <Link href="/"><img src="/logo.png" alt="CirclePass Logo" className="h-8 w-auto object-contain" /></Link>
           <div className="w-10 flex justify-end">
             <ThemeToggle />
           </div>
