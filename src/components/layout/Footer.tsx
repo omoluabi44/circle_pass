@@ -32,27 +32,30 @@ export function Footer() {
       <div className="absolute inset-0 bg-primary/10 z-0" />
 
       <div className="relative z-10">
-        <div className="container mx-auto px-4 grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-6">
-          <div className="lg:col-span-3 space-y-4 pr-0 lg:pr-4">
-            <Logo className="flex items-center space-x-2 mb-4" />
-            <p className="text-muted-foreground text-sm max-w-xs hidden md:block">
-              Your Pass to the next experience. Discover events, activate Voting, get your digital pass & show up for experiences that matter.
-            </p>
-            <div className="flex gap-4 pt-2">
-              <Link href="https://www.instagram.com/circle.pass?stkn=MW1kMzhucnZ5enN1aQ==" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary transition-colors flex items-center gap-1.5 font-medium">
-                <InstagramIcon className="w-4 h-4" /> Instagram
-              </Link>
-              <Link href="https://www.tiktok.com/@circle.pass?_r=1&_t=ZS-99xQ4N6hnPO" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary transition-colors flex items-center gap-1.5 font-medium">
-                <Music2 className="w-4 h-4" /> TikTok
-              </Link>
+        <div className="container mx-auto px-4 grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-6">
+          
+          <div className="lg:col-span-6 flex flex-col lg:flex-row gap-4 lg:gap-6">
+            <div className="lg:w-1/2 space-y-0 lg:space-y-4 pr-0 lg:pr-4">
+              <Logo className="flex items-center space-x-2" />
+              <p className="text-muted-foreground text-sm max-w-xs hidden lg:block mt-4">
+                Your Pass to the next experience. Discover events, activate Voting, get your digital pass & show up for experiences that matter.
+              </p>
+            </div>
+            
+            <div className="lg:w-1/2 flex flex-col gap-4 mt-2 lg:mt-0">
+              <FooterNewsletter />
+              <div className="flex gap-4">
+                <Link href="https://www.instagram.com/circle.pass?stkn=MW1kMzhucnZ5enN1aQ==" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary transition-colors flex items-center gap-1.5 font-medium">
+                  <InstagramIcon className="w-4 h-4" /> Instagram
+                </Link>
+                <Link href="https://www.tiktok.com/@circle.pass?_r=1&_t=ZS-99xQ4N6hnPO" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary transition-colors flex items-center gap-1.5 font-medium">
+                  <Music2 className="w-4 h-4" /> TikTok
+                </Link>
+              </div>
             </div>
           </div>
           
-          <div className="lg:col-span-3 mt-6 lg:mt-0">
-            <FooterNewsletter />
-          </div>
-          
-          <div className="lg:col-span-6 grid grid-cols-3 gap-2 sm:gap-4 md:gap-8 mt-6 lg:mt-0">
+          <div className="lg:col-span-6 grid grid-cols-3 gap-2 sm:gap-4 md:gap-8 mt-4 lg:mt-0">
             <div className="space-y-3 md:space-y-4">
               <h4 className="font-semibold text-[13px] sm:text-base md:text-lg text-foreground">Explore</h4>
               <ul className="space-y-2 text-[11px] sm:text-xs md:text-sm text-muted-foreground">
