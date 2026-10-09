@@ -11,10 +11,6 @@ class Migration(migrations.Migration):
             reverse_sql=migrations.RunSQL.noop
         ),
         migrations.RunSQL(
-            sql="ALTER TABLE core_socialpost CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;",
-            reverse_sql=migrations.RunSQL.noop
-        ),
-        migrations.RunSQL(
             sql="ALTER TABLE core_blogpost CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;",
             reverse_sql=migrations.RunSQL.noop
         ),
