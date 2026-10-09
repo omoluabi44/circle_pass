@@ -28,8 +28,8 @@ export function Footer() {
       style={{ backgroundImage: "url('/background_C.jpg')" }}
     >
       {/* Light overlay with a very light primary color tint */}
-      <div className="absolute inset-0 bg-background/90 z-0" />
-      <div className="absolute inset-0 bg-primary/10 z-0" />
+      
+      
 
       <div className="relative z-10">
         <div className="container mx-auto px-4 grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-6">
