@@ -26,38 +26,38 @@ export function Features() {
   const cards = [
     {
       num: "01",
-      icon: <Ticket className="w-5 h-5" />,
+      icon: <Ticket className="w-4 h-4 md:w-5 md:h-5" />,
       title: <>More Than<br/>Ticketing</>,
-      desc: "CirclePass goes beyond selling tickets  bringing event creation, ticketing, attendee management, and check-in into one experience.",
-      img: <img src="/image-folders/why-circlepass/card1-ui.png" alt="CirclePass Event Management" className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[140%] max-w-none h-auto" />
+      desc: "CirclePass goes beyond selling tickets bringing event creation, ticketing, attendee management, and check-in into one experience.",
+      img: <img src="/image-folders/why-circlepass/card1-ui.png" alt="CirclePass Event Management" className="w-full h-full object-contain object-bottom" />
     },
     {
       num: "02",
-      icon: <Users className="w-5 h-5" />,
+      icon: <Users className="w-4 h-4 md:w-5 md:h-5" />,
       title: <>Smart<br/>Waitlist</>,
       desc: "When tickets are sold out, interested attendees can join a waitlist instead of simply missing out.",
-      img: <img src="/image-folders/why-circlepass/card2-ui.jpg" alt="CirclePass Smart Waitlist" className="w-full h-full object-contain scale-[1.05]" />
+      img: <img src="/image-folders/why-circlepass/card2-ui.jpg" alt="CirclePass Smart Waitlist" className="w-full h-full object-contain object-bottom rounded-b-2xl" />
     },
     {
       num: "03",
-      icon: <Smartphone className="w-5 h-5" />,
+      icon: <Smartphone className="w-4 h-4 md:w-5 md:h-5" />,
       title: <>Digital Ticket<br/>Wallet</>,
       desc: "Attendees can keep their tickets in one place, making it easier to access their passes whenever they need them.",
-      img: <img src="/image-folders/why-circlepass/card3-ui.jpg" alt="CirclePass Digital Ticket Wallet" className="w-full h-full object-contain scale-[1.05]" />
+      img: <img src="/image-folders/why-circlepass/card3-ui.jpg" alt="CirclePass Digital Ticket Wallet" className="w-full h-full object-contain object-bottom rounded-b-2xl" />
     },
     {
       num: "04",
-      icon: <Bell className="w-5 h-5" />,
+      icon: <Bell className="w-4 h-4 md:w-5 md:h-5" />,
       title: <>Keep Everyone<br/>in the Loop.</>,
-      desc: "Send announcements and important updates directly to your attendees  from event changes and reminders to last-minute information.",
-      img: <img src="/image-folders/why-circlepass/card4-ui.jpg" alt="CirclePass Event Notifications" className="w-full h-full object-contain scale-[1.05]" />
+      desc: "Send announcements and important updates directly to your attendees from event changes and reminders to last-minute information.",
+      img: <img src="/image-folders/why-circlepass/card4-ui.jpg" alt="CirclePass Event Notifications" className="w-full h-full object-contain object-bottom rounded-b-2xl" />
     },
     {
       num: "05",
-      icon: <Star className="w-5 h-5" />,
+      icon: <Star className="w-4 h-4 md:w-5 md:h-5" />,
       title: <>Beyond Tickets,<br/>Beyond Events.</>,
       desc: "CirclePass isn't limited to ticketed experiences. Its voting and nomination capabilities can power elections, awards, competitions, and other campaigns.",
-      img: <img src="/image-folders/why-circlepass/card5-ui.png" alt="CirclePass Live Voting" className="w-full h-full object-contain scale-[1.05]" />
+      img: <img src="/image-folders/why-circlepass/card5-ui.png" alt="CirclePass Live Voting" className="w-full h-full object-contain object-bottom rounded-b-2xl" />
     }
   ];
 
@@ -88,19 +88,19 @@ export function Features() {
           style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
         >
           {cards.map((card, i) => (
-            <div key={i} className="min-w-[85vw] md:min-w-0 snap-center shrink-0 flex flex-col">
-              <div className="bg-card rounded-3xl p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-border/50 flex flex-col h-full hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] transition-all duration-300">
+            <div key={i} className="w-[260px] sm:w-[280px] shrink-0 md:w-auto md:shrink snap-center shrink-0 flex flex-col">
+              <div className="bg-card rounded-3xl p-5 md:p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-border/50 flex flex-col h-full hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] transition-all duration-300">
                 <div className="flex items-center gap-3 mb-6">
-                  <span className="flex items-center justify-center w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-bold">{card.num}</span>
+                  <span className="flex items-center justify-center w-6 h-6 md:w-7 md:h-7 rounded-full bg-primary/10 text-primary text-xs font-bold">{card.num}</span>
                   <div className="p-2 bg-primary/10 rounded-xl text-primary">{card.icon}</div>
                 </div>
-                <h4 className="text-xl font-bold text-foreground mb-3 leading-tight">{card.title}</h4>
-                <p className="text-muted-foreground text-sm leading-relaxed mb-5 flex-grow">
+                <h4 className="text-lg md:text-xl font-bold text-foreground mb-2 md:mb-3 leading-tight">{card.title}</h4>
+                <p className="text-muted-foreground text-[13px] md:text-sm leading-relaxed mb-4 md:mb-5 flex-grow">
                   {card.desc}
                 </p>
                 
                 {/* Mock UI Image */}
-                <div className="mt-auto w-full h-[180px] relative rounded-2xl overflow-hidden flex items-center justify-center bg-secondary/20">
+                <div className="mt-auto w-full h-[160px] md:h-[180px] relative flex items-end justify-center pt-4">
                   {card.img}
                 </div>
               </div>
@@ -132,7 +132,7 @@ export function Features() {
             {cards.map((_, i) => (
               <div 
                 key={i} 
-                className={`h-2 rounded-full transition-all duration-300 ${activeIndex === i ? 'w-6 bg-primary' : 'w-2 bg-primary/30'}`} 
+                className={`h-1.5 md:h-2 rounded-full transition-all duration-300 ${activeIndex === i ? 'w-6 bg-primary' : 'w-2 bg-primary/30'}`} 
               />
             ))}
           </div>
