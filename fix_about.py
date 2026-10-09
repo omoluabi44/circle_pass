@@ -3,77 +3,84 @@ import re
 with open("src/app/about/page.tsx", "r", encoding="utf-8") as f:
     content = f.read()
 
-# Card 1: Experience First
-old_card1 = """<div className="bg-background border border-border hover:border-primary/50 transition-colors rounded-2xl aspect-square flex flex-col p-8 text-left group shadow-sm">
-            <h4 className="font-bold text-xl mb-4 group-hover:text-primary transition-colors">Experience First</h4>
-            <p className="text-muted-foreground text-sm">The ticket is part of the journey, not the whole journey. Everything we build starts with the experience.</p>
-          </div>"""
+old_why = """      {/* Why CirclePass */}
+      <section className="max-w-7xl mx-auto px-4 grid grid-cols-1 md:grid-cols-2 gap-12 items-center py-24 border-t border-border/50">
+        <div className="bg-secondary/30 rounded-3xl aspect-[4/3] flex items-center justify-center border border-border overflow-hidden relative">
+          <Image
+            src="/image-folders/why circlepass.PNG"
+            alt="Event crowd"
+            fill
+            className="object-cover opacity-80"
+          />
+          <div className="absolute inset-0 bg-black/20" />
+        </div>
 
-new_card1 = """<div className="bg-background border border-border hover:border-primary/50 transition-colors rounded-2xl flex flex-col text-left group shadow-sm overflow-hidden">
-            <div className="relative w-full h-40 sm:h-48">
-              <Image src="/image-folders/about us page/experience_first.JPG" alt="Experience First" fill className="object-cover group-hover:scale-105 transition-transform duration-500" />
+        <div className="space-y-8 pl-0 md:pl-8">
+          <h3 className="text-4xl font-extrabold tracking-tight">Why CirclePass?</h3>
+          <div className="space-y-4 text-lg text-muted-foreground leading-relaxed">
+            <p className="font-semibold text-foreground text-xl">Because getting to an experience shouldn't be complicated.</p>
+            <p>
+              Organizers have a lot to manage — tickets, attendees, payments, communication, and check-in.
+            </p>
+            <p>
+              Attendees have their own journey — finding something worth going to, securing a ticket, keeping track of their pass, and getting through the door.
+            </p>
+            <p>
+              We believe these pieces should work better together.
+            </p>
+            <p className="font-bold text-foreground mt-6 text-xl">
+              So we're bringing more of the event journey into one place.
+            </p>
+          </div>
+        </div>
+      </section>"""
+
+# Normalize em-dashes for robust replace, sometimes they are `—` or `?"` in console output
+start_idx = content.find("{/* Why CirclePass */}")
+end_idx = content.find("{/* What we believe */}")
+if start_idx != -1 and end_idx != -1:
+    old_why = content[start_idx:end_idx]
+
+new_why = """      {/* Why CirclePass */}
+      <section 
+        className="w-full py-24 bg-cover bg-center bg-no-repeat"
+        style={{ backgroundImage: "url('/background_A.jpg')" }}
+      >
+        <div className="max-w-7xl mx-auto px-4 grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
+          <div className="bg-white/10 rounded-3xl aspect-[4/3] flex items-center justify-center border border-white/20 overflow-hidden relative shadow-2xl">
+            <Image
+              src="/image-folders/why circlepass.PNG"
+              alt="Event crowd"
+              fill
+              className="object-cover opacity-90"
+            />
+            <div className="absolute inset-0 bg-black/10" />
+          </div>
+
+          <div className="space-y-8 pl-0 md:pl-8">
+            <h3 className="text-4xl font-extrabold tracking-tight text-white">Why CirclePass?</h3>
+            <div className="space-y-4 text-lg text-white/80 leading-relaxed">
+              <p className="font-semibold text-white text-xl">Because getting to an experience shouldn't be complicated.</p>
+              <p>
+                Organizers have a lot to manage — tickets, attendees, payments, communication, and check-in.
+              </p>
+              <p>
+                Attendees have their own journey — finding something worth going to, securing a ticket, keeping track of their pass, and getting through the door.
+              </p>
+              <p>
+                We believe these pieces should work better together.
+              </p>
+              <p className="font-bold text-white mt-6 text-xl">
+                So we're bringing more of the event journey into one place.
+              </p>
             </div>
-            <div className="p-6 flex-1 flex flex-col">
-              <h4 className="font-bold text-xl mb-3 group-hover:text-primary transition-colors">Experience First</h4>
-              <p className="text-muted-foreground text-sm leading-relaxed">The ticket is part of the journey, not the whole journey. Everything we build starts with the experience.</p>
-            </div>
-          </div>"""
+          </div>
+        </div>
+      </section>
 
-content = content.replace(old_card1, new_card1)
+      """
 
-# Card 2: Simple by Design
-old_card2 = """<div className="bg-background border border-border hover:border-primary/50 transition-colors rounded-2xl aspect-square flex flex-col p-8 text-left group shadow-sm">
-            <h4 className="font-bold text-xl mb-4 group-hover:text-primary transition-colors">Simple by Design</h4>
-            <p className="text-muted-foreground text-sm">The important things shouldn't feel complicated. From creating an event to getting through the door, we keep the journey clear.</p>
-          </div>"""
-
-new_card2 = """<div className="bg-background border border-border hover:border-primary/50 transition-colors rounded-2xl flex flex-col text-left group shadow-sm overflow-hidden">
-            <div className="relative w-full h-40 sm:h-48">
-              <Image src="/image-folders/about us page/simple_by_design.PNG" alt="Simple by Design" fill className="object-cover group-hover:scale-105 transition-transform duration-500" />
-            </div>
-            <div className="p-6 flex-1 flex flex-col">
-              <h4 className="font-bold text-xl mb-3 group-hover:text-primary transition-colors">Simple by Design</h4>
-              <p className="text-muted-foreground text-sm leading-relaxed">The important things shouldn't feel complicated. From creating an event to getting through the door, we keep the journey clear.</p>
-            </div>
-          </div>"""
-
-content = content.replace(old_card2, new_card2)
-
-# Card 3: Built for Both Sides
-old_card3 = """<div className="bg-background border border-border hover:border-primary/50 transition-colors rounded-2xl aspect-square flex flex-col p-8 text-left group shadow-sm">
-            <h4 className="font-bold text-xl mb-4 group-hover:text-primary transition-colors">Built for Both Sides</h4>
-            <p className="text-muted-foreground text-sm">Great events need great organizers and great experiences for attendees. We build with both in mind.</p>
-          </div>"""
-
-new_card3 = """<div className="bg-background border border-border hover:border-primary/50 transition-colors rounded-2xl flex flex-col text-left group shadow-sm overflow-hidden">
-            <div className="relative w-full h-40 sm:h-48">
-              <Image src="/image-folders/about us page/built_for_both_side.PNG" alt="Built for Both Sides" fill className="object-cover group-hover:scale-105 transition-transform duration-500" />
-            </div>
-            <div className="p-6 flex-1 flex flex-col">
-              <h4 className="font-bold text-xl mb-3 group-hover:text-primary transition-colors">Built for Both Sides</h4>
-              <p className="text-muted-foreground text-sm leading-relaxed">Great events need great organizers and great experiences for attendees. We build with both in mind.</p>
-            </div>
-          </div>"""
-
-content = content.replace(old_card3, new_card3)
-
-# Card 4: Always Evolving
-old_card4 = """<div className="bg-background border border-border hover:border-primary/50 transition-colors rounded-2xl aspect-square flex flex-col p-8 text-left group shadow-sm">
-            <h4 className="font-bold text-xl mb-4 group-hover:text-primary transition-colors">Always Evolving</h4>
-            <p className="text-muted-foreground text-sm">We listen, learn, improve, and keep building around what people actually need.</p>
-          </div>"""
-
-new_card4 = """<div className="bg-background border border-border hover:border-primary/50 transition-colors rounded-2xl flex flex-col text-left group shadow-sm overflow-hidden">
-            <div className="relative w-full h-40 sm:h-48">
-              <Image src="/image-folders/about us page/always_evolving.PNG" alt="Always Evolving" fill className="object-cover group-hover:scale-105 transition-transform duration-500" />
-            </div>
-            <div className="p-6 flex-1 flex flex-col">
-              <h4 className="font-bold text-xl mb-3 group-hover:text-primary transition-colors">Always Evolving</h4>
-              <p className="text-muted-foreground text-sm leading-relaxed">We listen, learn, improve, and keep building around what people actually need.</p>
-            </div>
-          </div>"""
-
-content = content.replace(old_card4, new_card4)
+content = content[:start_idx] + new_why + content[end_idx:]
 
 with open("src/app/about/page.tsx", "w", encoding="utf-8") as f:
     f.write(content)

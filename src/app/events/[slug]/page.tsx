@@ -33,7 +33,7 @@ export async function generateMetadata(
     
     if (imageUrl) {
       if (!imageUrl.startsWith("http")) {
-        const apiBase = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'https://circlepass-production.up.railway.app';
+        const apiBase = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'https://api.thecirclepass.com';
         // If it's a relative path from Django, it belongs to the backend media folder
         if (imageUrl.startsWith('/media/')) {
             imageUrl = `${apiBase}${imageUrl}`;
