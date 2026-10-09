@@ -55,8 +55,8 @@ export default function AboutUsPage() {
       </section>
 
       {/* Why CirclePass */}
-      <section className="max-w-7xl mx-auto px-4 grid grid-cols-1 md:grid-cols-2 gap-12 items-center py-24 border-t border-border/50">
-        <div className="bg-secondary/30 rounded-3xl aspect-[4/3] flex items-center justify-center border border-border overflow-hidden relative">
+      <section className="w-full py-24 bg-cover bg-center bg-no-repeat" style={{ backgroundImage: "url('/background_A.jpg')" }}><div className="max-w-7xl mx-auto px-4 grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
+        <div className="bg-white/10 border-white/20 rounded-3xl aspect-[4/3] flex items-center justify-center border border-white/20 shadow-2xl overflow-hidden relative">
           <Image
             src="/image-folders/why circlepass.PNG"
             alt="Event crowd"
@@ -67,9 +67,9 @@ export default function AboutUsPage() {
         </div>
 
         <div className="space-y-8 pl-0 md:pl-8">
-          <h3 className="text-4xl font-extrabold tracking-tight">Why CirclePass?</h3>
-          <div className="space-y-4 text-lg text-muted-foreground leading-relaxed">
-            <p className="font-semibold text-foreground text-xl">Because getting to an experience shouldn't be complicated.</p>
+          <h3 className="text-4xl font-extrabold tracking-tight text-white">Why CirclePass?</h3>
+          <div className="space-y-4 text-lg text-white/80 leading-relaxed">
+            <p className="font-semibold text-white text-xl">Because getting to an experience shouldn't be complicated.</p>
             <p>
               Organizers have a lot to manage — tickets, attendees, payments, communication, and check-in.
             </p>
@@ -79,12 +79,12 @@ export default function AboutUsPage() {
             <p>
               We believe these pieces should work better together.
             </p>
-            <p className="font-bold text-foreground mt-6 text-xl">
+            <p className="font-bold text-white mt-6 text-xl">
               So we're bringing more of the event journey into one place.
             </p>
           </div>
         </div>
-      </section>
+      </div></section>
 
       {/* What we believe */}
       <section className="max-w-7xl mx-auto px-4 py-24 border-t border-border/50 text-center">
