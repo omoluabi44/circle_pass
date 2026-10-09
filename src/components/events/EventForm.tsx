@@ -56,6 +56,21 @@ export default function EventForm({ initialData, eventId }: { initialData?: any;
 
 
   useEffect(() => {
+    if (!eventId && !initialData) {
+      const saved = localStorage.getItem("circlepass_draft_event");
+      if (saved) {
+        try {
+          const draft = JSON.parse(saved);
+          if (draft.formData) setFormData(prev => ({ ...prev, ...draft.formData, cover_image: null }));
+          if (draft.ticketTypes) setTicketTypes(draft.ticketTypes);
+          if (draft.isTBA !== undefined) setIsTBA(draft.isTBA);
+          if (draft.locationQuery !== undefined) setLocationQuery(draft.locationQuery);
+        } catch (e) {
+          console.error("Failed to parse draft", e);
+        }
+      }
+    }
+
     if (initialData) {
       setFormData(prev => ({
         ...prev,
@@ -168,6 +183,19 @@ export default function EventForm({ initialData, eventId }: { initialData?: any;
   const [ticketTypes, setTicketTypes] = useState<any[]>([
     { name: "General Admission", price: 0, quantity: 100, tier: "FREE", description: "" }
   ]);
+
+  // Auto-save draft on change (only for new events)
+  useEffect(() => {
+    if (!eventId) {
+      const draft = {
+        formData: { ...formData, cover_image: null },
+        ticketTypes,
+        isTBA,
+        locationQuery
+      };
+      localStorage.setItem("circlepass_draft_event", JSON.stringify(draft));
+    }
+  }, [formData, ticketTypes, isTBA, locationQuery, eventId]);
 
   const handleTicketChange = (index: number, field: string, value: string | number) => {
     const updated = [...ticketTypes];
