@@ -537,19 +537,53 @@ class SupportTicketViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
 
-    def perform_update(self, serializer):
-        old_status = self.get_object().status
+    def update(self, request, *args, **kwargs):
+        # We override update to manually handle 'status' because it's read_only in the serializer
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        
+        old_status = instance.status
+        new_status = request.data.get('status')
+        
+        # Only Admins can change status (or you could allow anyone)
+        if new_status and (request.user.is_staff or request.user.role == 'ADMIN'):
+            instance.status = new_status
+            
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
         instance = serializer.save()
         
         if old_status != instance.status:
             from core.models import Notification
             status_display = dict(instance.STATUS_CHOICES).get(instance.status, instance.status)
+            title = f"Support Ticket Update: {status_display}"
+            message = f"Your support ticket regarding '{instance.issue_type}' is now marked as {status_display}."
+            
             Notification.objects.create(
                 user=instance.user,
                 type='SYSTEM',
-                title=f"Support Ticket Update: {status_display}",
-                message=f"Your support ticket regarding '{instance.issue_type}' is now marked as {status_display}."
+                title=title,
+                message=message
             )
+            
+            # Send email to the organizer/user
+            try:
+                from .tasks import send_html_email
+                from django.conf import settings
+                send_html_email(
+                    subject=title,
+                    text_content=message,
+                    to_emails=[instance.user.email],
+                    title_for_html=title
+                )
+            except Exception as e:
+                import logging
+                logging.getLogger(__name__).error(f"Failed to send support ticket email: {e}")
+            
+        if getattr(instance, '_prefetched_objects_cache', None):
+            instance._prefetched_objects_cache = {}
+
+        return Response(serializer.data)
 
 
 class VerifyCodeView(APIView):
