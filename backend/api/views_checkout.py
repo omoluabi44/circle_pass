@@ -226,10 +226,14 @@ class CheckoutView(APIView):
                     
                 # Queue check for sold out
                 try:
-                    from .tasks import check_sold_out_and_notify
+                    from .tasks import check_sold_out_and_notify, expire_pending_order
                     check_sold_out_and_notify.delay(event.id)
+                    
+                    if total_amount > 0:
+                        # Schedule expiration task 30 minutes (1800 seconds) from now
+                        expire_pending_order.apply_async((order.id,), countdown=1800)
                 except Exception as e:
-                    logger.warning("Failed to queue sold-out check for event %s: %s", event.id, e)
+                    logger.warning("Failed to queue background tasks for event %s: %s", event.id, e)
 
                 # ============================================
                 # FREE TICKET PATH: Issue tickets immediately
