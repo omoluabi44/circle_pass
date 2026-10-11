@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
-import { Calendar, MapPin, Clock, Share2, Ticket, ArrowLeft, Users, Bookmark, Music2, Link as LinkIcon, MessageCircle , QrCode } from "lucide-react";
+import { Calendar, MapPin, Clock, Share2, Ticket, ArrowLeft, Users, Bookmark, Music2, Link as LinkIcon, MessageCircle, QrCode, Mic2, Sparkles, ShieldAlert, Shirt, Phone } from "lucide-react";
 import { QRCodeCanvas } from "qrcode.react";
 import { InstagramIcon } from "@/components/ui/InstagramIcon";
 import Link from "next/link";
@@ -328,7 +328,7 @@ export default function EventDetailsPage() {
                   </div>
                   <div>
                     <h3 className="font-semibold text-foreground">
-                      {event.is_online ? "Online Event" : "Physical Venue"}
+                      {event.is_online ? "Online Event" : (event.location_name || "Physical Venue")}
                     </h3>
                     <p className="text-sm text-muted-foreground line-clamp-1 mb-1">
                       {event.is_online ? "Link provided upon registration" : event.venue?.name || "TBA"}
@@ -354,6 +354,132 @@ export default function EventDetailsPage() {
                 {event.description || "No description provided."}
               </div>
             </div>
+
+            {/* Lineup & Event Details / Guidelines */}
+            {(event.lineup || event.age_restriction || event.dress_code || event.organizer_contact || event.emergency_contact || event.instagram_handle || event.tiktok_handle) && (
+              <div className="bg-background rounded-2xl p-6 sm:p-8 shadow-sm border border-border space-y-6">
+                <div>
+                  <h2 className="text-xl font-bold text-foreground">
+                    {event.lineup ? "Lineup & Event Details" : "Event Guidelines & Details"}
+                  </h2>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Performers, guidelines and attendee information
+                  </p>
+                </div>
+
+                {/* Lineup / Artists */}
+                {event.lineup && String(event.lineup).trim() && (
+                  <div className="space-y-2.5">
+                    <h3 className="font-semibold text-foreground text-sm flex items-center gap-2">
+                      <Mic2 className="w-4 h-4 text-primary" /> Lineup / Artists
+                    </h3>
+                    <div className="bg-secondary/40 rounded-xl p-4 sm:p-5 border border-border/60">
+                      <p className="whitespace-pre-wrap text-foreground font-medium text-sm sm:text-base leading-relaxed">
+                        {event.lineup}
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Key Guidelines & Policies Grid */}
+                {(event.age_restriction || event.dress_code || event.organizer_contact || event.emergency_contact || event.instagram_handle || event.tiktok_handle) && (
+                  <div className="space-y-3 pt-2">
+                    {event.lineup && (
+                      <h3 className="font-semibold text-foreground text-sm flex items-center gap-2">
+                        <Sparkles className="w-4 h-4 text-primary" /> Guidelines & Information
+                      </h3>
+                    )}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                      {event.age_restriction && (
+                        <div className="p-3.5 rounded-xl bg-secondary/40 border border-border/60 flex items-start gap-3">
+                          <div className="p-2 rounded-lg bg-primary/10 text-primary shrink-0 mt-0.5">
+                            <ShieldAlert className="w-4 h-4" />
+                          </div>
+                          <div>
+                            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Age Restriction</p>
+                            <p className="font-bold text-foreground text-sm mt-0.5">{event.age_restriction}</p>
+                          </div>
+                        </div>
+                      )}
+
+                      {event.dress_code && (
+                        <div className="p-3.5 rounded-xl bg-secondary/40 border border-border/60 flex items-start gap-3">
+                          <div className="p-2 rounded-lg bg-primary/10 text-primary shrink-0 mt-0.5">
+                            <Shirt className="w-4 h-4" />
+                          </div>
+                          <div>
+                            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Dress Code</p>
+                            <p className="font-bold text-foreground text-sm mt-0.5">{event.dress_code}</p>
+                          </div>
+                        </div>
+                      )}
+
+                      {event.organizer_contact && (
+                        <div className="p-3.5 rounded-xl bg-secondary/40 border border-border/60 flex items-start gap-3">
+                          <div className="p-2 rounded-lg bg-primary/10 text-primary shrink-0 mt-0.5">
+                            <Phone className="w-4 h-4" />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Organizer Contact</p>
+                            <p className="font-bold text-foreground text-sm mt-0.5 break-all">{event.organizer_contact}</p>
+                          </div>
+                        </div>
+                      )}
+
+                      {event.emergency_contact && (
+                        <div className="p-3.5 rounded-xl bg-secondary/40 border border-border/60 flex items-start gap-3">
+                          <div className="p-2 rounded-lg bg-red-500/10 text-red-500 shrink-0 mt-0.5">
+                            <Phone className="w-4 h-4" />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Emergency Contact</p>
+                            <p className="font-bold text-foreground text-sm mt-0.5 break-all">{event.emergency_contact}</p>
+                          </div>
+                        </div>
+                      )}
+
+                      {event.instagram_handle && (
+                        <div className="p-3.5 rounded-xl bg-secondary/40 border border-border/60 flex items-start gap-3">
+                          <div className="p-2 rounded-lg bg-pink-500/10 text-pink-500 shrink-0 mt-0.5">
+                            <InstagramIcon className="w-4 h-4" />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Event Instagram</p>
+                            <a 
+                              href={`https://instagram.com/${String(event.instagram_handle).replace(/^@/, '')}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="font-bold text-primary hover:underline text-sm mt-0.5 block truncate"
+                            >
+                              {String(event.instagram_handle).startsWith('@') ? event.instagram_handle : `@${event.instagram_handle}`}
+                            </a>
+                          </div>
+                        </div>
+                      )}
+
+                      {event.tiktok_handle && (
+                        <div className="p-3.5 rounded-xl bg-secondary/40 border border-border/60 flex items-start gap-3">
+                          <div className="p-2 rounded-lg bg-primary/10 text-primary shrink-0 mt-0.5">
+                            <Music2 className="w-4 h-4" />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Event TikTok</p>
+                            <a 
+                              href={`https://tiktok.com/@${String(event.tiktok_handle).replace(/^@/, '')}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="font-bold text-primary hover:underline text-sm mt-0.5 block truncate"
+                            >
+                              {String(event.tiktok_handle).startsWith('@') ? event.tiktok_handle : `@${event.tiktok_handle}`}
+                            </a>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
           </div>
 

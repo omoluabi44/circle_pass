@@ -15,8 +15,34 @@ const roboto = Roboto({
 });
 
 export const metadata: Metadata = {
-  title: "CirclePass | Your Pass to the Next Experience",
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://thecirclepass.com"),
+  title: {
+    default: "CirclePass | Your Pass to the Next Experience",
+    template: "%s | CirclePass",
+  },
   description: "Discover events, activate e-voting, get your digital pass & show up for experiences that matter. Event ticketing, management, and check-in platform.",
+  openGraph: {
+    title: "CirclePass | Your Pass to the Next Experience",
+    description: "Discover events, activate e-voting, get your digital pass & show up for experiences that matter. Event ticketing, management, and check-in platform.",
+    url: "https://thecirclepass.com",
+    siteName: "CirclePass",
+    images: [
+      {
+        url: "/preview.jpeg",
+        width: 1200,
+        height: 630,
+        alt: "CirclePass - Your Pass to the Next Experience",
+      },
+    ],
+    locale: "en_US",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "CirclePass | Your Pass to the Next Experience",
+    description: "Discover events, activate e-voting, get your digital pass & show up for experiences that matter.",
+    images: ["/preview.jpeg"],
+  },
 };
 
 import { Navbar } from "@/components/layout/Navbar";
