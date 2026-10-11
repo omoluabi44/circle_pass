@@ -48,6 +48,64 @@ export default function CheckoutPage() {
   const [guestStep, setGuestStep] = useState(false);
   const [guestData, setGuestData] = useState({ name: '', email: '', phone: '', password: '' });
 
+  // Waitlist Claim State (When user clicks link in acceptance email)
+  const [waitlistToken, setWaitlistToken] = useState<string | null>(null);
+  const [waitlistClaimData, setWaitlistClaimData] = useState<any>(null);
+  const [claimLoading, setClaimLoading] = useState(false);
+  const [claimError, setClaimError] = useState<string | null>(null);
+
+  // Waitlist Registration Form State
+  const [waitlistEmail, setWaitlistEmail] = useState("");
+  const [waitlistName, setWaitlistName] = useState("");
+  const [waitlistPhone, setWaitlistPhone] = useState("");
+  const [waitlistTicketType, setWaitlistTicketType] = useState<number | string>("");
+  const [waitlistQuantity, setWaitlistQuantity] = useState<number>(1);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const token = params.get("waitlist_token");
+      if (token) setWaitlistToken(token);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (event?.ticket_types && event.ticket_types.length > 0 && !waitlistTicketType) {
+      setWaitlistTicketType(event.ticket_types[0].id);
+    }
+  }, [event, waitlistTicketType]);
+
+  useEffect(() => {
+    if (!event || !waitlistToken) return;
+    const verifyClaim = async () => {
+      setClaimLoading(true);
+      try {
+        const res = await fetch(`${API_URL}/events/${event.id}/waitlist/claim/?token=${encodeURIComponent(waitlistToken)}`);
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.detail || "Unable to claim waitlist reservation.");
+        }
+        setWaitlistClaimData(data);
+        if (data.ticket_type_id && data.quantity) {
+          setSelections({ [data.ticket_type_id]: data.quantity });
+        }
+        if (data.attendee_name || data.attendee_email) {
+          setGuestData(prev => ({
+            ...prev,
+            name: data.attendee_name || prev.name,
+            email: data.attendee_email || prev.email,
+            phone: data.attendee_phone || prev.phone,
+          }));
+        }
+      } catch (err: any) {
+        setClaimError(err.message || "Failed to load reserved ticket.");
+      } finally {
+        setClaimLoading(false);
+      }
+    };
+    verifyClaim();
+  }, [event, waitlistToken]);
+
   const isSalesPaused = Boolean(event?.sales_paused);
   const totalCapacity = useMemo(() => {
     return event?.ticket_types?.reduce((acc: number, t: any) => acc + (t.quantity || 0), 0) || 0;
@@ -66,13 +124,14 @@ export default function CheckoutPage() {
     );
   }, [event?.ticket_types, totalCapacity, totalSold]);
   
+  const isClaimingWaitlist = Boolean(waitlistClaimData && waitlistClaimData.status === 'ACCEPTED');
   const isPast = event ? new Date() > new Date(event.end_time) : false;
-  const isWaitlistActive = Boolean(event?.waitlist_enabled && (allSoldOut || isPast));
+  const isWaitlistActive = Boolean(!isClaimingWaitlist && event?.waitlist_enabled && (allSoldOut || isPast));
 
   const [timeLeft, setTimeLeft] = useState(600);
   
   useEffect(() => {
-    if (!event || success || isWaitlistActive || allSoldOut || isSalesPaused) return;
+    if (!event || success || isWaitlistActive || (allSoldOut && !isClaimingWaitlist) || isSalesPaused) return;
     const interval = setInterval(() => {
       setTimeLeft((prev) => {
         if (prev <= 1) {
@@ -85,7 +144,7 @@ export default function CheckoutPage() {
       });
     }, 1000);
     return () => clearInterval(interval);
-  }, [event, success, isWaitlistActive, allSoldOut, isSalesPaused]);
+  }, [event, success, isWaitlistActive, allSoldOut, isClaimingWaitlist, isSalesPaused]);
 
   const [discountCode, setDiscountCode] = useState("");
   const [appliedDiscount, setAppliedDiscount] = useState<{ code: string, type: string, value: number } | null>(null);
@@ -132,9 +191,6 @@ export default function CheckoutPage() {
   }
   const total = Math.max(0, subtotal - discountAmount) + fee;
 
-  const [waitlistEmail, setWaitlistEmail] = useState("");
-  const [waitlistName, setWaitlistName] = useState("");
-
   const handleJoinWaitlist = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!waitlistEmail || !waitlistName || !event) return;
@@ -144,13 +200,22 @@ export default function CheckoutPage() {
       const res = await fetch(`${API_URL}/events/${event.id}/waitlist/`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: waitlistEmail, name: waitlistName }),
+        body: JSON.stringify({ 
+          email: waitlistEmail, 
+          name: waitlistName,
+          phone: waitlistPhone,
+          ticket_type_id: waitlistTicketType,
+          quantity: waitlistQuantity
+        }),
       });
+      const data = await res.json();
       if (!res.ok) {
-        const data = await res.json();
         throw new Error(data.detail || "Failed to join waitlist.");
       }
-      setSuccessData({ message: "Joined waitlist successfully!" });
+      setSuccessData({ 
+        isWaitlist: true,
+        message: data.detail || "You've been added to the waitlist! We will notify you if your request is accepted." 
+      });
       setSuccess(true);
     } catch (err: any) {
       setError(err.message || "Failed to join waitlist.");
@@ -445,41 +510,136 @@ export default function CheckoutPage() {
               </div>
             ) : isWaitlistActive ? (
               <div className="py-6 flex flex-col items-center">
-                <div className="w-16 h-16 bg-primary/10 text-primary rounded-full flex items-center justify-center mb-6">
-                  <AlertCircle className="w-8 h-8" />
+                <div className="w-16 h-16 bg-primary/10 text-primary rounded-full flex items-center justify-center mb-5">
+                  <Ticket className="w-8 h-8" />
                 </div>
-                <h3 className="text-xl font-bold text-foreground mb-2 text-center">{isPast ? "Event Ended" : "Event Sold Out"}</h3>
-                <p className="text-muted-foreground mb-8 text-center max-w-sm">
-                  {isPast ? "This event has ended. Join the waitlist to be notified if it re-opens." : "Tickets are currently sold out. Join the waitlist to be notified if spots open up."}
+                <h3 className="text-xl font-bold text-foreground mb-1.5 text-center">
+                  {isPast ? "Event Ended" : "Event Sold Out"}
+                </h3>
+                <p className="text-muted-foreground mb-6 text-center max-w-sm text-sm">
+                  {isPast 
+                    ? "This event has ended. Join the waitlist to be notified if tickets open up." 
+                    : "All tickets are currently sold out. Select your preferred tier and quantity to join the waitlist."}
                 </p>
+
+                {claimError && (
+                  <div className="w-full max-w-md mb-4 p-3 rounded-xl bg-destructive/10 text-destructive text-sm flex items-start gap-2">
+                    <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                    <span>{claimError}</span>
+                  </div>
+                )}
                 
-                <form onSubmit={handleJoinWaitlist} className="w-full max-w-sm space-y-4">
+                <form onSubmit={handleJoinWaitlist} className="w-full max-w-md space-y-4 text-left">
+                  {/* Ticket Category Selector */}
                   <div>
+                    <label className="block text-xs font-bold text-foreground uppercase tracking-wider mb-1.5">
+                      Ticket Category
+                    </label>
+                    <select
+                      value={waitlistTicketType}
+                      onChange={(e) => setWaitlistTicketType(Number(e.target.value))}
+                      className="w-full px-4 py-3 rounded-xl border border-border bg-background text-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all text-sm font-medium"
+                      required
+                    >
+                      {event?.ticket_types?.map((tt: any) => (
+                        <option key={tt.id} value={tt.id}>
+                          {tt.name} — {tt.price === 0 ? "Free" : `₦${(tt.price / 100).toLocaleString()}`}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Quantity Selector */}
+                  <div>
+                    <label className="block text-xs font-bold text-foreground uppercase tracking-wider mb-1.5">
+                      Quantity
+                    </label>
+                    <div className="flex items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setWaitlistQuantity((q) => Math.max(1, q - 1))}
+                        disabled={waitlistQuantity <= 1}
+                        className="w-11 h-11 flex items-center justify-center rounded-xl border border-border bg-secondary hover:bg-secondary/80 text-foreground disabled:opacity-40 transition"
+                      >
+                        <Minus className="w-4 h-4" />
+                      </button>
+                      <input
+                        type="number"
+                        min="1"
+                        max="10"
+                        value={waitlistQuantity}
+                        onChange={(e) => setWaitlistQuantity(Math.max(1, Math.min(10, Number(e.target.value) || 1)))}
+                        className="flex-1 text-center py-2.5 rounded-xl border border-border bg-background text-foreground font-bold text-base outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setWaitlistQuantity((q) => Math.min(10, q + 1))}
+                        disabled={waitlistQuantity >= 10}
+                        className="w-11 h-11 flex items-center justify-center rounded-xl border border-border bg-secondary hover:bg-secondary/80 text-foreground disabled:opacity-40 transition"
+                      >
+                        <Plus className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Name */}
+                  <div>
+                    <label className="block text-xs font-bold text-foreground uppercase tracking-wider mb-1.5">
+                      Your Name
+                    </label>
                     <input 
                       type="text" 
                       required
-                      placeholder="Your Name" 
+                      placeholder="Jane Doe" 
                       value={waitlistName}
                       onChange={(e) => setWaitlistName(e.target.value)}
-                      className="w-full px-4 py-3 rounded-lg border border-border bg-background outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
+                      className="w-full px-4 py-3 rounded-xl border border-border bg-background text-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all text-sm"
                     />
                   </div>
+
+                  {/* Email */}
                   <div>
+                    <label className="block text-xs font-bold text-foreground uppercase tracking-wider mb-1.5">
+                      Email Address
+                    </label>
                     <input 
                       type="email" 
                       required
-                      placeholder="Your Email" 
+                      placeholder="jane@example.com" 
                       value={waitlistEmail}
                       onChange={(e) => setWaitlistEmail(e.target.value)}
-                      className="w-full px-4 py-3 rounded-lg border border-border bg-background outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
+                      className="w-full px-4 py-3 rounded-xl border border-border bg-background text-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all text-sm"
                     />
                   </div>
+
+                  {/* Phone (Optional) */}
+                  <div>
+                    <label className="block text-xs font-bold text-foreground uppercase tracking-wider mb-1.5">
+                      Phone Number <span className="text-muted-foreground font-normal lowercase">(optional)</span>
+                    </label>
+                    <input 
+                      type="tel" 
+                      placeholder="+234 800 000 0000" 
+                      value={waitlistPhone}
+                      onChange={(e) => setWaitlistPhone(e.target.value)}
+                      className="w-full px-4 py-3 rounded-xl border border-border bg-background text-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all text-sm"
+                    />
+                  </div>
+
+                  {/* Explainer / Transparency Card */}
+                  <div className="p-3.5 bg-secondary/60 rounded-xl border border-border/80 text-xs text-muted-foreground leading-relaxed flex items-start gap-2.5">
+                    <AlertCircle className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+                    <span>
+                      <strong>No payment required now.</strong> You do not need to enter card details. If the organizer accepts your request and tickets become available, you will receive an email to complete payment.
+                    </span>
+                  </div>
+
                   <button
                     type="submit"
                     disabled={isLoading}
-                    className="w-full py-3 bg-primary text-primary-foreground rounded-lg font-bold shadow-md hover:bg-primary/90 transition-colors disabled:opacity-50"
+                    className="w-full py-3.5 bg-primary text-primary-foreground rounded-xl font-bold shadow-md hover:bg-primary/90 transition-colors disabled:opacity-50 text-sm"
                   >
-                    {isLoading ? "Joining..." : "Join Waitlist"}
+                    {isLoading ? "Submitting Request..." : "Submit Waitlist Request"}
                   </button>
                 </form>
               </div>
@@ -561,9 +721,22 @@ export default function CheckoutPage() {
               </div>
             ) : (
               <div className="space-y-4">
+                {isClaimingWaitlist && (
+                  <div className="p-4 rounded-xl bg-primary/10 border border-primary/20 flex items-start gap-3 mb-2">
+                    <CheckCircle2 className="w-5 h-5 text-primary shrink-0 mt-0.5" />
+                    <div>
+                      <h4 className="font-bold text-foreground text-sm">Waitlist Reservation Confirmed! 🎉</h4>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        Your request for {waitlistClaimData.quantity}x {waitlistClaimData.ticket_type_name} ticket(s) has been accepted and reserved. Complete your checkout below.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
                 {event.ticket_types?.map((ticket: any) => {
+                  const isReservedTicket = isClaimingWaitlist && waitlistClaimData?.ticket_type_id === ticket.id;
                   const selected = selections[ticket.id] || 0;
-                  const isDisabled = ticket.is_sold_out || !ticket.is_active;
+                  const isDisabled = (ticket.is_sold_out && !isReservedTicket) || !ticket.is_active;
 
                   return (
                     <div
@@ -579,7 +752,12 @@ export default function CheckoutPage() {
                           <h4 className="font-semibold text-foreground">
                             {ticket.name}
                           </h4>
-                          {isDisabled && (
+                          {isReservedTicket && (
+                            <span className="px-2 py-0.5 text-xs font-bold bg-primary/10 text-primary rounded-full">
+                              Reserved for You
+                            </span>
+                          )}
+                          {isDisabled && !isReservedTicket && (
                             <span className="px-2 py-0.5 text-xs font-medium bg-secondary text-secondary-foreground rounded-full">
                               Sold Out
                             </span>
