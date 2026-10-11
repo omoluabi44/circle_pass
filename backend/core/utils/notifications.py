@@ -349,3 +349,123 @@ def send_event_reminder_email(order):
     except Exception as e:
         logger.error(f"Failed to send reminder email to {recipient}: {e}")
         EmailLog.objects.create(recipient=recipient, subject=subject, status='Failed')
+
+
+def send_waitlist_organizer_notification(entry):
+    """
+    Notifies the organizer whenever a new waitlist request is submitted.
+    """
+    try:
+        organizer = entry.event.organizer
+        recipient = organizer.user.email if organizer and organizer.user else None
+        if not recipient:
+            return
+
+        frontend_url = getattr(settings, 'FRONTEND_URL', 'https://thecirclepass.com')
+        manage_url = f"{frontend_url}/organizer/events/{entry.event.id}/waitlist"
+
+        subject = f"New Waitlist Request - {entry.event.title}"
+        organizer_name = organizer.company_name or organizer.user.get_full_name() or 'Organizer'
+        tier_name = entry.ticket_type.name if entry.ticket_type else 'General Admission'
+
+        context = {
+            'organizer_name': organizer_name,
+            'event': entry.event,
+            'attendee_name': entry.name or 'Attendee',
+            'attendee_email': entry.email,
+            'attendee_phone': entry.phone,
+            'tier_name': tier_name,
+            'quantity': entry.quantity,
+            'frontend_url': frontend_url,
+            'manage_url': manage_url,
+        }
+
+        from django.template.loader import render_to_string
+        html_message = render_to_string('email/waitlist_new_request.html', context)
+        message = (
+            f"Hi {organizer_name},\n\n"
+            f"A new attendee ({entry.name or 'Attendee'}, {entry.email}) has joined the waitlist for '{entry.event.title}' "
+            f"requesting {entry.quantity}x {tier_name}.\n\n"
+            f"Manage waitlist applications here: {manage_url}\n\n"
+            f"CirclePass Team"
+        )
+
+        send_mail(
+            subject,
+            message,
+            getattr(settings, 'DEFAULT_FROM_EMAIL', 'noreply@circlepass.com'),
+            [recipient],
+            html_message=html_message,
+            fail_silently=False,
+        )
+        EmailLog.objects.create(recipient=recipient, subject=subject, status='Sent')
+    except Exception as e:
+        logger.error(f"Failed to send waitlist organizer notification: {e}")
+        if recipient:
+            EmailLog.objects.create(recipient=recipient, subject=subject, status='Failed')
+
+
+def send_waitlist_accepted_notification(entry):
+    """
+    Notifies an attendee that their waitlist request was approved and tickets are reserved.
+    """
+    try:
+        recipient = entry.email
+        if not recipient:
+            return
+
+        frontend_url = getattr(settings, 'FRONTEND_URL', 'https://thecirclepass.com')
+        event_slug = getattr(entry.event, 'slug', entry.event.id)
+        checkout_url = f"{frontend_url}/events/{event_slug}/checkout?waitlist_token={entry.access_token}"
+
+        subject = f"Your Waitlist Request Was Accepted! - {entry.event.title}"
+        attendee_name = entry.name or 'There'
+        tier_name = entry.ticket_type.name if entry.ticket_type else 'General Admission'
+
+        # Format price
+        unit_price = entry.ticket_type.price if entry.ticket_type else 0
+        total_kobo = unit_price * entry.quantity
+        if total_kobo == 0:
+            formatted_price = "Free (₦0)"
+        else:
+            formatted_price = f"₦{(total_kobo / 100):,.2f}"
+
+        # Format expiration
+        expires_at_formatted = entry.reserved_until.strftime('%A, %b %d, %Y at %I:%M %p') if entry.reserved_until else 'Within 2 hours'
+
+        context = {
+            'attendee_name': attendee_name,
+            'event': entry.event,
+            'tier_name': tier_name,
+            'quantity': entry.quantity,
+            'formatted_price': formatted_price,
+            'expires_at_formatted': expires_at_formatted,
+            'checkout_url': checkout_url,
+            'frontend_url': frontend_url,
+        }
+
+        from django.template.loader import render_to_string
+        html_message = render_to_string('email/waitlist_accepted.html', context)
+        message = (
+            f"Hi {attendee_name},\n\n"
+            f"Great news! Your waitlist request for {entry.event.title} has been accepted!\n"
+            f"Reserved: {entry.quantity}x {tier_name}\n"
+            f"Total: {formatted_price}\n"
+            f"Reserved Until: {expires_at_formatted}\n\n"
+            f"Complete your payment now before your reservation expires: {checkout_url}\n\n"
+            f"CirclePass Team"
+        )
+
+        send_mail(
+            subject,
+            message,
+            getattr(settings, 'DEFAULT_FROM_EMAIL', 'noreply@circlepass.com'),
+            [recipient],
+            html_message=html_message,
+            fail_silently=False,
+        )
+        EmailLog.objects.create(recipient=recipient, subject=subject, status='Sent')
+    except Exception as e:
+        logger.error(f"Failed to send waitlist accepted notification: {e}")
+        if recipient:
+            EmailLog.objects.create(recipient=recipient, subject=subject, status='Failed')

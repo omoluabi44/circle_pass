@@ -1,6 +1,13 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import StubView, OrganizerProfileViewSet, CustomUserViewSet, EventViewSet, EventCategoryViewSet, OrganizerVerificationView, google_auth, WaitlistEntryCreateView, PublicOrganizerProfileView, VerifyCodeView
+from .views import StubView, OrganizerProfileViewSet, CustomUserViewSet, EventViewSet, EventCategoryViewSet, OrganizerVerificationView, google_auth, PublicOrganizerProfileView, VerifyCodeView
+from .views_waitlist import (
+    WaitlistEntryCreateView,
+    OrganizerWaitlistListView,
+    OrganizerWaitlistAcceptView,
+    OrganizerWaitlistDeclineView,
+    WaitlistClaimView,
+)
 from .views_checkout import CheckoutView
 from .views_payment import PaystackWebhookView, PaymentVerifyView
 from .views_wallet import OrganizerWalletView, WalletTransactionListView
@@ -71,6 +78,10 @@ urlpatterns = [
     
     # Waitlist
     path('events/<int:event_id>/waitlist/', WaitlistEntryCreateView.as_view(), name='event_waitlist'),
+    path('events/<int:event_id>/waitlist/manage/', OrganizerWaitlistListView.as_view(), name='event_waitlist_manage'),
+    path('events/<int:event_id>/waitlist/<int:entry_id>/accept/', OrganizerWaitlistAcceptView.as_view(), name='event_waitlist_accept'),
+    path('events/<int:event_id>/waitlist/<int:entry_id>/decline/', OrganizerWaitlistDeclineView.as_view(), name='event_waitlist_decline'),
+    path('events/<int:event_id>/waitlist/claim/', WaitlistClaimView.as_view(), name='event_waitlist_claim'),
 
     # Orders / Checkout
     path('orders/checkout/', CheckoutView.as_view(), name='orders_checkout'),

@@ -75,6 +75,9 @@ def fulfill_order(order, payment=None):
                 ),
             )
 
+        # Complete linked waitlist entries if any
+        order_fresh.waitlist_entries.filter(status='ACCEPTED').update(status='COMPLETED')
+
         send_purchase_receipt(order_fresh, tickets)
         try:
             send_organizer_sales_notification(order_fresh, tickets)
@@ -99,3 +102,6 @@ def fail_order(order):
             )
         order_fresh.status = 'FAILED'
         order_fresh.save(update_fields=['status', 'updated_at'])
+
+        # Expire linked waitlist entries if any
+        order_fresh.waitlist_entries.filter(status='ACCEPTED').update(status='EXPIRED')

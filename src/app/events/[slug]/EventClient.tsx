@@ -13,6 +13,103 @@ import { API_URL } from "@/lib/api/config";
 import { getPublicEvents } from "@/lib/api/events";
 import toast from "react-hot-toast";
 
+function EventCountdown({ targetDate }: { targetDate?: string }) {
+  const [timeLeft, setTimeLeft] = useState<{
+    days: number;
+    hours: number;
+    minutes: number;
+    seconds: number;
+    isPast: boolean;
+  } | null>(null);
+
+  useEffect(() => {
+    if (!targetDate) return;
+
+    const calculate = () => {
+      const target = new Date(targetDate).getTime();
+      if (isNaN(target)) return;
+
+      const now = new Date().getTime();
+      const diff = target - now;
+
+      if (diff <= 0) {
+        setTimeLeft({ days: 0, hours: 0, minutes: 0, seconds: 0, isPast: true });
+        return;
+      }
+
+      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+      setTimeLeft({ days, hours, minutes, seconds, isPast: false });
+    };
+
+    calculate();
+    const timer = setInterval(calculate, 1000);
+    return () => clearInterval(timer);
+  }, [targetDate]);
+
+  if (!timeLeft) return null;
+
+  if (timeLeft.isPast) {
+    return (
+      <div className="flex items-center gap-2.5 p-3.5 sm:p-4 rounded-xl bg-primary/10 border border-primary/20 text-primary">
+        <span className="relative flex h-2.5 w-2.5">
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+          <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-primary"></span>
+        </span>
+        <span className="font-bold text-xs sm:text-sm">Event has started or is Live!</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-secondary/40 border border-border/60 rounded-2xl p-4 sm:p-5">
+      <div className="flex items-center justify-between mb-3">
+        <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+          <Clock className="w-3.5 h-3.5 text-primary" /> Event Countdown
+        </span>
+        <span className="text-xs text-primary font-semibold hidden sm:inline-block">Counting down to showtime</span>
+      </div>
+      <div className="grid grid-cols-4 gap-2 sm:gap-3 text-center">
+        <div className="bg-background/80 backdrop-blur-sm border border-border/80 rounded-xl p-2.5 sm:p-3 shadow-xs">
+          <div className="text-xl sm:text-3xl font-extrabold text-foreground tracking-tight">
+            {String(timeLeft.days).padStart(2, '0')}
+          </div>
+          <div className="text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wider mt-0.5">
+            Days
+          </div>
+        </div>
+        <div className="bg-background/80 backdrop-blur-sm border border-border/80 rounded-xl p-2.5 sm:p-3 shadow-xs">
+          <div className="text-xl sm:text-3xl font-extrabold text-foreground tracking-tight">
+            {String(timeLeft.hours).padStart(2, '0')}
+          </div>
+          <div className="text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wider mt-0.5">
+            Hours
+          </div>
+        </div>
+        <div className="bg-background/80 backdrop-blur-sm border border-border/80 rounded-xl p-2.5 sm:p-3 shadow-xs">
+          <div className="text-xl sm:text-3xl font-extrabold text-foreground tracking-tight">
+            {String(timeLeft.minutes).padStart(2, '0')}
+          </div>
+          <div className="text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wider mt-0.5">
+            Minutes
+          </div>
+        </div>
+        <div className="bg-background/80 backdrop-blur-sm border border-border/80 rounded-xl p-2.5 sm:p-3 shadow-xs">
+          <div className="text-xl sm:text-3xl font-extrabold text-primary tracking-tight">
+            {String(timeLeft.seconds).padStart(2, '0')}
+          </div>
+          <div className="text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wider mt-0.5">
+            Seconds
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // Fetch real event details from the backend
 export default function EventDetailsPage() {
   const params = useParams();
@@ -366,8 +463,9 @@ export default function EventDetailsPage() {
               const hasLineup = isValidValue(event.lineup);
               const hasAgeRestriction = isValidValue(event.age_restriction);
               const hasDressCode = isValidValue(event.dress_code);
+              const hasCountdown = Boolean(event.start_time);
 
-              if (!hasLineup && !hasAgeRestriction && !hasDressCode) return null;
+              if (!hasLineup && !hasAgeRestriction && !hasDressCode && !hasCountdown) return null;
 
               return (
                 <div className="bg-background rounded-2xl p-6 sm:p-8 shadow-sm border border-border space-y-6">
@@ -377,12 +475,23 @@ export default function EventDetailsPage() {
                         ? "Event Lineup"
                         : hasLineup
                         ? "Lineup & Event Details"
+                        : (!hasLineup && !hasAgeRestriction && !hasDressCode)
+                        ? "Event Countdown"
                         : "Event Guidelines & Details"}
                     </h2>
                     <p className="text-xs text-muted-foreground mt-0.5">
-                      {hasLineup ? "Performers, guidelines and attendee information" : "Guidelines and attendee information"}
+                      {hasLineup
+                        ? "Performers, guidelines and attendee information"
+                        : (!hasLineup && !hasAgeRestriction && !hasDressCode)
+                        ? "Time remaining until the event begins"
+                        : "Performers, guidelines and attendee information"}
                     </p>
                   </div>
+
+                  {/* Event Countdown Timer (Days, Hours, Minutes, Seconds) */}
+                  {hasCountdown && (
+                    <EventCountdown targetDate={event.start_time} />
+                  )}
 
                   {/* Lineup / Artists */}
                   {hasLineup && (

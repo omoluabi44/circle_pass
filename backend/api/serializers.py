@@ -562,3 +562,27 @@ class SupportTicketSerializer(serializers.ModelSerializer):
         model = SupportTicket
         fields = '__all__'
         read_only_fields = ('user', 'status', 'created_at', 'updated_at')
+
+
+from core.models import WaitlistEntry
+
+class WaitlistEntrySerializer(serializers.ModelSerializer):
+    ticket_type_name = serializers.CharField(source='ticket_type.name', read_only=True)
+    ticket_type_price = serializers.IntegerField(source='ticket_type.price', read_only=True)
+    ticket_type_tier = serializers.CharField(source='ticket_type.tier', read_only=True)
+    available_inventory = serializers.SerializerMethodField()
+
+    class Meta:
+        model = WaitlistEntry
+        fields = (
+            'id', 'event', 'ticket_type', 'ticket_type_name', 'ticket_type_price',
+            'ticket_type_tier', 'name', 'email', 'phone', 'quantity', 'status',
+            'access_token', 'reserved_until', 'order', 'notified', 'created_at',
+            'available_inventory'
+        )
+        read_only_fields = ('id', 'status', 'access_token', 'reserved_until', 'order', 'notified', 'created_at')
+
+    def get_available_inventory(self, obj):
+        if not obj.ticket_type:
+            return 0
+        return max(0, obj.ticket_type.quantity - obj.ticket_type.quantity_sold)

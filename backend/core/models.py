@@ -537,19 +537,53 @@ class EventAnnouncement(models.Model):
         return f'{self.title} for {self.event.title}'
 
 class WaitlistEntry(models.Model):
-    """Captures emails for sold-out events (Waitlist) or pre-sale (Notify Me)."""
+    """
+    Captures waitlist applications for sold-out events.
+    Allows attendees to request a specific ticket tier and quantity.
+    Organizers can view, accept (if inventory is available), or decline requests.
+    When accepted, tickets are reserved and attendee is notified to complete payment.
+    """
+    STATUS_CHOICES = (
+        ('PENDING', 'Pending'),
+        ('ACCEPTED', 'Accepted'),
+        ('DECLINED', 'Declined'),
+        ('EXPIRED', 'Expired'),
+        ('COMPLETED', 'Completed'),
+    )
+
     event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name='waitlist_entries')
+    ticket_type = models.ForeignKey(
+        TicketType,
+        on_delete=models.SET_NULL,
+        related_name='waitlist_entries',
+        null=True,
+        blank=True
+    )
     name = models.CharField(max_length=255, blank=True)
     email = models.EmailField()
-    created_at = models.DateTimeField(auto_now_add=True)
+    phone = models.CharField(max_length=30, blank=True)
+    quantity = models.PositiveIntegerField(default=1)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDING')
+    access_token = models.CharField(max_length=64, blank=True, null=True, unique=True)
+    reserved_until = models.DateTimeField(null=True, blank=True)
+    order = models.ForeignKey(
+        'Order',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='waitlist_entries'
+    )
     notified = models.BooleanField(default=False)
+    notified_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        unique_together = ('event', 'email')
         ordering = ['created_at']
 
     def __str__(self):
-        return f'{self.email} waiting for {self.event.title}'
+        tier_name = self.ticket_type.name if self.ticket_type else 'General'
+        return f'{self.email} - {self.quantity}x {tier_name} for {self.event.title} ({self.status})'
 
 class NewsletterSubscriber(models.Model):
     email = models.EmailField(unique=True)

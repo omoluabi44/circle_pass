@@ -491,39 +491,7 @@ class EventViewSet(viewsets.ModelViewSet):
             "ticket_tiers": tiers
         })
 
-class WaitlistEntryCreateView(APIView):
-    """
-    POST /api/events/<event_id>/waitlist/
-    Allows users to join a waitlist or presale notification list for an event.
-    """
-    permission_classes = [AllowAny]
-
-    def post(self, request, event_id):
-        from core.models import WaitlistEntry
-        email = request.data.get('email')
-        name = request.data.get('name', '')
-
-        if not email:
-            return Response({'detail': 'Email is required.'}, status=status.HTTP_400_BAD_REQUEST)
-
-        try:
-            event = Event.objects.get(pk=event_id)
-        except Event.DoesNotExist:
-            return Response({'detail': 'Event not found.'}, status=status.HTTP_404_NOT_FOUND)
-
-        if not event.waitlist_enabled:
-            return Response({'detail': 'Waitlist is not enabled for this event.'}, status=status.HTTP_400_BAD_REQUEST)
-
-        entry, created = WaitlistEntry.objects.get_or_create(
-            event=event,
-            email=email,
-            defaults={'name': name}
-        )
-
-        if not created:
-            return Response({'detail': 'You are already on the list!'}, status=status.HTTP_200_OK)
-
-        return Response({'detail': 'Successfully joined the waitlist!'}, status=status.HTTP_201_CREATED)
+from .views_waitlist import WaitlistEntryCreateView
 
 from core.models import SupportTicket
 from api.serializers import SupportTicketSerializer

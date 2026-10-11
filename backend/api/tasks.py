@@ -335,6 +335,9 @@ def expire_pending_order(order_id):
                 
                 order.status = 'CANCELLED'
                 order.save(update_fields=['status'])
+
+                # Expire linked waitlist entries
+                order.waitlist_entries.filter(status='ACCEPTED').update(status='EXPIRED')
     except Order.DoesNotExist:
         pass
     except Exception as e:

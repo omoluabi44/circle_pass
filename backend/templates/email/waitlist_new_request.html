@@ -1,0 +1,77 @@
+<div style="font-family: 'Roboto', Arial, sans-serif; background-color: #f9fafb; padding: 40px 20px;">
+  <div style="max-width: 520px; margin: 0 auto; background: #ffffff; border-radius: 16px; padding: 40px 32px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); border: 1px solid #e5e7eb;">
+    
+    <!-- Header Logo -->
+    <div style="text-align: center; margin-bottom: 24px;">
+      <table cellpadding="0" cellspacing="0" border="0" align="center">
+        <tr>
+          <td>
+            <img src="{{ frontend_url }}/logo.png" alt="Circlepass Logo" style="height: 40px; display: block; margin-right: 8px;">
+          </td>
+          <td>
+            <span style="font-family: 'Fredoka', sans-serif; font-size: 28px; font-weight: 600; color: #3730a3;">Circlepass</span>
+          </td>
+        </tr>
+      </table>
+    </div>
+
+    <!-- Title -->
+    <h1 style="text-align: center; font-size: 24px; font-weight: 700; color: #1f2937; margin: 0 0 20px 0;">
+      New Waitlist Request
+    </h1>
+
+    <!-- Body -->
+    <p style="color: #1f2937; font-size: 15px; margin: 0 0 16px 0; line-height: 1.6;">
+      Hi {{ organizer_name }},
+    </p>
+    <p style="color: #4b5563; font-size: 15px; margin: 0 0 24px 0; line-height: 1.6;">
+      A new attendee has joined the waitlist for your sold-out event, <strong>{{ event.title }}</strong>.
+    </p>
+
+    <!-- Request Details Box -->
+    <div style="background-color: #f5f3ff; border: 1px solid #ede9fe; border-radius: 12px; padding: 20px; margin-bottom: 28px;">
+      <h3 style="margin: 0 0 14px 0; font-size: 16px; color: #3730a3; font-weight: 700;">Request Details</h3>
+      <table width="100%" cellpadding="6" cellspacing="0" border="0" style="font-size: 14px; color: #374151;">
+        <tr>
+          <td width="35%" style="color: #6b7280; font-weight: 500;">Attendee:</td>
+          <td style="font-weight: 600;">{{ attendee_name }}</td>
+        </tr>
+        <tr>
+          <td style="color: #6b7280; font-weight: 500;">Email:</td>
+          <td><a href="mailto:{{ attendee_email }}" style="color: #6366f1; text-decoration: none;">{{ attendee_email }}</a></td>
+        </tr>
+        {% if attendee_phone %}
+        <tr>
+          <td style="color: #6b7280; font-weight: 500;">Phone:</td>
+          <td>{{ attendee_phone }}</td>
+        </tr>
+        {% endif %}
+        <tr>
+          <td style="color: #6b7280; font-weight: 500;">Ticket Category:</td>
+          <td style="font-weight: 700; color: #111827;">{{ tier_name }}</td>
+        </tr>
+        <tr>
+          <td style="color: #6b7280; font-weight: 500;">Quantity:</td>
+          <td style="font-weight: 700; color: #111827;">{{ quantity }} ticket{{ quantity|pluralize }}</td>
+        </tr>
+      </table>
+    </div>
+
+    <p style="color: #4b5563; font-size: 14px; margin: 0 0 24px 0; line-height: 1.6;">
+      You can review and accept this request whenever additional inventory becomes available (via cancellations, releases, or increasing tier capacity).
+    </p>
+
+    <!-- CTA Button -->
+    <div style="text-align: center; margin-bottom: 28px;">
+      <a href="{{ manage_url }}" style="display: inline-block; background-color: #6366f1; color: #ffffff; font-size: 15px; font-weight: 600; text-decoration: none; padding: 14px 28px; border-radius: 10px; box-shadow: 0 4px 6px -1px rgba(99, 102, 241, 0.2);">
+        Manage Waitlist
+      </a>
+    </div>
+
+    <!-- Footer -->
+    <p style="font-size: 12px; color: #9ca3af; text-align: center; margin: 0; line-height: 1.5;">
+      You are receiving this because waitlist notifications are active for your event on CirclePass.
+    </p>
+
+  </div>
+</div>
