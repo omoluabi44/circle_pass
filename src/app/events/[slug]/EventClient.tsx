@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
-import { Calendar, MapPin, Clock, Share2, Ticket, ArrowLeft, Users, Bookmark, Music2, Link as LinkIcon, MessageCircle, QrCode, Mic2, Sparkles, ShieldAlert, Shirt, Phone } from "lucide-react";
+import { Calendar, MapPin, Clock, Share2, Ticket, ArrowLeft, Users, Bookmark, Music2, Link as LinkIcon, MessageCircle, QrCode, Mic2, Sparkles, ShieldAlert, Shirt } from "lucide-react";
 import { QRCodeCanvas } from "qrcode.react";
 import { InstagramIcon } from "@/components/ui/InstagramIcon";
 import Link from "next/link";
@@ -355,131 +355,87 @@ export default function EventDetailsPage() {
               </div>
             </div>
 
-            {/* Lineup & Event Details / Guidelines */}
-            {(event.lineup || event.age_restriction || event.dress_code || event.organizer_contact || event.emergency_contact || event.instagram_handle || event.tiktok_handle) && (
-              <div className="bg-background rounded-2xl p-6 sm:p-8 shadow-sm border border-border space-y-6">
-                <div>
-                  <h2 className="text-xl font-bold text-foreground">
-                    {event.lineup ? "Lineup & Event Details" : "Event Guidelines & Details"}
-                  </h2>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    Performers, guidelines and attendee information
-                  </p>
-                </div>
+            {/* Event Guidelines: Lineup, Age Restriction, Dress Code */}
+            {(() => {
+              const isValidValue = (val: any) => {
+                if (!val) return false;
+                const trimmed = String(val).trim().toLowerCase();
+                return trimmed !== "" && trimmed !== "none" && trimmed !== "n/a" && trimmed !== "no";
+              };
 
-                {/* Lineup / Artists */}
-                {event.lineup && String(event.lineup).trim() && (
-                  <div className="space-y-2.5">
-                    <h3 className="font-semibold text-foreground text-sm flex items-center gap-2">
-                      <Mic2 className="w-4 h-4 text-primary" /> Lineup / Artists
-                    </h3>
-                    <div className="bg-secondary/40 rounded-xl p-4 sm:p-5 border border-border/60">
-                      <p className="whitespace-pre-wrap text-foreground font-medium text-sm sm:text-base leading-relaxed">
-                        {event.lineup}
-                      </p>
-                    </div>
+              const hasLineup = isValidValue(event.lineup);
+              const hasAgeRestriction = isValidValue(event.age_restriction);
+              const hasDressCode = isValidValue(event.dress_code);
+
+              if (!hasLineup && !hasAgeRestriction && !hasDressCode) return null;
+
+              return (
+                <div className="bg-background rounded-2xl p-6 sm:p-8 shadow-sm border border-border space-y-6">
+                  <div>
+                    <h2 className="text-xl font-bold text-foreground">
+                      {hasLineup && !hasAgeRestriction && !hasDressCode
+                        ? "Event Lineup"
+                        : hasLineup
+                        ? "Lineup & Event Details"
+                        : "Event Guidelines & Details"}
+                    </h2>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {hasLineup ? "Performers, guidelines and attendee information" : "Guidelines and attendee information"}
+                    </p>
                   </div>
-                )}
 
-                {/* Key Guidelines & Policies Grid */}
-                {(event.age_restriction || event.dress_code || event.organizer_contact || event.emergency_contact || event.instagram_handle || event.tiktok_handle) && (
-                  <div className="space-y-3 pt-2">
-                    {event.lineup && (
+                  {/* Lineup / Artists */}
+                  {hasLineup && (
+                    <div className="space-y-2.5">
                       <h3 className="font-semibold text-foreground text-sm flex items-center gap-2">
-                        <Sparkles className="w-4 h-4 text-primary" /> Guidelines & Information
+                        <Mic2 className="w-4 h-4 text-primary" /> Lineup / Artists
                       </h3>
-                    )}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                      {event.age_restriction && (
-                        <div className="p-3.5 rounded-xl bg-secondary/40 border border-border/60 flex items-start gap-3">
-                          <div className="p-2 rounded-lg bg-primary/10 text-primary shrink-0 mt-0.5">
-                            <ShieldAlert className="w-4 h-4" />
-                          </div>
-                          <div>
-                            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Age Restriction</p>
-                            <p className="font-bold text-foreground text-sm mt-0.5">{event.age_restriction}</p>
-                          </div>
-                        </div>
-                      )}
-
-                      {event.dress_code && (
-                        <div className="p-3.5 rounded-xl bg-secondary/40 border border-border/60 flex items-start gap-3">
-                          <div className="p-2 rounded-lg bg-primary/10 text-primary shrink-0 mt-0.5">
-                            <Shirt className="w-4 h-4" />
-                          </div>
-                          <div>
-                            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Dress Code</p>
-                            <p className="font-bold text-foreground text-sm mt-0.5">{event.dress_code}</p>
-                          </div>
-                        </div>
-                      )}
-
-                      {event.organizer_contact && (
-                        <div className="p-3.5 rounded-xl bg-secondary/40 border border-border/60 flex items-start gap-3">
-                          <div className="p-2 rounded-lg bg-primary/10 text-primary shrink-0 mt-0.5">
-                            <Phone className="w-4 h-4" />
-                          </div>
-                          <div className="min-w-0">
-                            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Organizer Contact</p>
-                            <p className="font-bold text-foreground text-sm mt-0.5 break-all">{event.organizer_contact}</p>
-                          </div>
-                        </div>
-                      )}
-
-                      {event.emergency_contact && (
-                        <div className="p-3.5 rounded-xl bg-secondary/40 border border-border/60 flex items-start gap-3">
-                          <div className="p-2 rounded-lg bg-red-500/10 text-red-500 shrink-0 mt-0.5">
-                            <Phone className="w-4 h-4" />
-                          </div>
-                          <div className="min-w-0">
-                            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Emergency Contact</p>
-                            <p className="font-bold text-foreground text-sm mt-0.5 break-all">{event.emergency_contact}</p>
-                          </div>
-                        </div>
-                      )}
-
-                      {event.instagram_handle && (
-                        <div className="p-3.5 rounded-xl bg-secondary/40 border border-border/60 flex items-start gap-3">
-                          <div className="p-2 rounded-lg bg-pink-500/10 text-pink-500 shrink-0 mt-0.5">
-                            <InstagramIcon className="w-4 h-4" />
-                          </div>
-                          <div className="min-w-0">
-                            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Event Instagram</p>
-                            <a 
-                              href={`https://instagram.com/${String(event.instagram_handle).replace(/^@/, '')}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="font-bold text-primary hover:underline text-sm mt-0.5 block truncate"
-                            >
-                              {String(event.instagram_handle).startsWith('@') ? event.instagram_handle : `@${event.instagram_handle}`}
-                            </a>
-                          </div>
-                        </div>
-                      )}
-
-                      {event.tiktok_handle && (
-                        <div className="p-3.5 rounded-xl bg-secondary/40 border border-border/60 flex items-start gap-3">
-                          <div className="p-2 rounded-lg bg-primary/10 text-primary shrink-0 mt-0.5">
-                            <Music2 className="w-4 h-4" />
-                          </div>
-                          <div className="min-w-0">
-                            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Event TikTok</p>
-                            <a 
-                              href={`https://tiktok.com/@${String(event.tiktok_handle).replace(/^@/, '')}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="font-bold text-primary hover:underline text-sm mt-0.5 block truncate"
-                            >
-                              {String(event.tiktok_handle).startsWith('@') ? event.tiktok_handle : `@${event.tiktok_handle}`}
-                            </a>
-                          </div>
-                        </div>
-                      )}
+                      <div className="bg-secondary/40 rounded-xl p-4 sm:p-5 border border-border/60">
+                        <p className="whitespace-pre-wrap text-foreground font-medium text-sm sm:text-base leading-relaxed">
+                          {event.lineup}
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                )}
-              </div>
-            )}
+                  )}
+
+                  {/* Guidelines Grid: Age Restriction & Dress Code */}
+                  {(hasAgeRestriction || hasDressCode) && (
+                    <div className="space-y-3 pt-2">
+                      {hasLineup && (
+                        <h3 className="font-semibold text-foreground text-sm flex items-center gap-2">
+                          <Sparkles className="w-4 h-4 text-primary" /> Guidelines & Policies
+                        </h3>
+                      )}
+                      <div className={`grid gap-3.5 ${hasAgeRestriction && hasDressCode ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1"}`}>
+                        {hasAgeRestriction && (
+                          <div className="p-3.5 rounded-xl bg-secondary/40 border border-border/60 flex items-start gap-3">
+                            <div className="p-2 rounded-lg bg-primary/10 text-primary shrink-0 mt-0.5">
+                              <ShieldAlert className="w-4 h-4" />
+                            </div>
+                            <div>
+                              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Age Restriction</p>
+                              <p className="font-bold text-foreground text-sm mt-0.5">{event.age_restriction}</p>
+                            </div>
+                          </div>
+                        )}
+
+                        {hasDressCode && (
+                          <div className="p-3.5 rounded-xl bg-secondary/40 border border-border/60 flex items-start gap-3">
+                            <div className="p-2 rounded-lg bg-primary/10 text-primary shrink-0 mt-0.5">
+                              <Shirt className="w-4 h-4" />
+                            </div>
+                            <div>
+                              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Dress Code</p>
+                              <p className="font-bold text-foreground text-sm mt-0.5">{event.dress_code}</p>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
 
           </div>
 
