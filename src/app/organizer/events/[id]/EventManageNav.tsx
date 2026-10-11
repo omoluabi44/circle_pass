@@ -11,7 +11,8 @@ import {
   Megaphone, 
   Percent, 
   Settings, 
-  Edit 
+  Edit,
+  Clock
 } from "lucide-react";
 
 export default function EventManageNav({ eventId }: { eventId: string }) {
@@ -21,6 +22,7 @@ export default function EventManageNav({ eventId }: { eventId: string }) {
     { name: "Overview", href: `/organizer/events/${eventId}/overview`, icon: LayoutDashboard },
     { name: "Edit", href: `/organizer/events/${eventId}/edit`, icon: Edit },
     { name: "Tickets", href: `/organizer/events/${eventId}/tickets`, icon: Ticket },
+    { name: "Waitlist", href: `/organizer/events/${eventId}/waitlist`, icon: Clock },
     { name: "Attendees", href: `/organizer/events/${eventId}/attendees`, icon: Users },
     { name: "PassControl", href: `/organizer/events/${eventId}/passcontrol`, icon: ScanLine },
     { name: "Discounts", href: `/organizer/events/${eventId}/discounts`, icon: Percent },
