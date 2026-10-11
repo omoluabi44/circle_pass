@@ -304,10 +304,9 @@ class CheckoutView(APIView):
             return Response({'detail': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
 
         except Exception as exc:
-            # Paystack or other unexpected failures.
-            # The atomic block rolled back the order and inventory.
+            # Unexpected failure
             logger.exception("Checkout failed: %s", exc)
             return Response(
-                {'detail': f'Payment gateway error. Please try again. ({exc})'},
-                status=status.HTTP_502_BAD_GATEWAY,
+                {'detail': f'Checkout could not be completed. Please try again. ({exc})'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )

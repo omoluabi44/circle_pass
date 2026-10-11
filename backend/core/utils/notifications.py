@@ -107,8 +107,6 @@ def send_purchase_receipt(order, tickets):
         'frontend_url': frontend_url,
     }
     
-    html_message = render_to_string('email/order_receipt.html', context)
-    
     message = f"""Hello {first_name},
 
 Thank you for purchasing your ticket with CirclePass. Your ticket has been successfully confirmed.
@@ -124,6 +122,7 @@ You can view and download your digital ticket QR code anytime by clicking the li
 The CirclePass Team"""
     
     try:
+        html_message = render_to_string('email/order_receipt.html', context)
         send_mail(
             subject,
             message,

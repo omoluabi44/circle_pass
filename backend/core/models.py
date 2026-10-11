@@ -135,6 +135,28 @@ class Event(models.Model):
     has_onsite_services = models.BooleanField(default=False, help_text="Charges 13% of ticket price if enabled.")
     page_views = models.PositiveIntegerField(default=0, help_text="Total number of page views")
 
+    def __str__(self):
+        return self.title
+
+    @property
+    def location(self):
+        """Returns the formatted location string for the event."""
+        if getattr(self, 'is_online', False) or getattr(self, 'event_type', '') == 'ONLINE':
+            return "Online Event"
+        if getattr(self, 'venue', None) and self.venue.name:
+            if getattr(self, 'city', None):
+                return f"{self.venue.name}, {self.city}"
+            return self.venue.name
+        if getattr(self, 'location_name', None):
+            if getattr(self, 'city', None):
+                return f"{self.location_name}, {self.city}"
+            return self.location_name
+        if getattr(self, 'city', None):
+            if getattr(self, 'country', None):
+                return f"{self.city}, {self.country}"
+            return self.city
+        return "Location TBA"
+
 class EventScreening(models.Model):
     event = models.OneToOneField(Event, on_delete=models.CASCADE)
     ai_status = models.CharField(max_length=50) # Auto-Approve, Changes Required, Human Admin Review

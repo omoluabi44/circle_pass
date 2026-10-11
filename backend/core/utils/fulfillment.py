@@ -91,7 +91,10 @@ def fulfill_order(order, payment=None):
         except Exception:
             pass
 
-        send_purchase_receipt(order_fresh, tickets)
+        try:
+            send_purchase_receipt(order_fresh, tickets)
+        except Exception as e:
+            pass
         try:
             send_organizer_sales_notification(order_fresh, tickets)
         except Exception as e:
