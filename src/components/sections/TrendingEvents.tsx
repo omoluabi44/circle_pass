@@ -78,10 +78,10 @@ export function TrendingEvents() {
       <div className="container mx-auto max-w-7xl">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
-          <h2 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground">
+          <h2 className="text-2xl md:text-3xl font-bold tracking-tight text-white">
             Trending Events
           </h2>
-          <Link href="/events" className="text-primary hover:text-primary/80 font-medium text-sm md:text-base flex items-center gap-1 transition-colors">
+          <Link href="/events" className="text-white hover:text-white/80 font-semibold text-sm md:text-base flex items-center gap-1.5 transition-colors drop-shadow-sm">
             See More <span>&rarr;</span>
           </Link>
         </div>
