@@ -1,8 +1,8 @@
 "use client";
 
-import { Building2, ShieldCheck, CreditCard, Lock, Save, Loader2, Bell } from "lucide-react";
+import { Building2, ShieldCheck, CreditCard, Lock, Save, Loader2, Bell, AlertTriangle } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
-import { useSession } from "next-auth/react";
+import { useSession, signOut } from "next-auth/react";
 import Image from "next/image";
 import { API_URL } from "@/lib/api/config";
 import { uploadToS3 } from "@/utils/s3Upload";
@@ -687,45 +687,202 @@ export default function AccountSettingsPage() {
 
         {activeTab === "notifications" && <NotificationPreferencesForm />}
 
-        {activeTab === "security" && (
-          <form className="space-y-6 max-w-2xl">
-            <h2 className="text-xl font-bold text-foreground border-b border-border pb-4">Security Settings</h2>
-
-            <div className="space-y-4">
-              <h3 className="font-bold text-foreground">Change Password</h3>
-
-              <div className="space-y-2">
-                <label className="text-sm font-bold text-foreground">Current Password</label>
-                <input type="password" placeholder="••••••••" className="w-full bg-background border border-border rounded-xl px-4 py-3 focus:outline-none focus:border-primary transition-colors" />
-              </div>
-              <div className="grid md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <label className="text-sm font-bold text-foreground">New Password</label>
-                  <input type="password" placeholder="••••••••" className="w-full bg-background border border-border rounded-xl px-4 py-3 focus:outline-none focus:border-primary transition-colors" />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-bold text-foreground">Confirm New Password</label>
-                  <input type="password" placeholder="••••••••" className="w-full bg-background border border-border rounded-xl px-4 py-3 focus:outline-none focus:border-primary transition-colors" />
-                </div>
-              </div>
-            </div>
-
-            <div className="pt-4 flex justify-start">
-              <button type="button" className="px-6 py-3 bg-secondary text-foreground rounded-xl font-bold hover:bg-secondary/80 transition-colors">
-                Update Password
-              </button>
-            </div>
-
-            <div className="border-t border-border mt-8 pt-8 space-y-4">
-              <h3 className="font-bold text-destructive">Danger Zone</h3>
-              <p className="text-sm text-muted-foreground">Once you delete your account, there is no going back. Please be certain.</p>
-              <button type="button" className="px-6 py-3 border border-destructive text-destructive rounded-xl font-bold hover:bg-destructive/10 transition-colors">
-                Delete Account
-              </button>
-            </div>
-          </form>
-        )}
+        {activeTab === "security" && <SecuritySettingsForm />}
       </div>
     </div>
+  );
+}
+
+function SecuritySettingsForm() {
+  const { data: session } = useSession();
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [updatingPassword, setUpdatingPassword] = useState(false);
+
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleUpdatePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      toast.error("Please fill in all password fields.");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      toast.error("New passwords do not match.");
+      return;
+    }
+    if (newPassword.length < 8) {
+      toast.error("New password must be at least 8 characters.");
+      return;
+    }
+
+    setUpdatingPassword(true);
+    try {
+      const token = (session as any)?.accessToken;
+      const res = await fetch(`${API_URL}/users/set_password/`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          current_password: currentPassword,
+          new_password: newPassword,
+          re_new_password: confirmPassword,
+        }),
+      });
+
+      if (res.ok) {
+        toast.success("Password updated successfully!");
+        setCurrentPassword("");
+        setNewPassword("");
+        setConfirmPassword("");
+      } else {
+        const data = await res.json().catch(() => ({}));
+        const errorMsg = data.current_password?.[0] || data.new_password?.[0] || data.detail || "Failed to update password.";
+        toast.error(errorMsg);
+      }
+    } catch (err: any) {
+      toast.error("Network error while updating password.");
+    } finally {
+      setUpdatingPassword(false);
+    }
+  };
+
+  const confirmDeleteAccount = async () => {
+    setIsDeleting(true);
+    try {
+      const token = (session as any)?.accessToken;
+      const res = await fetch(`${API_URL}/users/delete_account/`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (res.ok) {
+        toast.success("Your account has been deleted.");
+        setIsDeleteModalOpen(false);
+        signOut({ callbackUrl: "/" });
+      } else {
+        const data = await res.json().catch(() => ({}));
+        toast.error(data.detail || data.message || "Failed to delete account. Please try again.");
+      }
+    } catch (err: any) {
+      toast.error("Network error while deleting account.");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  return (
+    <>
+      <form onSubmit={handleUpdatePassword} className="space-y-6 max-w-2xl">
+        <h2 className="text-xl font-bold text-foreground border-b border-border pb-4">Security Settings</h2>
+
+        <div className="space-y-4">
+          <h3 className="font-bold text-foreground">Change Password</h3>
+
+          <div className="space-y-2">
+            <label className="text-sm font-bold text-foreground">Current Password</label>
+            <input
+              type="password"
+              placeholder="••••••••"
+              value={currentPassword}
+              onChange={(e) => setCurrentPassword(e.target.value)}
+              className="w-full bg-background border border-border rounded-xl px-4 py-3 focus:outline-none focus:border-primary transition-colors text-foreground"
+            />
+          </div>
+          <div className="grid md:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <label className="text-sm font-bold text-foreground">New Password</label>
+              <input
+                type="password"
+                placeholder="••••••••"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                className="w-full bg-background border border-border rounded-xl px-4 py-3 focus:outline-none focus:border-primary transition-colors text-foreground"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-bold text-foreground">Confirm New Password</label>
+              <input
+                type="password"
+                placeholder="••••••••"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                className="w-full bg-background border border-border rounded-xl px-4 py-3 focus:outline-none focus:border-primary transition-colors text-foreground"
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="pt-4 flex justify-start">
+          <button
+            type="submit"
+            disabled={updatingPassword}
+            className="px-6 py-3 bg-secondary text-foreground rounded-xl font-bold hover:bg-secondary/80 transition-colors flex items-center gap-2 disabled:opacity-50"
+          >
+            {updatingPassword && <Loader2 className="w-4 h-4 animate-spin" />}
+            {updatingPassword ? "Updating..." : "Update Password"}
+          </button>
+        </div>
+
+        <div className="border-t border-border mt-8 pt-8 space-y-4">
+          <h3 className="font-bold text-destructive">Danger Zone</h3>
+          <p className="text-sm text-muted-foreground">Once you delete your account, there is no going back. Please be certain.</p>
+          <button
+            type="button"
+            onClick={() => setIsDeleteModalOpen(true)}
+            className="px-6 py-3 border border-destructive text-destructive rounded-xl font-bold hover:bg-destructive/10 transition-colors"
+          >
+            Delete Account
+          </button>
+        </div>
+      </form>
+
+      {/* Confirmation Modal */}
+      {isDeleteModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-card border border-border rounded-2xl p-6 sm:p-8 max-w-md w-full shadow-2xl space-y-5">
+            <div className="w-12 h-12 rounded-full bg-destructive/10 text-destructive flex items-center justify-center mx-auto sm:mx-0">
+              <AlertTriangle className="w-6 h-6" />
+            </div>
+            <div>
+              <h3 className="text-xl font-bold text-foreground">Delete Account?</h3>
+              <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
+                Are you sure you want to delete your account? This action is <strong className="text-foreground font-semibold">permanent</strong> and cannot be undone. All your organizer profile data, events, and settings will be permanently erased.
+              </p>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-3 pt-2">
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={() => setIsDeleteModalOpen(false)}
+                className="flex-1 px-5 py-3 rounded-xl border border-border text-foreground font-semibold hover:bg-secondary transition-colors order-2 sm:order-1"
+              >
+                No, Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={confirmDeleteAccount}
+                className="flex-1 px-5 py-3 rounded-xl bg-destructive text-destructive-foreground font-semibold hover:bg-destructive/90 transition-colors flex items-center justify-center gap-2 order-1 sm:order-2"
+              >
+                {isDeleting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" /> Deleting...
+                  </>
+                ) : (
+                  "Yes, Delete Account"
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }

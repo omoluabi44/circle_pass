@@ -129,6 +129,12 @@ class CustomUserViewSet(UserViewSet):
                 pass
         return response
 
+    @action(["delete", "post"], detail=False, permission_classes=[permissions.IsAuthenticated])
+    def delete_account(self, request, *args, **kwargs):
+        user = request.user
+        user.delete()
+        return Response({"message": "Account successfully deleted."}, status=status.HTTP_200_OK)
+
 class StubView(APIView):
     def get(self, request, *args, **kwargs):
         return Response({"message": "501 Not Implemented"}, status=status.HTTP_501_NOT_IMPLEMENTED)

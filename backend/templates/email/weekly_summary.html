@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Your CirclePass Weekly Summary</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #080B12;
+      font-family: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+      color: #FFFFFF;
+      -webkit-font-smoothing: antialiased;
+    }
+    table {
+      border-collapse: collapse;
+    }
+    a {
+      text-decoration: none;
+    }
+    @media only screen and (max-width: 620px) {
+      .metric-col {
+        display: block !important;
+        width: 100% !important;
+        margin-bottom: 12px !important;
+      }
+      .event-meta-cell {
+        display: block !important;
+        width: 100% !important;
+        text-align: left !important;
+        padding-top: 10px !important;
+      }
+      .footer-col {
+        display: block !important;
+        width: 100% !important;
+        text-align: left !important;
+        margin-bottom: 16px !important;
+      }
+    }
+  </style>
+</head>
+<body style="margin: 0; padding: 24px 10px; background-color: #080B12; font-family: 'Roboto', Arial, sans-serif; color: #FFFFFF;">
+
+  <!-- Outer Container -->
+  <table width="100%" border="0" cellpadding="0" cellspacing="0">
+    <tr>
+      <td align="center">
+        <table width="100%" border="0" cellpadding="0" cellspacing="0" style="max-width: 620px; background-color: #0D121F; border-radius: 20px; border: 1px solid #1E293B; overflow: hidden; box-shadow: 0 20px 40px rgba(0,0,0,0.6);">
+          
+          <!-- Header Bar with Decorative Gradient -->
+          <tr>
+            <td style="padding: 32px 32px 16px 32px; background: radial-gradient(circle at top right, rgba(99, 102, 241, 0.25) 0%, rgba(13, 18, 31, 0) 65%);">
+              <table width="100%" border="0" cellpadding="0" cellspacing="0">
+                <tr>
+                  <!-- Brand Logo -->
+                  <td align="left" valign="middle">
+                    <table border="0" cellpadding="0" cellspacing="0">
+                      <tr>
+                        <td valign="middle" style="padding-right: 12px;">
+                          <img src="{{ frontend_url }}/logo.png" alt="CirclePass" width="38" height="38" style="display: block; border-radius: 50%;">
+                        </td>
+                        <td valign="middle">
+                          <span style="font-family: 'Fredoka', 'Roboto', Arial, sans-serif; font-size: 22px; font-weight: 700; color: #FFFFFF; letter-spacing: -0.3px;">CirclePass</span>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                  <!-- Date Badge -->
+                  <td align="right" valign="middle">
+                    <div style="font-size: 13px; font-weight: 600; color: #94A3B8;">Weekly Summary</div>
+                    <div style="font-size: 12px; color: #64748B; margin-top: 3px;">{{ date_range }}</div>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Hero Greeting -->
+          <tr>
+            <td style="padding: 12px 32px 28px 32px;">
+              <div style="font-size: 16px; color: #94A3B8; margin-bottom: 6px;">Hi {{ first_name }},</div>
+              <h1 style="font-size: 32px; line-height: 1.15; font-weight: 800; margin: 0 0 12px 0; color: #FFFFFF;">
+                Here's your<br>
+                <span style="color: #818CF8;">weekly summary.</span>
+              </h1>
+              <p style="font-size: 14px; line-height: 1.55; color: #94A3B8; margin: 0; max-width: 480px;">
+                Here's how your events performed this week on CirclePass. A quick look at your key numbers and recent activity.
+              </p>
+            </td>
+          </tr>
+
+          <!-- 4 Metric Cards (2x2 Grid) -->
+          <tr>
+            <td style="padding: 0 32px 32px 32px;">
+              <!-- Row 1: Tickets Sold & Total Revenue -->
+              <table width="100%" border="0" cellpadding="0" cellspacing="0" style="margin-bottom: 14px;">
+                <tr>
+                  <!-- Metric 1: Tickets Sold -->
+                  <td width="48%" class="metric-col" valign="top" style="background-color: #131A2B; border: 1px solid #1E293B; border-radius: 16px; padding: 20px;">
+                    <!-- Icon -->
+                    <div style="width: 38px; height: 38px; border-radius: 10px; background-color: #242054; text-align: center; line-height: 38px; margin-bottom: 14px;">
+                      <span style="font-size: 18px;">🎟️</span>
+                    </div>
+                    <div style="font-size: 13px; color: #94A3B8; margin-bottom: 6px; font-weight: 500;">Tickets Sold</div>
+                    <div style="font-size: 28px; font-weight: 800; color: #FFFFFF; line-height: 1.1; margin-bottom: 8px;">{{ tickets_sold }}</div>
+                    <div style="font-size: 12px; color: #64748B;">
+                      <span style="color: #34D399; font-weight: 700;">↑ {{ tickets_sold_change }}%</span> vs. last week
+                    </div>
+                  </td>
+
+                  <td width="4%" style="font-size: 0; line-height: 0;">&nbsp;</td>
+
+                  <!-- Metric 2: Total Revenue -->
+                  <td width="48%" class="metric-col" valign="top" style="background-color: #131A2B; border: 1px solid #1E293B; border-radius: 16px; padding: 20px;">
+                    <!-- Icon -->
+                    <div style="width: 38px; height: 38px; border-radius: 10px; background-color: #242054; text-align: center; line-height: 38px; margin-bottom: 14px;">
+                      <span style="font-size: 18px; font-weight: 700; color: #818CF8;">₦</span>
+                    </div>
+                    <div style="font-size: 13px; color: #94A3B8; margin-bottom: 6px; font-weight: 500;">Total Revenue</div>
+                    <div style="font-size: 28px; font-weight: 800; color: #FFFFFF; line-height: 1.1; margin-bottom: 8px;">₦{{ total_revenue_formatted }}</div>
+                    <div style="font-size: 12px; color: #64748B;">
+                      <span style="color: #34D399; font-weight: 700;">↑ {{ revenue_change }}%</span> vs. last week
+                    </div>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Row 2: Attendees Checked In & Event Page Views -->
+              <table width="100%" border="0" cellpadding="0" cellspacing="0">
+                <tr>
+                  <!-- Metric 3: Attendees Checked In -->
+                  <td width="48%" class="metric-col" valign="top" style="background-color: #131A2B; border: 1px solid #1E293B; border-radius: 16px; padding: 20px;">
+                    <!-- Icon -->
+                    <div style="width: 38px; height: 38px; border-radius: 10px; background-color: #242054; text-align: center; line-height: 38px; margin-bottom: 14px;">
+                      <span style="font-size: 18px;">👥</span>
+                    </div>
+                    <div style="font-size: 13px; color: #94A3B8; margin-bottom: 6px; font-weight: 500;">Attendees Checked In</div>
+                    <div style="font-size: 28px; font-weight: 800; color: #FFFFFF; line-height: 1.1; margin-bottom: 8px;">{{ checked_in }}</div>
+                    <div style="font-size: 12px; color: #64748B;">
+                      <span style="color: #34D399; font-weight: 700;">↑ {{ checked_in_change }}%</span> vs. last week
+                    </div>
+                  </td>
+
+                  <td width="4%" style="font-size: 0; line-height: 0;">&nbsp;</td>
+
+                  <!-- Metric 4: Event Page Views -->
+                  <td width="48%" class="metric-col" valign="top" style="background-color: #131A2B; border: 1px solid #1E293B; border-radius: 16px; padding: 20px;">
+                    <!-- Icon -->
+                    <div style="width: 38px; height: 38px; border-radius: 10px; background-color: #242054; text-align: center; line-height: 38px; margin-bottom: 14px;">
+                      <span style="font-size: 18px;">👁️</span>
+                    </div>
+                    <div style="font-size: 13px; color: #94A3B8; margin-bottom: 6px; font-weight: 500;">Event Page Views</div>
+                    <div style="font-size: 28px; font-weight: 800; color: #FFFFFF; line-height: 1.1; margin-bottom: 8px;">{{ page_views }}</div>
+                    <div style="font-size: 12px; color: #64748B;">
+                      <span style="color: #34D399; font-weight: 700;">↑ {{ page_views_change }}%</span> vs. last week
+                    </div>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Section: Your Events Header -->
+          <tr>
+            <td style="padding: 0 32px 16px 32px;">
+              <table width="100%" border="0" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td align="left">
+                    <h2 style="font-size: 20px; font-weight: 800; margin: 0; color: #FFFFFF;">Your Events</h2>
+                  </td>
+                  <td align="right">
+                    <a href="{{ frontend_url }}/organizer/events" style="font-size: 13px; font-weight: 600; color: #818CF8; text-decoration: none;">View all events &rarr;</a>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Event Cards List -->
+          <tr>
+            <td style="padding: 0 32px 24px 32px;">
+              {% if events %}
+                {% for ev in events %}
+                <table width="100%" border="0" cellpadding="0" cellspacing="0" style="background-color: #131A2B; border: 1px solid #1E293B; border-radius: 16px; padding: 16px; margin-bottom: 12px;">
+                  <tr>
+                    <!-- Event Thumbnail -->
+                    <td width="72" valign="top" style="padding-right: 14px;">
+                      {% if ev.cover_image %}
+                        <img src="{{ ev.cover_image }}" alt="{{ ev.title }}" width="72" height="72" style="border-radius: 10px; display: block; object-fit: cover; width: 72px; height: 72px;">
+                      {% else %}
+                        <div style="width: 72px; height: 72px; border-radius: 10px; background-color: #1E293B; text-align: center; line-height: 72px; font-size: 24px;">🎉</div>
+                      {% endif %}
+                    </td>
+
+                    <!-- Event Info -->
+                    <td valign="middle" align="left">
+                      <div style="font-size: 16px; font-weight: 700; color: #FFFFFF; margin-bottom: 4px;">{{ ev.title }}</div>
+                      <div style="font-size: 12px; color: #94A3B8; margin-bottom: 4px;">
+                        📅 {{ ev.date_str }}
+                      </div>
+                      <div style="font-size: 12px; color: #64748B;">
+                        📍 {{ ev.venue_name }}
+                      </div>
+                    </td>
+
+                    <!-- Status & Stats on Right -->
+                    <td width="140" class="event-meta-cell" valign="middle" align="right" style="padding-left: 12px;">
+                      <!-- Status Badge -->
+                      <div style="margin-bottom: 6px;">
+                        {% if ev.status == 'LIVE' or ev.status == 'Live' %}
+                          <span style="background-color: rgba(16, 185, 129, 0.15); color: #34D399; border: 1px solid rgba(16, 185, 129, 0.3); font-size: 11px; font-weight: 700; padding: 2px 10px; border-radius: 9999px; display: inline-block;">Live</span>
+                        {% elif ev.status == 'COMPLETED' or ev.status == 'Completed' %}
+                          <span style="background-color: rgba(100, 116, 139, 0.2); color: #94A3B8; border: 1px solid rgba(100, 116, 139, 0.3); font-size: 11px; font-weight: 700; padding: 2px 10px; border-radius: 9999px; display: inline-block;">Completed</span>
+                        {% else %}
+                          <span style="background-color: rgba(99, 102, 241, 0.18); color: #818CF8; border: 1px solid rgba(99, 102, 241, 0.3); font-size: 11px; font-weight: 700; padding: 2px 10px; border-radius: 9999px; display: inline-block;">Upcoming</span>
+                        {% endif %}
+                      </div>
+                      <div style="font-size: 12px; font-weight: 600; color: #FFFFFF; margin-bottom: 2px;">{{ ev.tickets_sold_week }} tickets sold</div>
+                      <div style="font-size: 12px; color: #94A3B8;">₦{{ ev.revenue_week_formatted }} revenue</div>
+                    </td>
+
+                    <!-- Chevron Link -->
+                    <td width="20" valign="middle" align="right" style="padding-left: 8px;">
+                      <a href="{{ frontend_url }}/organizer/events/{{ ev.id }}/overview" style="color: #64748B; font-size: 16px; font-weight: 700; text-decoration: none;">&rsaquo;</a>
+                    </td>
+                  </tr>
+                </table>
+                {% endfor %}
+              {% else %}
+                <div style="background-color: #131A2B; border: 1px solid #1E293B; border-radius: 16px; padding: 24px; text-align: center; color: #64748B; font-size: 14px;">
+                  No active events with sales recorded this week.
+                </div>
+              {% endif %}
+            </td>
+          </tr>
+
+          <!-- Encouragement Banner -->
+          <tr>
+            <td style="padding: 0 32px 32px 32px;">
+              <table width="100%" border="0" cellpadding="0" cellspacing="0" style="background-color: #131A2B; border: 1px solid #1E293B; border-radius: 16px; padding: 16px 20px;">
+                <tr>
+                  <td width="42" valign="middle">
+                    <div style="width: 36px; height: 36px; border-radius: 10px; background-color: #242054; text-align: center; line-height: 36px;">
+                      <span style="font-size: 16px;">📈</span>
+                    </div>
+                  </td>
+                  <td valign="middle" style="padding-left: 14px;">
+                    <div style="font-size: 14px; font-weight: 700; color: #FFFFFF; margin-bottom: 2px;">Keep up the great work!</div>
+                    <div style="font-size: 13px; color: #94A3B8;">Your events are bringing people together. We're excited to be part of it.</div>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Footer Bar -->
+          <tr>
+            <td style="padding: 24px 32px 32px 32px; border-top: 1px solid #1E293B; background-color: #0A0E18;">
+              <table width="100%" border="0" cellpadding="0" cellspacing="0">
+                <tr>
+                  <!-- Left Brand & Tagline -->
+                  <td align="left" valign="top" class="footer-col">
+                    <table border="0" cellpadding="0" cellspacing="0">
+                      <tr>
+                        <td valign="middle" style="padding-right: 10px;">
+                          <img src="{{ frontend_url }}/logo.png" alt="CirclePass" width="30" height="30" style="display: block; border-radius: 50%;">
+                        </td>
+                        <td valign="middle">
+                          <span style="font-family: 'Fredoka', 'Roboto', Arial, sans-serif; font-size: 18px; font-weight: 700; color: #FFFFFF;">CirclePass</span>
+                        </td>
+                      </tr>
+                    </table>
+                    <div style="font-size: 12px; color: #64748B; margin-top: 6px;">Better Events. Bigger Moments.</div>
+                  </td>
+
+                  <!-- Right Support Pill -->
+                  <td align="right" valign="middle" class="footer-col">
+                    <div style="font-size: 12px; color: #64748B; margin-bottom: 8px;">Need help? Reach out to our support team.</div>
+                    <a href="mailto:support@circlepass.com" style="display: inline-block; background-color: #131A2B; border: 1px solid #334155; border-radius: 8px; padding: 7px 14px; color: #818CF8; font-size: 12px; font-weight: 600; text-decoration: none;">
+                      ✉&nbsp;&nbsp;support@circlepass.com
+                    </a>
+                  </td>
+                </tr>
+                <tr>
+                  <td colspan="2" align="center" style="padding-top: 24px;">
+                    <div style="font-size: 11px; color: #475569;">
+                      This is an automated summary email. Please do not reply to this message.
+                    </div>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+
+</body>
+</html>
