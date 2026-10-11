@@ -320,13 +320,8 @@ def expire_pending_order(order_id):
             if order.status == 'PENDING' and order.expires_at and order.expires_at <= timezone.now():
                 logger.info(f"Expiring pending order {order_id}")
                 
-                # Restore inventory
-                for item in order.items.all():
-                    TicketType.objects.filter(pk=item.ticket_type_id).update(
-                        quantity_sold=F('quantity_sold') - item.quantity
-                    )
-                
-                # Restore discount
+                # Note: Pending orders do not hold quantity_sold.
+                # Restore discount if applicable
                 redemptions = DiscountRedemption.objects.filter(order=order)
                 for red in redemptions:
                     discount = red.discount

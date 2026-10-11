@@ -1,3 +1,4 @@
+from django.db.models import Sum
 from rest_framework import serializers
 from djoser.serializers import UserCreateSerializer as BaseUserCreateSerializer, UserSerializer as BaseUserSerializer
 from core.models import (
@@ -64,8 +65,9 @@ class OrganizerVerificationSerializer(serializers.ModelSerializer):
 # TICKET TYPE SERIALIZERS
 # ==========================================
 class TicketTypeSerializer(serializers.ModelSerializer):
-    quantity_remaining = serializers.IntegerField(read_only=True)
-    is_sold_out = serializers.BooleanField(read_only=True)
+    quantity_sold = serializers.SerializerMethodField()
+    quantity_remaining = serializers.SerializerMethodField()
+    is_sold_out = serializers.SerializerMethodField()
 
     class Meta:
         model = TicketType
@@ -75,6 +77,24 @@ class TicketTypeSerializer(serializers.ModelSerializer):
             'sale_start', 'sale_end', 'is_active', 'sort_order',
         )
         read_only_fields = ('quantity_sold',)
+
+    def get_quantity_sold(self, obj):
+        # Authoritative count of tickets sold is based on completed/paid orders.
+        # This prevents uncompleted/abandoned checkouts from falsely inflating the sold count.
+        completed_sold = OrderItem.objects.filter(
+            ticket_type=obj,
+            order__status='COMPLETED'
+        ).aggregate(total=Sum('quantity'))['total']
+        if completed_sold is not None:
+            return completed_sold
+        return obj.quantity_sold or 0
+
+    def get_quantity_remaining(self, obj):
+        sold = self.get_quantity_sold(obj)
+        return max((obj.quantity or 0) - sold, 0)
+
+    def get_is_sold_out(self, obj):
+        return self.get_quantity_remaining(obj) <= 0
 
 
 class TicketTypeCreateSerializer(serializers.ModelSerializer):

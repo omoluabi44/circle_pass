@@ -92,5 +92,15 @@ class CheckoutPaymentTests(TestCase):
         
         self.assertEqual(Ticket.objects.count(), 0)
         
+        # When order is pending payment, quantity_sold must NOT be incremented
+        self.paid_ticket.refresh_from_db()
+        self.assertEqual(self.paid_ticket.quantity_sold, 0)
+
+        # Once payment succeeds and fulfill_order is called, quantity_sold is incremented
+        from core.utils.fulfillment import fulfill_order
+        payment.status = 'SUCCESS'
+        payment.save(update_fields=['status'])
+        fulfill_order(order, payment=payment)
         self.paid_ticket.refresh_from_db()
         self.assertEqual(self.paid_ticket.quantity_sold, 1)
+        self.assertEqual(Ticket.objects.count(), 1)

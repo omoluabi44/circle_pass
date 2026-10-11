@@ -38,6 +38,12 @@ def fulfill_order(order, payment=None):
                 )
                 tickets.append(ticket)
         
+        # Atomically increment quantity_sold only upon verified payment / fulfillment
+        for item in order_fresh.items.select_related('ticket_type').all():
+            TicketType.objects.filter(pk=item.ticket_type_id).update(
+                quantity_sold=F('quantity_sold') + item.quantity
+            )
+
         order_fresh.status = 'COMPLETED'
         order_fresh.save(update_fields=['status', 'updated_at'])
 
@@ -78,6 +84,13 @@ def fulfill_order(order, payment=None):
         # Complete linked waitlist entries if any
         order_fresh.waitlist_entries.filter(status='ACCEPTED').update(status='COMPLETED')
 
+        # Check if sold out to notify organizer
+        try:
+            from api.tasks import check_sold_out_and_notify
+            check_sold_out_and_notify.delay(order_fresh.event_id)
+        except Exception:
+            pass
+
         send_purchase_receipt(order_fresh, tickets)
         try:
             send_organizer_sales_notification(order_fresh, tickets)
@@ -88,7 +101,7 @@ def fulfill_order(order, payment=None):
 
 def fail_order(order):
     """
-    Fail a PENDING order and restore inventory.
+    Fail a PENDING order.
     Idempotent.
     """
     with transaction.atomic():
@@ -96,10 +109,14 @@ def fail_order(order):
         if order_fresh.status != 'PENDING':
             return  # Already transitioned (maybe to COMPLETED or already FAILED)
         
-        for item in order_fresh.items.all():
-            TicketType.objects.filter(pk=item.ticket_type_id).update(
-                quantity_sold=F('quantity_sold') - item.quantity
-            )
+        # Restore discount redemption usage if applicable
+        from core.models import DiscountRedemption
+        redemptions = DiscountRedemption.objects.filter(order=order_fresh)
+        for red in redemptions:
+            discount = red.discount
+            discount.usage_count = F('usage_count') - 1
+            discount.save(update_fields=['usage_count'])
+
         order_fresh.status = 'FAILED'
         order_fresh.save(update_fields=['status', 'updated_at'])
 

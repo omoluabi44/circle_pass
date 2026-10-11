@@ -216,24 +216,16 @@ class CheckoutView(APIView):
                     valid_discount.usage_count += 1
                     valid_discount.save(update_fields=['usage_count'])
 
-                # ============================================
-                # DECREMENT INVENTORY (ATOMIC)
-                # ============================================
-                for li in line_items_data:
-                    TicketType.objects.filter(pk=li['ticket_type'].pk).update(
-                        quantity_sold=F('quantity_sold') + li['quantity']
-                    )
-                    
-                # Queue check for sold out
-                try:
-                    from .tasks import check_sold_out_and_notify, expire_pending_order
-                    check_sold_out_and_notify.delay(event.id)
-                    
-                    if total_amount > 0:
+                # Note: Inventory quantity_sold is recorded only upon successful payment fulfillment
+                # (in fulfill_order). Free orders fulfill immediately below.
+                # Paid orders remain PENDING until Paystack confirms payment.
+                if total_amount > 0:
+                    try:
+                        from .tasks import expire_pending_order
                         # Schedule expiration task 30 minutes (1800 seconds) from now
                         expire_pending_order.apply_async((order.id,), countdown=1800)
-                except Exception as e:
-                    logger.warning("Failed to queue background tasks for event %s: %s", event.id, e)
+                    except Exception as e:
+                        logger.warning("Failed to queue expiration task for order %s: %s", order.id, e)
 
                 # ============================================
                 # FREE TICKET PATH: Issue tickets immediately
