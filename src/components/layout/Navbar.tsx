@@ -17,7 +17,7 @@ export function Navbar() {
   const navLinks = [
     { href: '/', label: 'Home' },
     { href: '/events', label: 'Events' },
-    { href: '#voting', label: 'Voting' },
+    { href: '#voting', label: 'E-Voting' },
     { href: '/pricing', label: 'Pricing' },
     { href: '/about', label: 'About Us' },
   ];
@@ -34,7 +34,7 @@ export function Navbar() {
         {/* Desktop Links (Centered) */}
         <nav className="hidden md:flex gap-1 absolute left-1/2 -translate-x-1/2">
           {navLinks.map((link) => (
-            link.label === 'Voting' ? (
+            link.label === 'E-Voting' ? (
               <div key={link.label} className="relative group">
                 <button className="text-sm font-medium px-4 py-2 rounded-lg hover:bg-muted/80 transition-colors text-foreground hover:text-primary flex items-center gap-1">
                   {link.label}
@@ -42,7 +42,7 @@ export function Navbar() {
                 </button>
                 <div className="absolute top-full left-0 mt-2 w-48 bg-background border border-border rounded-xl shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all">
                   <Link href="/coming-soon" className="block px-4 py-3 text-sm text-foreground hover:bg-secondary hover:text-primary rounded-t-xl transition-colors border-b border-border">
-                    Voting
+                    E-Voting
                   </Link>
                   <Link href="/coming-soon" className="block px-4 py-3 text-sm text-foreground hover:bg-secondary hover:text-primary rounded-b-xl transition-colors">
                     Nominations
@@ -108,7 +108,7 @@ export function Navbar() {
         <div className="md:hidden mx-3 mt-2 p-4 rounded-2xl bg-background shadow-lg border border-border">
           <nav className="flex flex-col space-y-2">
             {navLinks.map((link) => (
-              link.label === 'Voting' ? (
+              link.label === 'E-Voting' ? (
                 <div key={link.label} className="flex flex-col border-b border-border">
                   <button 
                     onClick={() => setIsMobileVotingOpen(!isMobileVotingOpen)}
@@ -131,7 +131,7 @@ export function Navbar() {
                         className="text-sm font-medium px-6 py-3.5 border-b border-border/40 text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors"
                         onClick={() => setIsMobileMenuOpen(false)}
                       >
-                        Voting
+                        E-Voting
                       </Link>
                       <Link
                         href="/coming-soon"
