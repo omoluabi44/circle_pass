@@ -514,6 +514,135 @@ function PayoutSettingsTab() {
   );
 }
 
+function NotificationPreferencesForm() {
+  const { data: session } = useSession();
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [profileId, setProfileId] = useState<number | null>(null);
+  const [salesNotifications, setSalesNotifications] = useState(true);
+  const [weeklySummary, setWeeklySummary] = useState(true);
+
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const token = (session as any)?.accessToken;
+        if (!token) return;
+
+        const res = await fetch(`${API_URL}/organizer/profile/`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.length > 0) {
+            const profile = data[0];
+            setProfileId(profile.id);
+            setSalesNotifications(profile.sales_notifications !== false);
+            setWeeklySummary(profile.weekly_summary !== false);
+          }
+        }
+      } catch (err) {
+        console.error("Failed to fetch notification preferences", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (session) fetchSettings();
+  }, [session]);
+
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!profileId) return;
+
+    setSaving(true);
+    try {
+      const token = (session as any)?.accessToken;
+      const res = await fetch(`${API_URL}/organizer/profile/${profileId}/`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          sales_notifications: salesNotifications,
+          weekly_summary: weeklySummary
+        })
+      });
+
+      if (res.ok) {
+        toast.success("Notification preferences saved successfully!");
+      } else {
+        toast.error("Failed to save preferences.");
+      }
+    } catch (err) {
+      console.error("Error saving notification preferences:", err);
+      toast.error("An unexpected error occurred.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center p-12">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  return (
+    <form onSubmit={handleSave} className="space-y-6 max-w-2xl">
+      <h2 className="text-xl font-bold text-foreground border-b border-border pb-4">Notification Preferences</h2>
+
+      <div className="space-y-4">
+        <div className="flex items-center justify-between p-4 bg-secondary rounded-xl">
+          <div>
+            <h3 className="font-bold text-foreground">Sales Notifications</h3>
+            <p className="text-sm text-muted-foreground">Receive an email every time a ticket is sold.</p>
+          </div>
+          <label className="relative inline-flex items-center cursor-pointer">
+            <input
+              type="checkbox"
+              className="sr-only peer"
+              checked={salesNotifications}
+              onChange={(e) => setSalesNotifications(e.target.checked)}
+            />
+            <div className="w-11 h-6 bg-border peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+          </label>
+        </div>
+
+        <div className="flex items-center justify-between p-4 bg-secondary rounded-xl">
+          <div>
+            <h3 className="font-bold text-foreground">Weekly Summary</h3>
+            <p className="text-sm text-muted-foreground">Receive a weekly digest of all sales and check-ins.</p>
+          </div>
+          <label className="relative inline-flex items-center cursor-pointer">
+            <input
+              type="checkbox"
+              className="sr-only peer"
+              checked={weeklySummary}
+              onChange={(e) => setWeeklySummary(e.target.checked)}
+            />
+            <div className="w-11 h-6 bg-border peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+          </label>
+        </div>
+      </div>
+
+      <div className="pt-4 flex justify-end">
+        <button
+          type="submit"
+          disabled={saving}
+          className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-primary-foreground rounded-xl font-bold hover:bg-primary/90 transition-colors disabled:opacity-50"
+        >
+          {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+          {saving ? "Saving..." : "Save Preferences"}
+        </button>
+      </div>
+    </form>
+  );
+}
+
 export default function AccountSettingsPage() {
   const [activeTab, setActiveTab] = useState("business");
 
@@ -556,41 +685,7 @@ export default function AccountSettingsPage() {
 
         {activeTab === "payout" && <PayoutSettingsTab />}
 
-        {activeTab === "notifications" && (
-          <form className="space-y-6 max-w-2xl">
-            <h2 className="text-xl font-bold text-foreground border-b border-border pb-4">Notification Preferences</h2>
-
-            <div className="space-y-4">
-              <div className="flex items-center justify-between p-4 bg-secondary rounded-xl">
-                <div>
-                  <h3 className="font-bold text-foreground">Sales Notifications</h3>
-                  <p className="text-sm text-muted-foreground">Receive an email every time a ticket is sold.</p>
-                </div>
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input type="checkbox" className="sr-only peer" defaultChecked />
-                  <div className="w-11 h-6 bg-border peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
-                </label>
-              </div>
-
-              <div className="flex items-center justify-between p-4 bg-secondary rounded-xl">
-                <div>
-                  <h3 className="font-bold text-foreground">Daily Summary</h3>
-                  <p className="text-sm text-muted-foreground">Receive a daily digest of all sales and check-ins.</p>
-                </div>
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input type="checkbox" className="sr-only peer" defaultChecked />
-                  <div className="w-11 h-6 bg-border peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
-                </label>
-              </div>
-            </div>
-
-            <div className="pt-4 flex justify-end">
-              <button type="button" className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-primary-foreground rounded-xl font-bold hover:bg-primary/90 transition-colors">
-                <Save className="w-4 h-4" /> Save Preferences
-              </button>
-            </div>
-          </form>
-        )}
+        {activeTab === "notifications" && <NotificationPreferencesForm />}
 
         {activeTab === "security" && (
           <form className="space-y-6 max-w-2xl">

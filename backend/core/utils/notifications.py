@@ -137,6 +137,110 @@ The CirclePass Team"""
         logger.error(f"Failed to send email to {recipient}: {e}")
         EmailLog.objects.create(recipient=recipient, subject=subject, status='Failed')
 
+def send_organizer_sales_notification(order, tickets):
+    """
+    Notifies the organizer that tickets have been purchased for their event,
+    respecting their sales_notifications preference.
+    """
+    organizer = getattr(order.event, 'organizer', None)
+    if not organizer:
+        return
+
+    # Check notification preference (default True)
+    if not getattr(organizer, 'sales_notifications', True):
+        logger.info(f"Skipping sales notification for organizer {organizer.id}: sales_notifications is disabled.")
+        return
+
+    recipient = organizer.contact_email or (organizer.user.email if organizer.user else None)
+    if not recipient:
+        return
+
+    event = order.event
+    event_title = event.title
+    total_qty = sum(item.quantity for item in order.items.all()) or len(tickets)
+    gross_amount_formatted = f"₦{order.total_amount:,.2f}" if order.total_amount > 0 else "Free (₦0)"
+    buyer_name = order.guest_name or (order.attendee.user.get_full_name() if order.attendee else 'A guest attendee')
+    buyer_email = order.guest_email or (order.attendee.user.email if order.attendee else '')
+    order_number = f"CP-{str(order.id).zfill(8)}"
+    frontend_url = getattr(settings, 'FRONTEND_URL', 'https://thecirclepass.com')
+    dashboard_url = f"{frontend_url}/organizer/events/{event.id}/overview"
+
+    subject = f"New Ticket Sale! {total_qty} ticket{'s' if total_qty != 1 else ''} sold for {event_title}"
+
+    message = f"""Hello {organizer.company_name or 'Organizer'},
+
+Great news! You have a new ticket sale for "{event_title}".
+
+Order Details:
+Order Number: {order_number}
+Buyer: {buyer_name} ({buyer_email})
+Tickets Sold: {total_qty}
+Total Amount: {gross_amount_formatted}
+
+You can view your real-time sales and attendee list in your Organizer Dashboard:
+{dashboard_url}
+
+Keep up the great work!
+The CirclePass Team
+"""
+
+    html_message = f"""
+    <div style="font-family: 'Roboto', Arial, sans-serif; background-color: #f9fafb; padding: 40px 20px; color: #111827;">
+      <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; border: 1px solid #e5e7eb; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
+        <div style="background-color: #6366f1; padding: 32px 24px; text-align: center; color: #ffffff;">
+          <h1 style="margin: 0; font-family: 'Fredoka', Arial, sans-serif; font-size: 26px; font-weight: 700;">New Ticket Sale! 🎉</h1>
+          <p style="margin: 8px 0 0 0; font-size: 15px; opacity: 0.9;">You just sold tickets for <strong>{event_title}</strong></p>
+        </div>
+        <div style="padding: 32px 24px;">
+          <p style="font-size: 16px; margin-top: 0;">Hi <strong>{organizer.company_name or 'Organizer'}</strong>,</p>
+          <p style="font-size: 15px; color: #4b5563; line-height: 1.6;">A new order was just confirmed on CirclePass. Here is a quick summary:</p>
+          
+          <div style="background-color: #f3f4f6; border-radius: 12px; padding: 20px; margin: 24px 0;">
+            <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+              <tr>
+                <td style="padding: 8px 0; color: #6b7280;">Order ID:</td>
+                <td style="padding: 8px 0; font-weight: 600; text-align: right; color: #111827;">{order_number}</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px 0; color: #6b7280;">Attendee:</td>
+                <td style="padding: 8px 0; font-weight: 600; text-align: right; color: #111827;">{buyer_name}</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px 0; color: #6b7280;">Tickets:</td>
+                <td style="padding: 8px 0; font-weight: 600; text-align: right; color: #111827;">{total_qty}</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px 0; color: #6b7280; border-top: 1px solid #e5e7eb;">Total Amount:</td>
+                <td style="padding: 8px 0; font-weight: 700; text-align: right; color: #4f46e5; border-top: 1px solid #e5e7eb; font-size: 16px;">{gross_amount_formatted}</td>
+              </tr>
+            </table>
+          </div>
+
+          <div style="text-align: center; margin: 32px 0 16px 0;">
+            <a href="{dashboard_url}" style="background-color: #6366f1; color: #ffffff; padding: 14px 28px; border-radius: 10px; font-weight: 700; text-decoration: none; display: inline-block; font-size: 15px;">View Event Dashboard</a>
+          </div>
+        </div>
+        <div style="background-color: #f9fafb; padding: 20px; text-align: center; font-size: 12px; color: #9ca3af; border-top: 1px solid #f3f4f6;">
+          <p style="margin: 0;">You received this because Sales Notifications are enabled in your CirclePass organizer settings.</p>
+        </div>
+      </div>
+    </div>
+    """
+
+    try:
+        send_mail(
+            subject,
+            message,
+            getattr(settings, 'DEFAULT_FROM_EMAIL', 'noreply@circlepass.com'),
+            [recipient],
+            html_message=html_message,
+            fail_silently=False,
+        )
+        EmailLog.objects.create(recipient=recipient, subject=subject, status='Sent')
+    except Exception as e:
+        logger.error(f"Failed to send organizer sales notification to {recipient}: {e}")
+        EmailLog.objects.create(recipient=recipient, subject=subject, status='Failed')
+
 def send_event_status_update(event):
     """
     Notifies an organizer that their event has been approved or rejected.

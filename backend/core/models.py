@@ -43,6 +43,8 @@ class OrganizerProfile(models.Model):
     website = models.URLField(blank=True)
     instagram_handle = models.CharField(max_length=100, blank=True)
     logo = models.URLField(max_length=500, null=True, blank=True)
+    sales_notifications = models.BooleanField(default=True, help_text="Receive an email every time a ticket is sold.")
+    weekly_summary = models.BooleanField(default=True, help_text="Receive a weekly digest of all sales and check-ins.")
 
 class OrganizerVerification(models.Model):
     organizer = models.OneToOneField(OrganizerProfile, on_delete=models.CASCADE)

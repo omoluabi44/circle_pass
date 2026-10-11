@@ -49,7 +49,7 @@ class UserSerializer(BaseUserSerializer):
 class OrganizerProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = OrganizerProfile
-        fields = ('id', 'company_name', 'is_verified', 'contact_email', 'bio', 'website', 'instagram_handle', 'logo')
+        fields = ('id', 'company_name', 'is_verified', 'contact_email', 'bio', 'website', 'instagram_handle', 'logo', 'sales_notifications', 'weekly_summary')
 
 from core.models import OrganizerVerification
 

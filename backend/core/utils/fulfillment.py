@@ -7,7 +7,7 @@ from django.db.models import F
 from django.utils import timezone
 from core.models import Order, Ticket, TicketType, OrganizerWallet, WalletTransaction
 from core.utils.qr import generate_secure_qr_token
-from core.utils.notifications import send_purchase_receipt
+from core.utils.notifications import send_purchase_receipt, send_organizer_sales_notification
 
 def fulfill_order(order, payment=None):
     """
@@ -76,6 +76,10 @@ def fulfill_order(order, payment=None):
             )
 
         send_purchase_receipt(order_fresh, tickets)
+        try:
+            send_organizer_sales_notification(order_fresh, tickets)
+        except Exception as e:
+            pass
 
     return tickets
 
