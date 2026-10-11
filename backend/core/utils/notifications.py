@@ -61,6 +61,37 @@ def send_purchase_receipt(order, tickets):
         
     signup_link = f"{frontend_url}/register?email={recipient}"
 
+    event = order.event
+
+    # Format location string
+    if getattr(event, 'is_online', False):
+        event_location = "Online Event"
+    elif getattr(event, 'venue', None) and event.venue.name:
+        if getattr(event, 'city', None):
+            event_location = f"{event.venue.name}, {event.city}"
+        else:
+            event_location = event.venue.name
+    elif getattr(event, 'location_name', None):
+        if getattr(event, 'city', None):
+            event_location = f"{event.location_name}, {event.city}"
+        else:
+            event_location = event.location_name
+    elif getattr(event, 'city', None):
+        if getattr(event, 'country', None):
+            event_location = f"{event.city}, {event.country}"
+        else:
+            event_location = event.city
+    else:
+        event_location = "Location TBA"
+
+    cover_image_url = getattr(event, 'cover_image', None)
+    if cover_image_url and not str(cover_image_url).startswith(('http://', 'https://')):
+        base_api = getattr(settings, 'API_BASE_URL', 'https://api.thecirclepass.com')
+        if not str(cover_image_url).startswith('/'):
+            cover_image_url = f"{base_api}/media/{cover_image_url}"
+        else:
+            cover_image_url = f"{base_api}{cover_image_url}"
+
     context = {
         'first_name': first_name,
         'name': name,
@@ -69,7 +100,9 @@ def send_purchase_receipt(order, tickets):
         'ticket_link': ticket_link,
         'is_guest': is_guest,
         'signup_link': signup_link,
-        'event': order.event,
+        'event': event,
+        'event_location': event_location,
+        'cover_image_url': cover_image_url,
         'tickets': tickets,
         'frontend_url': frontend_url,
     }

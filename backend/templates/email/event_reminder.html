@@ -51,11 +51,11 @@
             <div style="font-size: 18px; font-weight: 700; color: #1f2937; margin-bottom: 8px;">{{ event.title }}</div>
             
             <div style="font-size: 14px; color: #4b5563; margin-bottom: 4px; line-height: 1.5;">
-              {{ event.start_date|date:"l, F j, Y" }}
+              {% if event.start_time %}{{ event.start_time|date:"l, F j, Y" }}{% else %}{{ event.start_date|date:"l, F j, Y" }}{% endif %}
             </div>
             
             <div style="font-size: 14px; color: #4b5563; margin-bottom: 4px; line-height: 1.5;">
-              {{ event.start_date|date:"g:i A" }} - {{ event.end_date|date:"g:i A T" }}
+              {% if event.start_time %}{{ event.start_time|date:"g:i A" }}{% if event.end_time %} - {{ event.end_time|date:"g:i A T" }}{% endif %}{% else %}{{ event.start_date|date:"g:i A" }} - {{ event.end_date|date:"g:i A T" }}{% endif %}
             </div>
             
             {% if event.venue %}
