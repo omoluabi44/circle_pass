@@ -242,13 +242,21 @@ class OrganizerWaitlistAcceptView(APIView):
                 ticket_type = TicketType.objects.select_for_update().get(pk=entry.ticket_type_id)
                 available = ticket_type.quantity - ticket_type.quantity_sold
 
-                # STRICT INVENTORY GUARDRAIL:
-                # The organiser must not be able to accept a request if the requested ticket category/quantity
-                # is not actually available.
+                # If available is less than requested, check if organizer chose to auto-increase capacity
                 if available < entry.quantity:
-                    return Response({
-                        'detail': f'Cannot accept request: only {available} {ticket_type.name} ticket(s) available (requested: {entry.quantity}).'
-                    }, status=status.HTTP_400_BAD_REQUEST)
+                    auto_increase = request.data.get('auto_increase_capacity', False)
+                    if auto_increase:
+                        needed = entry.quantity - available
+                        TicketType.objects.filter(pk=ticket_type.pk).update(quantity=F('quantity') + needed)
+                        ticket_type.refresh_from_db()
+                        available = ticket_type.quantity - ticket_type.quantity_sold
+                    else:
+                        return Response({
+                            'detail': f'Cannot accept request: only {available} {ticket_type.name} ticket(s) available (requested: {entry.quantity}). Increase ticket capacity to accept.',
+                            'requires_capacity_increase': True,
+                            'available': available,
+                            'needed': entry.quantity - available
+                        }, status=status.HTTP_400_BAD_REQUEST)
 
                 # Compute pricing & fees for reservation
                 subtotal = ticket_type.price * entry.quantity

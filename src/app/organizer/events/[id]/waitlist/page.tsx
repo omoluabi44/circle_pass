@@ -129,15 +129,16 @@ export default function OrganizerWaitlistPage() {
     // Check client-side inventory
     const tier = tiersInventory.find((t) => t.id === entry.ticket_type);
     const available = tier ? tier.available : entry.available_inventory;
+    const isCapacityShort = available < entry.quantity;
+    const needed = entry.quantity - Math.max(0, available);
 
-    if (available < entry.quantity) {
-      toast.error(
-        `Cannot accept request: only ${available} ${entry.ticket_type_name} tickets available (requested: ${entry.quantity}).`
-      );
-      return;
+    let confirmMsg = "";
+    if (isCapacityShort) {
+      confirmMsg = `This tier is currently sold out (${available} available).\n\nWould you like to increase capacity by ${needed} ticket(s) and approve ${entry.name || entry.email}?\n\nThis will reserve the tickets and send them a private 2-hour checkout link.`;
+    } else {
+      confirmMsg = `Accept waitlist request for ${entry.name || entry.email}?\n\nThis will reserve ${entry.quantity}x ${entry.ticket_type_name} ticket(s) and send them a private checkout link to complete payment within 2 hours.`;
     }
 
-    const confirmMsg = `Accept waitlist request for ${entry.name || entry.email}?\n\nThis will temporarily reserve ${entry.quantity}x ${entry.ticket_type_name} tickets and send them a private checkout link to complete payment within 2 hours.`;
     if (!window.confirm(confirmMsg)) return;
 
     setActionLoadingId(entry.id);
@@ -147,7 +148,10 @@ export default function OrganizerWaitlistPage() {
         headers: {
           Authorization: `Bearer ${session.accessToken}`,
           "Content-Type": "application/json"
-        }
+        },
+        body: JSON.stringify({
+          auto_increase_capacity: isCapacityShort
+        })
       });
 
       const data = await res.json();
@@ -478,20 +482,20 @@ export default function OrganizerWaitlistPage() {
                               {/* Accept Button */}
                               <button
                                 onClick={() => handleAccept(entry)}
-                                disabled={!canAccept || isProcessing}
+                                disabled={isProcessing}
                                 title={
                                   !canAccept
-                                    ? `Cannot accept: Only ${currentAvailable} ticket(s) available, but attendee requested ${entry.quantity}.`
+                                    ? `Tier is sold out: Click to increase capacity by ${entry.quantity - currentAvailable} and approve ${entry.name || entry.email}`
                                     : "Accept and reserve tickets for attendee"
                                 }
-                                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
-                                  canAccept
-                                    ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm"
-                                    : "bg-muted text-muted-foreground cursor-not-allowed opacity-60"
-                                } disabled:cursor-not-allowed`}
+                                className="px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
                               >
                                 <Check className="w-3.5 h-3.5" />
-                                {isProcessing ? "Processing..." : "Accept"}
+                                {isProcessing
+                                  ? "Processing..."
+                                  : !canAccept
+                                  ? `Accept (+${entry.quantity - currentAvailable})`
+                                  : "Accept"}
                               </button>
 
                               {/* Decline Button */}
