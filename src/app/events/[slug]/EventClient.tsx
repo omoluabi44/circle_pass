@@ -73,35 +73,35 @@ function EventCountdown({ targetDate }: { targetDate?: string }) {
         <span className="text-xs text-primary font-semibold hidden sm:inline-block">Counting down to showtime</span>
       </div>
       <div className="grid grid-cols-4 gap-2 sm:gap-3 text-center">
-        <div className="bg-background/80 backdrop-blur-sm border border-border/80 rounded-xl p-2.5 sm:p-3 shadow-xs">
-          <div className="text-xl sm:text-3xl font-extrabold text-foreground tracking-tight">
+        <div className="bg-primary border border-primary/20 rounded-xl p-2.5 sm:p-3 shadow-sm transition-transform">
+          <div className="text-xl sm:text-3xl font-black text-white tracking-tight">
             {String(timeLeft.days).padStart(2, '0')}
           </div>
-          <div className="text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wider mt-0.5">
+          <div className="text-[10px] sm:text-xs font-bold text-white/80 uppercase tracking-wider mt-0.5">
             Days
           </div>
         </div>
-        <div className="bg-background/80 backdrop-blur-sm border border-border/80 rounded-xl p-2.5 sm:p-3 shadow-xs">
-          <div className="text-xl sm:text-3xl font-extrabold text-foreground tracking-tight">
+        <div className="bg-primary border border-primary/20 rounded-xl p-2.5 sm:p-3 shadow-sm transition-transform">
+          <div className="text-xl sm:text-3xl font-black text-white tracking-tight">
             {String(timeLeft.hours).padStart(2, '0')}
           </div>
-          <div className="text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wider mt-0.5">
+          <div className="text-[10px] sm:text-xs font-bold text-white/80 uppercase tracking-wider mt-0.5">
             Hours
           </div>
         </div>
-        <div className="bg-background/80 backdrop-blur-sm border border-border/80 rounded-xl p-2.5 sm:p-3 shadow-xs">
-          <div className="text-xl sm:text-3xl font-extrabold text-foreground tracking-tight">
+        <div className="bg-primary border border-primary/20 rounded-xl p-2.5 sm:p-3 shadow-sm transition-transform">
+          <div className="text-xl sm:text-3xl font-black text-white tracking-tight">
             {String(timeLeft.minutes).padStart(2, '0')}
           </div>
-          <div className="text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wider mt-0.5">
+          <div className="text-[10px] sm:text-xs font-bold text-white/80 uppercase tracking-wider mt-0.5">
             Minutes
           </div>
         </div>
-        <div className="bg-background/80 backdrop-blur-sm border border-border/80 rounded-xl p-2.5 sm:p-3 shadow-xs">
-          <div className="text-xl sm:text-3xl font-extrabold text-primary tracking-tight">
+        <div className="bg-primary border border-primary/20 rounded-xl p-2.5 sm:p-3 shadow-sm transition-transform">
+          <div className="text-xl sm:text-3xl font-black text-white tracking-tight">
             {String(timeLeft.seconds).padStart(2, '0')}
           </div>
-          <div className="text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wider mt-0.5">
+          <div className="text-[10px] sm:text-xs font-bold text-white/80 uppercase tracking-wider mt-0.5">
             Seconds
           </div>
         </div>
