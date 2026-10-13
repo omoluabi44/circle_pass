@@ -12,7 +12,7 @@ from django.conf import settings
 PAYSTACK_API_URL = "https://api.paystack.co"
 
 def get_secret_key():
-    return os.environ.get('PAYSTACK_SECRET_KEY', '')
+    return getattr(settings, 'PAYSTACK_SECRET_KEY', '') or os.environ.get('PAYSTACK_SECRET_KEY', '')
 
 def get_headers():
     return {

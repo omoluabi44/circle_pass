@@ -91,6 +91,28 @@ class FindTicketView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        # Self-healing: if searched by reference, check if it was paid on Paystack
+        if reference:
+            pending_pay = Payment.objects.filter(
+                reference__iexact=reference,
+                status__in=['PENDING', 'FAILED']
+            ).select_related('order').first()
+            if pending_pay and pending_pay.reference:
+                try:
+                    from core.utils.paystack import verify_transaction
+                    from core.utils.fulfillment import fulfill_order
+                    from django.utils import timezone
+                    res = verify_transaction(pending_pay.reference)
+                    if res.get('data', {}).get('status') == 'success':
+                        pending_pay.status = 'SUCCESS'
+                        pending_pay.paid_at = timezone.now()
+                        pending_pay.channel = res['data'].get('channel', '')
+                        pending_pay.provider_data = res['data']
+                        pending_pay.save(update_fields=['status', 'paid_at', 'channel', 'provider_data', 'updated_at'])
+                        fulfill_order(pending_pay.order, payment=pending_pay)
+                except Exception:
+                    pass
+
         orders = Order.objects.filter(
             order_filter,
             status='COMPLETED',

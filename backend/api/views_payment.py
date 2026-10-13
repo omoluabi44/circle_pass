@@ -242,6 +242,7 @@ class PaymentVerifyView(APIView):
                     payment.save(update_fields=['status', 'paid_at', 'channel', 'provider_data', 'updated_at'])
                     fulfill_order(payment.order, payment=payment)
             
+            payment.order.refresh_from_db()
             return Response({
                 'status': 'SUCCESS',
                 'order': OrderSerializer(payment.order).data,

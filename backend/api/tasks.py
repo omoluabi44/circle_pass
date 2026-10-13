@@ -318,6 +318,25 @@ def expire_pending_order(order_id):
         with transaction.atomic():
             order = Order.objects.select_for_update().get(id=order_id)
             if order.status == 'PENDING' and order.expires_at and order.expires_at <= timezone.now():
+                # Check Paystack first: Did the user make a transfer/payment before order expired?
+                payment = order.payments.filter(status='PENDING').first()
+                if payment and payment.reference:
+                    try:
+                        from core.utils.paystack import verify_transaction
+                        from core.utils.fulfillment import fulfill_order
+                        v_res = verify_transaction(payment.reference)
+                        if v_res.get('data', {}).get('status') == 'success':
+                            payment.status = 'SUCCESS'
+                            payment.paid_at = timezone.now()
+                            payment.channel = v_res['data'].get('channel', '')
+                            payment.provider_data = v_res['data']
+                            payment.save(update_fields=['status', 'paid_at', 'channel', 'provider_data', 'updated_at'])
+                            fulfill_order(order, payment=payment)
+                            logger.info(f"Order {order_id} was paid on Paystack. Fulfilled tickets instead of cancelling.")
+                            return f"Order {order_id} fulfilled via Paystack verification during expiry."
+                    except Exception as ve:
+                        logger.warning(f"Paystack verification check failed during expiry of order {order_id}: {ve}")
+
                 logger.info(f"Expiring pending order {order_id}")
                 
                 # Note: Pending orders do not hold quantity_sold.
@@ -337,6 +356,50 @@ def expire_pending_order(order_id):
         pass
     except Exception as e:
         logger.error(f"Failed to expire order {order_id}: {e}")
+
+
+@shared_task
+def reconcile_unconfirmed_payments():
+    """
+    Checks recent orders (last 48 hours) that are PENDING or CANCELLED but have a Paystack payment reference.
+    Verifies with Paystack to catch anyone who paid via transfer/USSD/card but didn't return to click 'I have paid'
+    and where the webhook might have been missed or delayed.
+    """
+    from core.models import Order, Payment
+    from core.utils.paystack import verify_transaction
+    from core.utils.fulfillment import fulfill_order
+    from django.utils import timezone
+    from datetime import timedelta
+    import logging
+
+    logger = logging.getLogger(__name__)
+    cutoff = timezone.now() - timedelta(hours=48)
+    
+    pending_payments = Payment.objects.filter(
+        created_at__gte=cutoff,
+        status__in=['PENDING', 'FAILED'],
+        order__status__in=['PENDING', 'CANCELLED']
+    ).select_related('order')
+
+    recovered_count = 0
+    for p in pending_payments:
+        if not p.reference or p.provider == 'FREE':
+            continue
+        try:
+            res = verify_transaction(p.reference)
+            if res.get('data', {}).get('status') == 'success':
+                p.status = 'SUCCESS'
+                p.paid_at = timezone.now()
+                p.channel = res['data'].get('channel', '')
+                p.provider_data = res['data']
+                p.save(update_fields=['status', 'paid_at', 'channel', 'provider_data', 'updated_at'])
+                fulfill_order(p.order, payment=p)
+                recovered_count += 1
+                logger.info(f"Reconciliation: recovered order #{p.order_id} (ref: {p.reference})")
+        except Exception:
+            continue
+
+    return f"Reconciled unconfirmed payments. Recovered {recovered_count} orders."
 
 
 @shared_task
