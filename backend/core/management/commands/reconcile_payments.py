@@ -38,6 +38,7 @@ def run_reconciliation(hours=168, stdout=None, style=None):
     total_checked = 0
     recovered_count = 0
     recovered_details = []
+    checked_statuses = []
 
     for payment in pending_payments:
         if not payment.reference:
@@ -76,6 +77,7 @@ def run_reconciliation(hours=168, stdout=None, style=None):
                     'attendee_email': attendee_email,
                     'event': payment.order.event.title if payment.order.event else 'N/A',
                     'tickets_issued': len(tickets),
+                    'status': 'RECOVERED'
                 }
                 recovered_details.append(detail)
 
@@ -84,9 +86,21 @@ def run_reconciliation(hours=168, stdout=None, style=None):
                     stdout.write(style.SUCCESS(success_msg))
                 logger.info(success_msg)
             else:
+                checked_statuses.append({
+                    'order_id': payment.order_id,
+                    'reference': ref,
+                    'paystack_status': v_status,
+                    'amount_kobo': payment.amount,
+                    'created_at': str(payment.created_at)
+                })
                 if stdout:
                     stdout.write(f"Reference {ref} is {v_status} on Paystack.")
         except Exception as e:
+            checked_statuses.append({
+                'order_id': payment.order_id,
+                'reference': ref,
+                'error': str(e)
+            })
             err_msg = f"Error checking {ref}: {e}"
             if stdout and style:
                 stdout.write(style.WARNING(err_msg))
@@ -127,6 +141,7 @@ def run_reconciliation(hours=168, stdout=None, style=None):
         'total_checked': total_checked,
         'recovered_count': recovered_count,
         'recovered_details': recovered_details,
+        'checked_statuses': checked_statuses,
     }
 
 
