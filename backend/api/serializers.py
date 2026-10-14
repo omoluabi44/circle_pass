@@ -516,11 +516,19 @@ class AdminPayoutSerializer(serializers.ModelSerializer):
 class FindTicketRequestSerializer(serializers.Serializer):
     """At least one lookup field is required."""
     reference = serializers.CharField(required=False, allow_blank=True, default='')
+    order_reference = serializers.CharField(required=False, allow_blank=True, default='')
     email = serializers.EmailField(required=False, allow_blank=True, default='')
     phone = serializers.CharField(required=False, allow_blank=True, default='')
+    phone_number = serializers.CharField(required=False, allow_blank=True, default='')
 
     def validate(self, data):
-        if not any([data.get('reference'), data.get('email'), data.get('phone')]):
+        ref = data.get('reference') or data.get('order_reference') or ''
+        em = data.get('email') or ''
+        ph = data.get('phone') or data.get('phone_number') or ''
+        data['reference'] = ref
+        data['phone'] = ph
+        data['email'] = em
+        if not any([ref, em, ph]):
             raise serializers.ValidationError('At least one of reference, email, or phone is required.')
         return data
 

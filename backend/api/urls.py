@@ -140,6 +140,7 @@ urlpatterns = [
     path('upload/presigned-url/', PresignedUrlView.as_view(), name='presigned_url'),
     
     # Find Ticket (public)
+    path('tickets/find/', FindTicketView.as_view(), name='find_ticket'),
     path('tickets/public/<str:qr_token>/', PublicTicketView.as_view(), name='public_ticket'),
     path('tickets/', TicketViewSet.as_view({'get': 'list'}), name='tickets'),
     
