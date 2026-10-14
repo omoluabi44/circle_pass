@@ -96,24 +96,27 @@ def run_reconciliation(hours=168, stdout=None, style=None):
     stuck_orders = Order.objects.filter(
         created_at__gte=cutoff,
         status__in=['PENDING', 'CANCELLED'],
-        payments__status='SUCCESS'
-    ).distinct()
+        payment__status='SUCCESS'
+    ).select_related('payment')
 
     for order in stuck_orders:
-        pay = order.payments.filter(status='SUCCESS').first()
-        tickets = fulfill_order(order, payment=pay)
-        recovered_count += 1
-        attendee_email = order.guest_email or (order.attendee.user.email if order.attendee else 'N/A')
-        recovered_details.append({
-            'order_id': order.id,
-            'reference': getattr(pay, 'reference', 'N/A'),
-            'attendee_email': attendee_email,
-            'tickets_issued': len(tickets),
-        })
-        msg = f"Fulfilled stuck Order #{order.id} for {attendee_email}"
-        if stdout and style:
-            stdout.write(style.SUCCESS(msg))
-        logger.info(msg)
+        try:
+            pay = getattr(order, 'payment', None)
+            tickets = fulfill_order(order, payment=pay)
+            recovered_count += 1
+            attendee_email = order.guest_email or (order.attendee.user.email if order.attendee else 'N/A')
+            recovered_details.append({
+                'order_id': order.id,
+                'reference': getattr(pay, 'reference', 'N/A'),
+                'attendee_email': attendee_email,
+                'tickets_issued': len(tickets),
+            })
+            msg = f"Fulfilled stuck Order #{order.id} for {attendee_email}"
+            if stdout and style:
+                stdout.write(style.SUCCESS(msg))
+            logger.info(msg)
+        except Exception as e:
+            logger.warning(f"Error fulfilling stuck order #{order.id}: {e}")
 
     summary = f"Finished payment reconciliation. Checked: {total_checked}, Recovered: {recovered_count}"
     if stdout and style:

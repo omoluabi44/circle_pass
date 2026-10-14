@@ -319,8 +319,8 @@ def expire_pending_order(order_id):
             order = Order.objects.select_for_update().get(id=order_id)
             if order.status == 'PENDING' and order.expires_at and order.expires_at <= timezone.now():
                 # Check Paystack first: Did the user make a transfer/payment before order expired?
-                payment = order.payments.filter(status='PENDING').first()
-                if payment and payment.reference:
+                payment = getattr(order, 'payment', None)
+                if payment and payment.status == 'PENDING' and payment.reference:
                     try:
                         from core.utils.paystack import verify_transaction
                         from core.utils.fulfillment import fulfill_order
