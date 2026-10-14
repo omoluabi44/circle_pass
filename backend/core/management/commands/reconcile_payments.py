@@ -33,7 +33,7 @@ def run_reconciliation(hours=168, stdout=None, style=None):
         order__status='COMPLETED'
     ).exclude(
         provider='FREE'
-    ).select_related('order', 'order__event', 'order__attendee__user')
+    ).select_related('order', 'order__event')
 
     total_checked = 0
     recovered_count = 0

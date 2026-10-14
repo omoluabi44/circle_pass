@@ -287,12 +287,19 @@ class ReconcilePaymentsView(APIView):
         return self._reconcile(request)
 
     def _reconcile(self, request):
+        import traceback
         try:
-            hours = int(request.query_params.get('hours') or (request.data and request.data.get('hours')) or 168)
-        except (ValueError, TypeError):
-            hours = 168
+            try:
+                hours = int(request.query_params.get('hours') or (request.data and request.data.get('hours')) or 168)
+            except (ValueError, TypeError):
+                hours = 168
 
-        from core.management.commands.reconcile_payments import run_reconciliation
-        result = run_reconciliation(hours=hours)
-        return Response(result)
+            from core.management.commands.reconcile_payments import run_reconciliation
+            result = run_reconciliation(hours=hours)
+            return Response(result)
+        except Exception as e:
+            return Response({
+                'error': str(e),
+                'traceback': traceback.format_exc(),
+            }, status=500)
 
