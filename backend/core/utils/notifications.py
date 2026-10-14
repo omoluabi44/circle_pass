@@ -157,7 +157,8 @@ def send_organizer_sales_notification(order, tickets):
     event = order.event
     event_title = event.title
     total_qty = sum(item.quantity for item in order.items.all()) or len(tickets)
-    gross_amount_formatted = f"₦{order.total_amount:,.2f}" if order.total_amount > 0 else "Free (₦0)"
+    amount_in_naira = (order.total_amount or 0) / 100
+    gross_amount_formatted = f"₦{amount_in_naira:,.2f}" if amount_in_naira > 0 else "Free (₦0)"
     buyer_name = order.guest_name or (order.attendee.user.get_full_name() if order.attendee else 'A guest attendee')
     buyer_email = order.guest_email or (order.attendee.user.email if order.attendee else '')
     order_number = f"CP-{str(order.id).zfill(8)}"
