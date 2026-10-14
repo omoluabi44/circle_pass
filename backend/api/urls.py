@@ -38,7 +38,7 @@ from .views_upload import PresignedUrlView
 
 from .views_admin import (
     AdminOverviewView, AdminUserViewSet, AdminOrganizerVerificationViewSet,
-    AdminEventViewSet, AdminPayoutViewSet
+    AdminEventViewSet, AdminPayoutViewSet, AdminReconcilePaymentsView
 )
 
 auth_router = DefaultRouter()
@@ -162,6 +162,7 @@ urlpatterns = [
     
     # Admin: Payouts (view-only; payouts are auto-initiated and settled via Paystack webhooks)
     path('admin/payouts_list/', AdminPayoutListView.as_view(), name='admin_payouts_list'),
+    path('admin/reconcile-payments/', AdminReconcilePaymentsView.as_view(), name='admin_reconcile_payments'),
 
     # Content/Blog (stubs)
     path('blog/', StubView.as_view(), name='blog_list'),

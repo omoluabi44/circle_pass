@@ -163,3 +163,97 @@ class AdminPayoutViewSet(viewsets.ModelViewSet):
             # Refund to available balance? Depending on exact logic. Let's just update status for now.
             return Response({"status": "Rejected"})
         return Response({"detail": "Payout is not pending"}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class AdminReconcilePaymentsView(APIView):
+    """
+    POST /api/admin/reconcile-payments/
+
+    Admin-only endpoint. Scans ALL PENDING and CANCELLED orders that have a
+    Paystack payment reference, verifies each one against Paystack, and
+    auto-fulfills any confirmed payments that never got tickets issued.
+
+    Optional body param:
+      { "hours": 72 }   (default: 72 hours look-back window)
+
+    Returns a detailed list of every recovered order + attendee info.
+    """
+    permission_classes = [IsAdmin]
+
+    def post(self, request):
+        from core.models import Payment
+        from core.utils.paystack import verify_transaction
+        from core.utils.fulfillment import fulfill_order
+        from django.utils import timezone
+        from datetime import timedelta
+        import logging
+
+        logger = logging.getLogger(__name__)
+
+        hours = int(request.data.get('hours', 72))
+        cutoff = timezone.now() - timedelta(hours=hours)
+
+        pending_payments = Payment.objects.filter(
+            created_at__gte=cutoff,
+            status__in=['PENDING', 'FAILED'],
+            order__status__in=['PENDING', 'CANCELLED'],
+        ).select_related('order', 'order__event', 'order__attendee__user').exclude(provider='FREE')
+
+        total_checked = pending_payments.count()
+        recovered = []
+        already_paid = []
+        failed_check = []
+
+        for payment in pending_payments:
+            if not payment.reference:
+                continue
+            try:
+                res = verify_transaction(payment.reference)
+                v_status = res.get('data', {}).get('status')
+
+                if v_status == 'success':
+                    # Already fulfilled check (idempotent)
+                    if payment.order.status == 'COMPLETED':
+                        already_paid.append(payment.reference)
+                        continue
+
+                    payment.status = 'SUCCESS'
+                    payment.paid_at = timezone.now()
+                    payment.channel = res['data'].get('channel', '')
+                    payment.provider_data = res['data']
+                    payment.save(update_fields=['status', 'paid_at', 'channel', 'provider_data', 'updated_at'])
+
+                    tickets = fulfill_order(payment.order, payment=payment)
+                    payment.order.refresh_from_db()
+
+                    attendee_email = payment.order.guest_email or (
+                        payment.order.attendee.user.email if payment.order.attendee else 'N/A'
+                    )
+                    attendee_name = payment.order.guest_name or (
+                        payment.order.attendee.user.get_full_name() if payment.order.attendee else 'N/A'
+                    )
+
+                    recovered.append({
+                        'order_id': payment.order_id,
+                        'reference': payment.reference,
+                        'attendee_name': attendee_name,
+                        'attendee_email': attendee_email,
+                        'event': payment.order.event.title if payment.order.event else 'N/A',
+                        'amount_naira': payment.amount / 100,
+                        'tickets_issued': len(tickets),
+                        'ticket_qr_tokens': [t.qr_token for t in tickets],
+                    })
+                    logger.info(f"[Reconcile] Recovered order #{payment.order_id} ({attendee_email})")
+
+            except Exception as e:
+                failed_check.append({'reference': payment.reference, 'error': str(e)})
+                logger.warning(f"[Reconcile] Error checking {payment.reference}: {e}")
+
+        return Response({
+            'look_back_hours': hours,
+            'total_payments_checked': total_checked,
+            'recovered_count': len(recovered),
+            'recovered_orders': recovered,
+            'already_paid_count': len(already_paid),
+            'failed_checks': failed_check,
+        })

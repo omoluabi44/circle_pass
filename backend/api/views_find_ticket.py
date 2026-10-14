@@ -104,14 +104,38 @@ class FindTicketView(APIView):
                     from django.utils import timezone
                     res = verify_transaction(pending_pay.reference)
                     if res.get('data', {}).get('status') == 'success':
-                        pending_pay.status = 'SUCCESS'
-                        pending_pay.paid_at = timezone.now()
-                        pending_pay.channel = res['data'].get('channel', '')
-                        pending_pay.provider_data = res['data']
-                        pending_pay.save(update_fields=['status', 'paid_at', 'channel', 'provider_data', 'updated_at'])
-                        fulfill_order(pending_pay.order, payment=pending_pay)
+                        payment = pending_pay
+                        payment.status = 'SUCCESS'
+                        payment.paid_at = timezone.now()
+                        payment.channel = res['data'].get('channel', '')
+                        payment.provider_data = res['data']
+                        payment.save(update_fields=['status', 'paid_at', 'channel', 'provider_data', 'updated_at'])
+                        fulfill_order(payment.order, payment=payment)
                 except Exception:
                     pass
+
+        # Self-healing: if searched by email, check any pending/cancelled payments for that email
+        if email:
+            pending_email_payments = Payment.objects.filter(
+                Q(order__guest_email__iexact=email) | Q(order__attendee__user__email__iexact=email),
+                status__in=['PENDING', 'FAILED']
+            ).select_related('order')[:5]
+            for payment in pending_email_payments:
+                if payment.reference and payment.provider != 'FREE':
+                    try:
+                        from core.utils.paystack import verify_transaction
+                        from core.utils.fulfillment import fulfill_order
+                        from django.utils import timezone
+                        res = verify_transaction(payment.reference)
+                        if res.get('data', {}).get('status') == 'success':
+                            payment.status = 'SUCCESS'
+                            payment.paid_at = timezone.now()
+                            payment.channel = res['data'].get('channel', '')
+                            payment.provider_data = res['data']
+                            payment.save(update_fields=['status', 'paid_at', 'channel', 'provider_data', 'updated_at'])
+                            fulfill_order(payment.order, payment=payment)
+                    except Exception:
+                        pass
 
         orders = Order.objects.filter(
             order_filter,
