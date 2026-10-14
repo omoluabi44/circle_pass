@@ -219,12 +219,34 @@ class PaymentVerifyView(APIView):
             })
         
         if payment.status == 'FAILED':
+            # DO NOT return early — re-check Paystack in case money arrived after we marked it failed
+            try:
+                verification = verify_transaction(reference)
+                v_status = verification.get('data', {}).get('status')
+                if v_status == 'success':
+                    with transaction.atomic():
+                        payment = Payment.objects.select_for_update().get(pk=payment.pk)
+                        payment.status = 'SUCCESS'
+                        payment.paid_at = timezone.now()
+                        payment.channel = verification['data'].get('channel', '')
+                        payment.provider_data = verification['data']
+                        payment.save(update_fields=['status', 'paid_at', 'channel', 'provider_data', 'updated_at'])
+                        tickets = fulfill_order(payment.order, payment=payment)
+                    payment.order.refresh_from_db()
+                    return Response({
+                        'status': 'SUCCESS',
+                        'order': OrderSerializer(payment.order).data,
+                        'tickets': TicketSerializer(payment.order.tickets.all(), many=True, context={'request': request}).data,
+                    })
+            except Exception:
+                pass
+            # If still not success on Paystack, return FAILED
             return Response({
                 'status': 'FAILED',
                 'order': OrderSerializer(payment.order).data,
             })
 
-        # Payment is still PENDING, verify manually
+        # Payment is still PENDING, verify with Paystack
         try:
             verification = verify_transaction(reference)
         except Exception as e:

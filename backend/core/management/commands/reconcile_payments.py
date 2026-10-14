@@ -106,10 +106,10 @@ def run_reconciliation(hours=168, stdout=None, style=None):
                 stdout.write(style.WARNING(err_msg))
             logger.warning(err_msg)
 
-    # 2. Check orders where payment is SUCCESS but order is still PENDING or CANCELLED
+    # 2. Check orders where payment is SUCCESS but order is still not COMPLETED
     stuck_orders = Order.objects.filter(
         created_at__gte=cutoff,
-        status__in=['PENDING', 'CANCELLED'],
+        status__in=['PENDING', 'CANCELLED', 'FAILED'],
         payment__status='SUCCESS'
     ).select_related('payment')
 
