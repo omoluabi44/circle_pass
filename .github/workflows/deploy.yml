@@ -86,4 +86,7 @@ jobs:
             
             # Run migrations
             sudo docker-compose exec -T backend python manage.py migrate
+            
+            # Auto-reconcile all unconfirmed Paystack payments and issue tickets
+            sudo docker-compose exec -T backend python manage.py reconcile_payments --hours 168
 

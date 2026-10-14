@@ -9,7 +9,7 @@ from .views_waitlist import (
     WaitlistClaimView,
 )
 from .views_checkout import CheckoutView
-from .views_payment import PaystackWebhookView, PaymentVerifyView
+from .views_payment import PaystackWebhookView, PaymentVerifyView, ReconcilePaymentsView
 from .views_wallet import OrganizerWalletView, WalletTransactionListView
 from .views_payout import (
     OrganizerPayoutListCreateView, OrganizerPayoutDetailView,
@@ -89,6 +89,7 @@ urlpatterns = [
     # Payments
     path('payments/paystack/webhook/', PaystackWebhookView.as_view(), name='payments_webhook'),
     path('payments/verify/', PaymentVerifyView.as_view(), name='payments_verify'),
+    path('payments/reconcile/', ReconcilePaymentsView.as_view(), name='payments_reconcile'),
     
     # Check-in
     path('check-in/scan/', CheckInScanView.as_view(), name='checkin_scan'),

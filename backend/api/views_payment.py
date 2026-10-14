@@ -267,3 +267,32 @@ class PaymentVerifyView(APIView):
             'status': 'PENDING',
             'detail': 'Payment has not been completed yet.'
         })
+
+
+class ReconcilePaymentsView(APIView):
+    """
+    GET /api/payments/reconcile/?hours=168
+    POST /api/payments/reconcile/
+
+    Scans Paystack for any unconfirmed payments in the last N hours,
+    confirms receipt with Paystack API, creates tickets, dispatches emails,
+    and returns a summary of all recovered orders.
+    """
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        return self._reconcile(request)
+
+    def post(self, request):
+        return self._reconcile(request)
+
+    def _reconcile(self, request):
+        try:
+            hours = int(request.query_params.get('hours') or (request.data and request.data.get('hours')) or 168)
+        except (ValueError, TypeError):
+            hours = 168
+
+        from core.management.commands.reconcile_payments import run_reconciliation
+        result = run_reconciliation(hours=hours)
+        return Response(result)
+
