@@ -465,11 +465,19 @@ class EventViewSet(viewsets.ModelViewSet):
         tickets_sold = tickets.count()
         check_ins = tickets.filter(status='USED').count()
 
-        # Total revenue (kobo)
+        # Total revenue (kobo) - Organizer net revenue excluding CirclePass fee
         # Orders that are completed for this event
         completed_orders = Order.objects.filter(event=event, status='COMPLETED')
-        revenue_aggr = completed_orders.aggregate(total=Sum('total_amount'))
-        total_revenue = revenue_aggr['total'] or 0
+        revenue_aggr = completed_orders.aggregate(
+            subtotal_sum=Sum('subtotal'),
+            discount_sum=Sum('discount_amount')
+        )
+        subtotal = revenue_aggr['subtotal_sum'] or 0
+        discount = revenue_aggr['discount_sum'] or 0
+        if getattr(event, 'absorb_fees', False):
+            total_revenue = int((subtotal - discount) * 0.95)
+        else:
+            total_revenue = subtotal - discount
 
         # Ticket tiers breakdown
         tiers = []

@@ -52,9 +52,19 @@ class OrganizerDashboardView(APIView):
         for event in events.order_by('-id')[:5]:
             # Sales
             event_tickets = Ticket.objects.filter(order__event=event, order__status='COMPLETED').count()
-            # Revenue (Sum of order totals for this event)
-            revenue_aggr = Order.objects.filter(event=event, status='COMPLETED').aggregate(total=Sum('total_amount'))
-            revenue = revenue_aggr['total'] or 0
+            # Revenue (Organizer Net Revenue: subtotal - discount_amount, excluding CirclePass fee)
+            revenue_aggr = Order.objects.filter(event=event, status='COMPLETED').aggregate(
+                subtotal_sum=Sum('subtotal'),
+                discount_sum=Sum('discount_amount')
+            )
+            subtotal = revenue_aggr['subtotal_sum'] or 0
+            discount = revenue_aggr['discount_sum'] or 0
+            if getattr(event, 'absorb_fees', False):
+                # When organizer absorbs the fee, CirclePass takes 5%
+                revenue = int((subtotal - discount) * 0.95)
+            else:
+                # When buyer pays fee, organizer gets full subtotal - discount
+                revenue = subtotal - discount
             
             capacity = event.capacity or 0
             
