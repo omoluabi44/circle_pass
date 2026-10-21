@@ -70,7 +70,9 @@ jobs:
             git reset --hard origin/main
             
             # Setup env file
-            touch .env
+            if [ ! -f .env ]; then
+              touch .env
+            fi
             echo "${{ secrets.BACKEND_ENV_FILE }}" > backend/.env
             
             # Ensure dummy SSL certs exist so nginx container can start before real cert is issued

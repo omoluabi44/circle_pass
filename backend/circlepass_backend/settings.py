@@ -11,7 +11,7 @@ try:
 except ImportError:
     pass  # python-dotenv not installed; rely on OS environment
 
-SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'unsafe-secret')
+SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY') or os.environ.get('SECRET_KEY', 'unsafe-secret')
 DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 ALLOWED_HOSTS = ['*']
 
