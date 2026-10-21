@@ -10,9 +10,24 @@ from rest_framework import serializers
 
 # Simple serializers for Admin
 class AdminUserSerializer(serializers.ModelSerializer):
+    organizer_id = serializers.SerializerMethodField()
+    company_name = serializers.SerializerMethodField()
+
     class Meta:
         model = User
-        fields = ('id', 'username', 'email', 'role', 'date_joined')
+        fields = ('id', 'username', 'email', 'role', 'date_joined', 'organizer_id', 'company_name')
+
+    def get_organizer_id(self, obj):
+        try:
+            return obj.organizerprofile.id
+        except Exception:
+            return None
+
+    def get_company_name(self, obj):
+        try:
+            return obj.organizerprofile.company_name
+        except Exception:
+            return None
 
 class AdminOrganizerVerificationSerializer(serializers.ModelSerializer):
     company_name = serializers.CharField(source='organizer.company_name', read_only=True)
@@ -257,3 +272,195 @@ class AdminReconcilePaymentsView(APIView):
             'already_paid_count': len(already_paid),
             'failed_checks': failed_check,
         })
+
+
+class AdminOrganizerDetailView(APIView):
+    """
+    GET /api/admin/organizers/<pk>/
+    Returns full dashboard view for a specific organizer:
+    wallet balance, all events with tickets sold, capacity, revenue, ticket tiers, and recent orders.
+    Accessible only by ADMIN.
+    """
+    permission_classes = [IsAdmin]
+
+    def get(self, request, pk):
+        organizer = OrganizerProfile.objects.filter(Q(id=pk) | Q(user_id=pk)).first()
+        if not organizer:
+            return Response({"detail": "Organizer not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        # 1. Wallet & Bank Info
+        try:
+            from core.models import OrganizerWallet
+            wallet = OrganizerWallet.objects.get(organizer=organizer)
+            wallet_data = {
+                "available_balance": wallet.available_balance,
+                "total_earnings": wallet.total_earnings,
+                "pending_balance": wallet.pending_balance,
+                "total_payouts": wallet.total_payouts,
+                "bank_name": wallet.bank_name,
+                "account_number": wallet.account_number,
+                "account_name": wallet.account_name,
+            }
+        except Exception:
+            wallet_data = {
+                "available_balance": 0,
+                "total_earnings": 0,
+                "pending_balance": 0,
+                "total_payouts": 0,
+                "bank_name": "",
+                "account_number": "",
+                "account_name": "",
+            }
+
+        # 2. Events & Metrics
+        events_qs = Event.objects.filter(organizer=organizer).order_by('-id')
+        total_tickets_sold = 0
+        total_used_tickets = 0
+        total_organizer_revenue = 0
+        events_data = []
+
+        for ev in events_qs:
+            ev_tickets_sold = Ticket.objects.filter(order__event=ev, order__status='COMPLETED').count()
+            ev_tickets_used = Ticket.objects.filter(order__event=ev, order__status='COMPLETED', status='USED').count()
+            total_tickets_sold += ev_tickets_sold
+            total_used_tickets += ev_tickets_used
+
+            rev_aggr = Order.objects.filter(event=ev, status='COMPLETED').aggregate(
+                subtotal_sum=Sum('subtotal'),
+                discount_sum=Sum('discount_amount')
+            )
+            subtotal = rev_aggr['subtotal_sum'] or 0
+            discount = rev_aggr['discount_sum'] or 0
+            if getattr(ev, 'absorb_fees', False):
+                ev_revenue = int((subtotal - discount) * 0.95)
+            else:
+                ev_revenue = subtotal - discount
+
+            total_organizer_revenue += ev_revenue
+
+            ticket_types_data = []
+            for tt in ev.ticket_types.all():
+                ticket_types_data.append({
+                    "id": tt.id,
+                    "name": tt.name,
+                    "tier": tt.tier,
+                    "price": tt.price,
+                    "quantity": tt.quantity,
+                    "quantity_sold": tt.quantity_sold,
+                    "quantity_remaining": tt.quantity_remaining,
+                    "is_sold_out": tt.is_sold_out,
+                })
+
+            events_data.append({
+                "id": ev.id,
+                "title": ev.title,
+                "slug": ev.slug,
+                "status": ev.status,
+                "event_type": ev.event_type,
+                "start_time": ev.start_time,
+                "end_time": ev.end_time,
+                "city": ev.city,
+                "country": ev.country,
+                "location_name": ev.location_name,
+                "venue_name": ev.venue.name if ev.venue else (ev.location_name or "TBA"),
+                "cover_image": ev.cover_image,
+                "capacity": ev.capacity,
+                "tickets_sold": ev_tickets_sold,
+                "tickets_used": ev_tickets_used,
+                "revenue": ev_revenue,
+                "net_revenue": ev_revenue,
+                "ticket_types": ticket_types_data,
+                "ticket_tiers": ticket_types_data,
+            })
+
+        # 3. Recent Orders
+        recent_orders_qs = Order.objects.filter(event__organizer=organizer, status='COMPLETED').order_by('-id')[:30]
+        recent_orders_data = []
+        for o in recent_orders_qs:
+            ref = ""
+            channel = "paystack"
+            if hasattr(o, 'payment'):
+                ref = o.payment.reference
+                channel = o.payment.channel or "paystack"
+            else:
+                ref = f"ORD-{o.id}"
+
+            customer_name = o.guest_name or (o.attendee.user.get_full_name() if o.attendee else "Customer")
+            customer_email = o.guest_email or (o.attendee.user.email if o.attendee else "")
+
+            recent_orders_data.append({
+                "id": o.id,
+                "order_number": f"ORD-{o.id}",
+                "event_id": o.event_id,
+                "event_title": o.event.title if o.event else "N/A",
+                "customer_name": customer_name,
+                "attendee_name": customer_name,
+                "customer_email": customer_email,
+                "attendee_email": customer_email,
+                "amount": o.total_amount,
+                "total_amount": o.total_amount,
+                "tickets_count": o.tickets.count(),
+                "ticket_count": o.tickets.count(),
+                "created_at": o.created_at,
+                "reference": ref,
+                "paystack_reference": ref,
+                "channel": channel,
+                "status": o.status,
+            })
+
+        checkin_rate = round((total_used_tickets / total_tickets_sold * 100)) if total_tickets_sold > 0 else 0
+
+        # Verification info
+        try:
+            verif = OrganizerVerification.objects.filter(organizer=organizer).first()
+            verif_status = verif.status if verif else ("Verified" if organizer.is_verified else "Unverified")
+            cac_doc = verif.cac_document.url if (verif and verif.cac_document) else None
+            id_doc = verif.id_document.url if (verif and verif.id_document) else None
+        except Exception:
+            verif_status = "Verified" if organizer.is_verified else "Unverified"
+            cac_doc = None
+            id_doc = None
+
+        summary_data = {
+            "total_events": events_qs.count(),
+            "total_tickets_sold": total_tickets_sold,
+            "total_tickets_used": total_used_tickets,
+            "total_revenue": total_organizer_revenue,
+            "checkin_rate": checkin_rate,
+            "active_events": sum(1 for e in events_data if e["status"] in ["PUBLISHED", "LIVE"]),
+            "available_balance": wallet_data["available_balance"],
+        }
+
+        return Response({
+            "organizer": {
+                "id": organizer.id,
+                "company_name": organizer.company_name,
+                "contact_email": organizer.contact_email or organizer.user.email,
+                "email": organizer.user.email,
+                "username": organizer.user.username,
+                "first_name": organizer.user.first_name,
+                "last_name": organizer.user.last_name,
+                "phone": getattr(organizer.user, "phone", None),
+                "bio": organizer.bio,
+                "website": organizer.website,
+                "instagram_handle": organizer.instagram_handle,
+                "logo": organizer.logo,
+                "is_verified": organizer.is_verified,
+                "verification_status": verif_status,
+                "cac_document": cac_doc,
+                "id_document": id_doc,
+                "created_at": organizer.user.date_joined,
+                "user": {
+                    "id": organizer.user.id,
+                    "username": organizer.user.username,
+                    "email": organizer.user.email,
+                    "date_joined": organizer.user.date_joined,
+                }
+            },
+            "wallet": wallet_data,
+            "summary": summary_data,
+            "metrics": summary_data,
+            "events": events_data,
+            "recent_orders": recent_orders_data,
+        })
+

@@ -1,11 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { Trash2 } from "lucide-react";
+import { Trash2, BarChart3 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { useSession } from "next-auth/react";
 import { deleteAdminUser } from "@/lib/api/admin";
-
+import Link from "next/link";
 
 interface User {
   id: number;
@@ -13,6 +13,8 @@ interface User {
   email: string;
   role: string;
   date_joined: string;
+  organizer_id?: number | null;
+  company_name?: string | null;
 }
 
 export default function UserListTabs({ users: initialUsers }: { users: User[] }) {
@@ -41,7 +43,6 @@ export default function UserListTabs({ users: initialUsers }: { users: User[] })
     }
   };
 
-
   return (
     <div>
       <div className="flex gap-2 mb-4 border-b border-border pb-2 overflow-x-auto">
@@ -68,6 +69,7 @@ export default function UserListTabs({ users: initialUsers }: { users: User[] })
               <th className="px-4 py-3">Email</th>
               <th className="px-4 py-3">Role</th>
               <th className="px-4 py-3">Joined</th>
+              <th className="px-4 py-3 text-right">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
@@ -80,7 +82,12 @@ export default function UserListTabs({ users: initialUsers }: { users: User[] })
             ) : (
               filteredUsers.map((u) => (
                 <tr key={u.id} className="hover:bg-secondary transition-colors">
-                  <td className="px-4 py-3 font-medium text-foreground">{u.username}</td>
+                  <td className="px-4 py-3 font-medium text-foreground">
+                    <div>{u.username}</div>
+                    {u.company_name && (
+                      <div className="text-xs text-muted-foreground">{u.company_name}</div>
+                    )}
+                  </td>
                   <td className="px-4 py-3 text-muted-foreground">{u.email}</td>
                   <td className="px-4 py-3">
                     <span className={`px-2 py-1 rounded-full text-[10px] font-bold ${
@@ -94,15 +101,27 @@ export default function UserListTabs({ users: initialUsers }: { users: User[] })
                   <td className="px-4 py-3 text-muted-foreground">
                     {new Date(u.date_joined).toLocaleDateString()}
                   </td>
-                  <td className="px-4 py-3 text-right">
-                    <button 
-                      onClick={() => handleDelete(u.id)}
-                      disabled={isDeleting === u.id}
-                      className="p-2 text-destructive hover:bg-destructive/10 rounded-lg transition-colors disabled:opacity-50"
-                      title="Delete User"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                  <td className="px-4 py-3 text-right whitespace-nowrap">
+                    <div className="flex items-center justify-end gap-2">
+                      {(u.role === 'ORGANIZER' || u.organizer_id) && (
+                        <Link
+                          href={`/admin/organizers/${u.organizer_id || u.id}`}
+                          className="px-2.5 py-1.5 bg-primary/10 text-primary hover:bg-primary/20 text-xs font-bold rounded-lg transition-colors inline-flex items-center gap-1.5"
+                          title="View Organizer Dashboard"
+                        >
+                          <BarChart3 className="w-3.5 h-3.5" />
+                          <span>View Dashboard</span>
+                        </Link>
+                      )}
+                      <button 
+                        onClick={() => handleDelete(u.id)}
+                        disabled={isDeleting === u.id}
+                        className="p-1.5 text-destructive hover:bg-destructive/10 rounded-lg transition-colors disabled:opacity-50"
+                        title="Delete User"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))

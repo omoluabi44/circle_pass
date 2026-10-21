@@ -73,7 +73,7 @@ jobs:
             if [ ! -f .env ]; then
               touch .env
             fi
-            echo "${{ secrets.BACKEND_ENV_FILE }}" > backend/.env
+            if [ ! -s backend/.env ]; then echo "${{ secrets.BACKEND_ENV_FILE }}" > backend/.env; fi
             
             # Ensure dummy SSL certs exist so nginx container can start before real cert is issued
             mkdir -p certbot/conf/live/thecirclepass.com certbot/www

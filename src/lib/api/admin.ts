@@ -27,6 +27,20 @@ export async function getAdminUsers(token: string) {
   return res.json();
 }
 
+export async function getAdminOrganizerDetail(token: string, organizerIdOrUserId: number | string) {
+  const res = await fetch(`${API_URL}/admin/organizers/${organizerIdOrUserId}/`, {
+    headers: {
+      'Authorization': `Bearer ${token}`
+    },
+    cache: 'no-store'
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(`Failed to fetch organizer detail: ${res.status} ${text}`);
+  }
+  return res.json();
+}
+
 export async function getAdminOrganizerVerifications(token: string) {
   const res = await fetch(`${API_URL}/admin/organizer-verifications/`, {
     headers: {

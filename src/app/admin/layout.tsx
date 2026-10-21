@@ -47,7 +47,7 @@ export default function AdminLayout({
           {/* PLATFORM */}
           <div className="space-y-1">
             <h4 className="px-3 text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">Platform</h4>
-            <Link href="/admin/users" className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${pathname.startsWith('/admin/users') ? 'bg-primary text-primary-foreground' : 'hover:bg-muted text-muted-foreground hover:text-foreground'}`}>
+            <Link href="/admin/users" className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${(pathname.startsWith('/admin/users') || pathname.startsWith('/admin/organizers')) ? 'bg-primary text-primary-foreground' : 'hover:bg-muted text-muted-foreground hover:text-foreground'}`}>
               <Users className="w-5 h-5" />
               Users & Organizers
             </Link>
@@ -160,7 +160,7 @@ export default function AdminLayout({
               </div>
               <div className="space-y-1">
                 <h4 className="px-3 text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">Platform</h4>
-                <Link href="/admin/users" className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${pathname.startsWith('/admin/users') ? 'bg-primary text-primary-foreground' : 'hover:bg-muted text-muted-foreground hover:text-foreground'}`}>
+                <Link href="/admin/users" className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${(pathname.startsWith('/admin/users') || pathname.startsWith('/admin/organizers')) ? 'bg-primary text-primary-foreground' : 'hover:bg-muted text-muted-foreground hover:text-foreground'}`}>
                   <Users className="w-5 h-5" /> Users & Organizers
                 </Link>
                 <Link href="/admin/events" className={`flex items-center justify-between px-3 py-2.5 rounded-lg transition-colors ${pathname.startsWith('/admin/events') ? 'bg-primary text-primary-foreground' : 'hover:bg-muted text-muted-foreground hover:text-foreground'}`}>

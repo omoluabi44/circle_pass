@@ -2,7 +2,6 @@ import { getSession } from "@/lib/auth";
 import { getAdminUsers, getAdminOrganizerVerifications } from "@/lib/api/admin";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { CheckCircle, XCircle } from "lucide-react";
 import ClientVerificationButtons from "./ClientVerificationButtons";
 import UserListTabs from "./UserListTabs";
 
@@ -67,6 +66,9 @@ export default async function AdminUsersPage() {
                         </span>
                       </td>
                       <td className="px-4 py-3 text-right flex items-center justify-end h-full min-h-[3.5rem] gap-2">
+                        <Link href={`/admin/organizers/${v.organizer}`} className="px-3 py-1.5 bg-primary/10 text-primary hover:bg-primary/20 text-xs font-bold rounded-lg transition-colors">
+                          View Dashboard
+                        </Link>
                         <Link href={`/admin/verifications/${v.id}`} className="px-3 py-1.5 bg-secondary text-foreground text-xs font-bold rounded-lg hover:bg-secondary/80 transition-colors">
                           Review
                         </Link>
