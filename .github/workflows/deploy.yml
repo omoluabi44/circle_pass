@@ -77,7 +77,7 @@ jobs:
             
             # Restore verified Let's Encrypt certificates if backup exists
             if [ -d /home/ubuntu/certbot_backup/conf/live/thecirclepass.com ]; then
-              sudo cp -rn /home/ubuntu/certbot_backup/* certbot/ || true
+              sudo cp -r /home/ubuntu/certbot_backup/* certbot/ || true
             fi
             
             # Ensure dummy SSL certs exist so nginx container can start before real cert is issued
@@ -106,4 +106,13 @@ jobs:
             
             # Auto-reconcile all unconfirmed Paystack payments and issue tickets
             sudo docker-compose exec -T backend python manage.py reconcile_payments --hours 168
+            
+            # Request or renew real Let's Encrypt SSL certificate
+            sudo docker-compose run --rm certbot certonly --webroot -w /var/www/certbot \
+              -d thecirclepass.com -d www.thecirclepass.com -d api.thecirclepass.com \
+              --email emmanuelogunleye441999@gmail.com --agree-tos --no-eff-email --keep-until-expiring || true
+            
+            # Keep backup updated and reload nginx
+            sudo cp -r certbot/* /home/ubuntu/certbot_backup/ || true
+            sudo docker-compose exec -T nginx nginx -s reload || true
 
