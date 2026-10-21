@@ -57,7 +57,7 @@ jobs:
         uses: appleboy/ssh-action@v1.0.0
         with:
           host: ${{ secrets.EC2_IP }}
-          username: ${{ secrets.EC2_USERNAME }}
+          username: ${{ secrets.EC2_USERNAME || 'ubuntu' }}
           key: ${{ secrets.EC2_SSH_KEY }}
           port: 22
           script: |
@@ -70,7 +70,17 @@ jobs:
             git reset --hard origin/main
             
             # Setup env file
+            touch .env
             echo "${{ secrets.BACKEND_ENV_FILE }}" > backend/.env
+            
+            # Ensure dummy SSL certs exist so nginx container can start before real cert is issued
+            mkdir -p certbot/conf/live/thecirclepass.com certbot/www
+            if [ ! -f certbot/conf/live/thecirclepass.com/fullchain.pem ]; then
+              sudo openssl req -x509 -nodes -newkey rsa:2048 -days 30 \
+                -keyout certbot/conf/live/thecirclepass.com/privkey.pem \
+                -out certbot/conf/live/thecirclepass.com/fullchain.pem \
+                -subj '/CN=thecirclepass.com'
+            fi
             
             # Stop any pre-existing host web servers blocking port 80
             sudo systemctl stop apache2 || true

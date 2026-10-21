@@ -59,8 +59,7 @@ next-env.d.ts
 
 # Ignore Terraform state and AWS keys
 *.pem
-*.tfstate
-*.tfstate.backup
+*.tfstate*
 .terraform/
 .terraform.lock.hcl
 

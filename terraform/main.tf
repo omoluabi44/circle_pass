@@ -62,17 +62,18 @@ resource "aws_security_group" "allow_rds" {
 }
 
 # ------------------------------------------------------------
-# RDS Database (MySQL) - per strict project rules
+# RDS Database (MySQL) - Free-Tier db.t3.micro, 20GB gp2
 # ------------------------------------------------------------
 resource "aws_db_instance" "circlepass_db" {
   identifier           = "circlepass-db"
   allocated_storage    = 20
+  storage_type         = "gp2"
   engine               = "mysql"
   engine_version       = "8.0"
   instance_class       = "db.t3.micro"
   db_name              = "circlepass"
   username             = "circlepass_admin"
-  password             = "ChangeMe123!Secure" # Should be injected via TF_VAR or secrets in prod
+  password             = "ChangeMe123!Secure"
   parameter_group_name = "default.mysql8.0"
   skip_final_snapshot  = true
   publicly_accessible  = false
@@ -80,16 +81,16 @@ resource "aws_db_instance" "circlepass_db" {
 }
 
 # ------------------------------------------------------------
-# EC2 Instance
+# EC2 Instance - Free-Tier t2.micro / t3.micro, 30GB gp3
 # ------------------------------------------------------------
 resource "aws_instance" "web_server" {
-  ami                    = "ami-0c7217cdde317cfec" # Ubuntu Server 22.04 LTS (us-east-1)
-  instance_type          = "t3.large"
+  ami                    = "ami-033ea4ff4a9c726dc" # Ubuntu Server 22.04 LTS (us-east-1)
+  instance_type          = "t3.micro"
   vpc_security_group_ids = [aws_security_group.allow_web.id]
-  key_name               = "coursepass-new" # Using the key pair from coursepass mobile project
+  key_name               = "circlepass-key"
   
   root_block_device {
-    volume_size = 40
+    volume_size = 30
     volume_type = "gp3"
   }
 
@@ -132,6 +133,7 @@ resource "aws_eip" "web_eip" {
 output "web_public_ip" {
   value = aws_eip.web_eip.public_ip
 }
+
 output "rds_endpoint" {
   value = aws_db_instance.circlepass_db.endpoint
 }
@@ -140,7 +142,7 @@ output "rds_endpoint" {
 # S3 Bucket for Media/Static files
 # ------------------------------------------------------------
 resource "aws_s3_bucket" "circlepass_files" {
-  bucket = "circlepass-files"
+  bucket = "circlepass-files-223784796667"
 
   tags = {
     Name        = "CirclePass Files"
@@ -155,8 +157,8 @@ resource "aws_s3_bucket_cors_configuration" "circlepass_files_cors" {
     allowed_headers = ["*"]
     allowed_methods = ["GET", "PUT", "POST", "HEAD", "DELETE"]
     allowed_origins = [
-      "https://circlepass.app",
-      "https://www.circlepass.app",
+      "https://thecirclepass.com",
+      "https://www.thecirclepass.com",
       "http://localhost:3000",
       "https://localhost:3000",
       "*"
@@ -196,4 +198,3 @@ resource "aws_s3_bucket_policy" "circlepass_files_policy" {
 output "s3_bucket_name" {
   value = aws_s3_bucket.circlepass_files.id
 }
-
