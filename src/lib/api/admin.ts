@@ -192,3 +192,97 @@ export async function deleteAdminEvent(token: string, eventId: number) {
   if (!res.ok) throw new Error('Failed to delete event');
   return true;
 }
+
+// ─── Admin Edit: Organizer ────────────────────────────────────────────────────
+
+export async function adminEditOrganizer(token: string, id: number, data: Record<string, any>) {
+  const res = await fetch(`${API_URL}/admin/organizers/${id}/edit/`, {
+    method: 'PATCH',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(`Failed to update organizer: ${res.status} — ${text}`);
+  }
+  return res.json();
+}
+
+// ─── Admin Edit: Event ────────────────────────────────────────────────────────
+
+export async function adminGetEventDetail(token: string, id: number) {
+  const res = await fetch(`${API_URL}/admin/events/${id}/detail/`, {
+    headers: { Authorization: `Bearer ${token}` },
+    cache: 'no-store',
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(`Failed to fetch event detail: ${res.status} — ${text}`);
+  }
+  return res.json();
+}
+
+export async function adminEditEvent(token: string, id: number, data: Record<string, any>) {
+  const res = await fetch(`${API_URL}/admin/events/${id}/edit/`, {
+    method: 'PATCH',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(`Failed to update event: ${res.status} — ${text}`);
+  }
+  return res.json();
+}
+
+// ─── Admin: Ticket Types ──────────────────────────────────────────────────────
+
+export async function adminCreateTicketType(token: string, eventId: number, data: Record<string, any>) {
+  const res = await fetch(`${API_URL}/admin/events/${eventId}/ticket-types/`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(`Failed to create ticket type: ${res.status} — ${text}`);
+  }
+  return res.json();
+}
+
+export async function adminUpdateTicketType(token: string, ttId: number, data: Record<string, any>) {
+  const res = await fetch(`${API_URL}/admin/ticket-types/${ttId}/`, {
+    method: 'PATCH',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(`Failed to update ticket type: ${res.status} — ${text}`);
+  }
+  return res.json();
+}
+
+export async function adminDeleteTicketType(token: string, ttId: number) {
+  const res = await fetch(`${API_URL}/admin/ticket-types/${ttId}/`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(`Failed to delete ticket type: ${res.status} — ${text}`);
+  }
+  return true;
+}

@@ -99,6 +99,9 @@ export default async function AdminEventsPage({ searchParams }: { searchParams: 
                     </span>
                   </td>
                   <td className="px-4 py-3 text-right flex items-center justify-end h-full min-h-[3.5rem] gap-2">
+                    <Link href={`/admin/events/${e.id}/edit`} className="px-3 py-1.5 bg-primary/10 text-primary hover:bg-primary/20 text-xs font-bold rounded-lg transition-colors">
+                      Edit
+                    </Link>
                     <Link href={`/events/${e.slug || e.id}`} target="_blank" className="px-3 py-1.5 bg-secondary text-foreground text-xs font-bold rounded-lg hover:bg-secondary/80 transition-colors">
                       View
                     </Link>

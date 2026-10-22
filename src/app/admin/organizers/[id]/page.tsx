@@ -5,8 +5,9 @@ import Link from "next/link";
 import { 
   ArrowLeft, Building2, User, Globe, AtSign, Mail, Phone, Calendar, 
   Ticket, Wallet, Banknote, CheckCircle, Clock, ExternalLink, ShieldCheck, 
-  BarChart3, Users, AlertCircle 
+  BarChart3, Users, AlertCircle, Pencil
 } from "lucide-react";
+import EditOrganizerButton from "./EditOrganizerButton";
 
 export default async function AdminOrganizerDashboardPage({
   params,
@@ -120,6 +121,7 @@ export default async function AdminOrganizerDashboardPage({
             </div>
 
             <div className="flex flex-wrap items-center gap-3">
+              <EditOrganizerButton organizer={organizer} token={(session as any).accessToken} />
               {organizer.website && (
                 <a
                   href={organizer.website.startsWith("http") ? organizer.website : `https://${organizer.website}`}
