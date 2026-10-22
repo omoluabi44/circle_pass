@@ -82,26 +82,29 @@ export const authOptions: NextAuthOptions = {
   callbacks: {
     async jwt({ token, user, account, profile }) {
       if (account?.provider === "google" && profile) {
-        // Exchange Google email/profile for Django token
+        // Exchange Google email/profile for Django JWT tokens.
+        // IMPORTANT: Do NOT use next/headers cookies() here.
+        // The JWT callback runs during the OAuth server-side callback, which is
+        // NOT a standard Next.js request context. Importing next/headers cookies()
+        // in this context throws or returns empty on the first hit, causing the
+        // session to be missing an accessToken — middleware then redirects back to
+        // /login. The user had to click "Continue with Google" twice as a result.
+        // Fix: always default to ATTENDEE. Role upgrades happen post-login.
         try {
-          const { cookies } = await import("next/headers");
-          const cookieStore = await cookies();
-          const selectedRole = cookieStore.get('oauth_role')?.value || 'ATTENDEE';
-          
-          console.log("Attempting Google Auth to backend with:", profile.email, selectedRole, "URL:", `${API_URL}/auth/google/`);
-          
+          console.log("Attempting Google Auth to backend with:", profile.email, "URL:", `${API_URL}/auth/google/`);
+
           const res = await fetch(`${API_URL}/auth/google/`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               email: profile.email,
               name: profile.name,
-              role: selectedRole
+              role: 'ATTENDEE'
             })
           });
-          
+
           console.log("Backend Google Auth response status:", res.status);
-          
+
           if (res.ok) {
             const data = await res.json();
             token.role = data.role;
@@ -134,6 +137,7 @@ export const authOptions: NextAuthOptions = {
   },
   pages: {
     signIn: '/login',
-    newUser: '/register'
+    // Removed newUser: '/register' — this was redirecting first-time Google users
+    // to the register page instead of the dashboard, causing confusing UX.
   }
 };
