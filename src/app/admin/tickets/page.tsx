@@ -1,8 +1,27 @@
-export default function AdminTicketsPage() {
+import { getSession } from "@/lib/auth";
+import { redirect } from "next/navigation";
+import { getAdminTickets } from "@/lib/api/admin";
+import AdminTicketsClient from "./AdminTicketsClient";
+
+export default async function AdminTicketsPage() {
+  const session = await getSession();
+  if (!session || !session.accessToken || (session.user as any)?.role !== "ADMIN") {
+    redirect("/login");
+  }
+
+  let ticketsData = { tickets: [], total: 0, events: [] };
+  try {
+    ticketsData = await getAdminTickets(session.accessToken);
+  } catch (err) {
+    console.error("Failed to load admin tickets:", err);
+  }
+
   return (
-    <div className="p-8 max-w-7xl mx-auto">
-      <h1 className="text-3xl font-bold mb-4">Tickets & Orders</h1>
-      <p className="text-muted-foreground">Platform-wide search and management for tickets and orders.</p>
-    </div>
+    <AdminTicketsClient
+      initialTickets={ticketsData.tickets || []}
+      initialTotal={ticketsData.total || 0}
+      eventsList={ticketsData.events || []}
+      token={session.accessToken}
+    />
   );
 }

@@ -286,3 +286,67 @@ export async function adminDeleteTicketType(token: string, ttId: number) {
   }
   return true;
 }
+
+
+// ─── Admin: Attendee Tickets Management ──────────────────────────────────────
+
+export async function getAdminTickets(
+  token: string,
+  params?: { q?: string; status?: string; event_id?: string | number }
+) {
+  const query = new URLSearchParams();
+  if (params?.q) query.set('q', params.q);
+  if (params?.status) query.set('status', params.status);
+  if (params?.event_id) query.set('event_id', String(params.event_id));
+
+  const url = `${API_URL}/admin/tickets/${query.toString() ? `?${query.toString()}` : ''}`;
+  const res = await fetch(url, {
+    headers: { Authorization: `Bearer ${token}` },
+    cache: 'no-store',
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(`Failed to fetch tickets: ${res.status} — ${text}`);
+  }
+  return res.json();
+}
+
+export async function getAdminTicketDetail(token: string, id: number) {
+  const res = await fetch(`${API_URL}/admin/tickets/${id}/`, {
+    headers: { Authorization: `Bearer ${token}` },
+    cache: 'no-store',
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(`Failed to fetch ticket: ${res.status} — ${text}`);
+  }
+  return res.json();
+}
+
+export async function adminUpdateTicket(token: string, id: number, data: Record<string, any>) {
+  const res = await fetch(`${API_URL}/admin/tickets/${id}/`, {
+    method: 'PATCH',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(`Failed to update ticket: ${res.status} — ${text}`);
+  }
+  return res.json();
+}
+
+export async function adminDeleteTicket(token: string, id: number) {
+  const res = await fetch(`${API_URL}/admin/tickets/${id}/`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(`Failed to delete ticket: ${res.status} — ${text}`);
+  }
+  return true;
+}

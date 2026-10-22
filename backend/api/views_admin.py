@@ -788,3 +788,129 @@ class AdminTicketTypeDetailView(APIView):
             )
         tt.delete()
         return Response({'success': True, 'message': 'Ticket type deleted'})
+
+
+
+class AdminTicketListView(APIView):
+    """GET /admin/tickets/ — list and search all attendee tickets across all events."""
+    permission_classes = [IsAdmin]
+
+    def get(self, request):
+        q = request.query_params.get('q', '').strip()
+        status_filter = request.query_params.get('status', '').strip()
+        event_filter = request.query_params.get('event_id', '').strip()
+
+        qs = Ticket.objects.select_related('order', 'order__event', 'ticket_type').order_by('-created_at')
+
+        if q:
+            qs = qs.filter(
+                Q(attendee_name__icontains=q) |
+                Q(attendee_email__icontains=q) |
+                Q(qr_token__icontains=q) |
+                Q(order__order_number__icontains=q) |
+                Q(order__event__title__icontains=q)
+            )
+
+        if status_filter and status_filter != 'ALL':
+            qs = qs.filter(status=status_filter)
+
+        if event_filter:
+            try:
+                qs = qs.filter(order__event_id=int(event_filter))
+            except (ValueError, TypeError):
+                pass
+
+        tickets_data = []
+        for t in qs[:200]:
+            tickets_data.append({
+                'id': t.id,
+                'qr_token': t.qr_token,
+                'status': t.status,
+                'attendee_name': t.attendee_name or (t.order.guest_name if t.order else ''),
+                'attendee_email': t.attendee_email or (t.order.guest_email if t.order else ''),
+                'ticket_type_id': t.ticket_type_id,
+                'ticket_type_name': t.ticket_type.name if t.ticket_type else 'Unknown',
+                'ticket_tier': t.ticket_type.tier if t.ticket_type else '',
+                'price': t.ticket_type.price if t.ticket_type else 0,
+                'price_naira': (t.ticket_type.price / 100) if t.ticket_type else 0,
+                'order_id': t.order_id,
+                'order_number': t.order.order_number if (t.order and hasattr(t.order, 'order_number')) else f"ORD-{t.order_id}",
+                'event_id': t.order.event_id if t.order else None,
+                'event_title': t.order.event.title if (t.order and t.order.event) else 'Unknown',
+                'created_at': t.created_at,
+            })
+
+        events = Event.objects.order_by('-id').values('id', 'title')[:100]
+
+        return Response({
+            'tickets': tickets_data,
+            'total': qs.count(),
+            'events': list(events),
+        })
+
+
+class AdminTicketDetailView(APIView):
+    """GET / PATCH / DELETE /api/admin/tickets/<pk>/"""
+    permission_classes = [IsAdmin]
+
+    def get(self, request, pk):
+        try:
+            t = Ticket.objects.select_related('order', 'order__event', 'ticket_type').get(pk=pk)
+        except Ticket.DoesNotExist:
+            return Response({'error': 'Ticket not found'}, status=404)
+
+        available_types = []
+        if t.order and t.order.event:
+            available_types = list(TicketType.objects.filter(event=t.order.event).values('id', 'name', 'tier', 'price'))
+
+        return Response({
+            'ticket': {
+                'id': t.id,
+                'qr_token': t.qr_token,
+                'status': t.status,
+                'attendee_name': t.attendee_name or (t.order.guest_name if t.order else ''),
+                'attendee_email': t.attendee_email or (t.order.guest_email if t.order else ''),
+                'ticket_type_id': t.ticket_type_id,
+                'ticket_type_name': t.ticket_type.name if t.ticket_type else '',
+                'price': t.ticket_type.price if t.ticket_type else 0,
+                'price_naira': (t.ticket_type.price / 100) if t.ticket_type else 0,
+                'order_id': t.order_id,
+                'order_number': t.order.order_number if (t.order and hasattr(t.order, 'order_number')) else f"ORD-{t.order_id}",
+                'event_id': t.order.event_id if t.order else None,
+                'event_title': t.order.event.title if (t.order and t.order.event) else '',
+                'created_at': t.created_at,
+            },
+            'available_types': available_types,
+        })
+
+    def patch(self, request, pk):
+        try:
+            t = Ticket.objects.get(pk=pk)
+        except Ticket.DoesNotExist:
+            return Response({'error': 'Ticket not found'}, status=404)
+
+        d = request.data
+        if 'attendee_name' in d:
+            t.attendee_name = d['attendee_name']
+        if 'attendee_email' in d:
+            t.attendee_email = d['attendee_email']
+        if 'status' in d and d['status'] in ('PENDING', 'ISSUED', 'ACTIVE', 'USED', 'EXPIRED', 'INVALIDATED'):
+            t.status = d['status']
+        if 'ticket_type_id' in d and d['ticket_type_id']:
+            try:
+                tt = TicketType.objects.get(pk=d['ticket_type_id'])
+                t.ticket_type = tt
+            except TicketType.DoesNotExist:
+                return Response({'error': 'Invalid ticket type'}, status=400)
+
+        t.save()
+        return Response({'success': True, 'message': 'Ticket updated successfully'})
+
+    def delete(self, request, pk):
+        try:
+            t = Ticket.objects.get(pk=pk)
+        except Ticket.DoesNotExist:
+            return Response({'error': 'Ticket not found'}, status=404)
+
+        t.delete()
+        return Response({'success': True, 'message': 'Ticket deleted'})
