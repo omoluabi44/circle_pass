@@ -464,3 +464,327 @@ class AdminOrganizerDetailView(APIView):
             "recent_orders": recent_orders_data,
         })
 
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# ADMIN EDIT VIEWS
+# ─────────────────────────────────────────────────────────────────────────────
+
+from core.models import TicketType
+
+
+class AdminOrganizerEditView(APIView):
+    """PATCH /admin/organizers/<pk>/edit/ — update User + OrganizerProfile fields."""
+    permission_classes = [IsAdmin]
+
+    def patch(self, request, pk):
+        try:
+            organizer = OrganizerProfile.objects.select_related('user').get(pk=pk)
+        except OrganizerProfile.DoesNotExist:
+            return Response({'error': 'Organizer not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        data = request.data
+        user = organizer.user
+
+        # ── User fields ───────────────────────────────────────────────────────
+        user_changed = False
+        for field in ('first_name', 'last_name', 'email', 'phone'):
+            if field in data:
+                setattr(user, field, data[field])
+                user_changed = True
+        if 'role' in data and data['role'] in ('ATTENDEE', 'ORGANIZER', 'ADMIN'):
+            user.role = data['role']
+            user_changed = True
+        if user_changed:
+            user.save()
+
+        # ── OrganizerProfile fields ───────────────────────────────────────────
+        org_changed = False
+        for field in ('company_name', 'contact_email', 'bio', 'website', 'instagram_handle'):
+            if field in data:
+                setattr(organizer, field, data[field])
+                org_changed = True
+        if 'is_verified' in data:
+            organizer.is_verified = bool(data['is_verified'])
+            org_changed = True
+        if org_changed:
+            organizer.save()
+
+        return Response({'success': True, 'message': 'Organizer updated successfully'})
+
+
+class AdminEventDetailView2(APIView):
+    """GET /admin/events/<pk>/detail/ — full event data for the edit form."""
+    permission_classes = [IsAdmin]
+
+    def get(self, request, pk):
+        try:
+            event = Event.objects.select_related('organizer', 'organizer__user', 'category', 'venue').get(pk=pk)
+        except Event.DoesNotExist:
+            return Response({'error': 'Event not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        ticket_types = TicketType.objects.filter(event=event).order_by('sort_order', 'price')
+        tts = []
+        for tt in ticket_types:
+            tts.append({
+                'id': tt.id,
+                'name': tt.name,
+                'tier': tt.tier,
+                'description': tt.description,
+                'price': tt.price,           # kobo
+                'price_naira': tt.price / 100,
+                'quantity': tt.quantity,
+                'quantity_sold': tt.quantity_sold,
+                'sale_start': tt.sale_start,
+                'sale_end': tt.sale_end,
+                'is_active': tt.is_active,
+                'sort_order': tt.sort_order,
+            })
+
+        # All organizers for reassign dropdown
+        all_organizers = OrganizerProfile.objects.select_related('user').order_by('company_name')
+        organizers_list = [
+            {'id': o.id, 'company_name': o.company_name, 'email': o.user.email}
+            for o in all_organizers
+        ]
+
+        return Response({
+            'event': {
+                'id': event.id,
+                'title': event.title,
+                'slug': event.slug,
+                'description': event.description,
+                'cover_image': event.cover_image,
+                'event_type': event.event_type,
+                'status': event.status,
+                'country': event.country,
+                'state': event.state,
+                'city': event.city,
+                'location_name': event.location_name,
+                'start_time': event.start_time,
+                'end_time': event.end_time,
+                'capacity': event.capacity,
+                'organizer_contact': event.organizer_contact,
+                'instagram_handle': event.instagram_handle,
+                'tiktok_handle': event.tiktok_handle,
+                'emergency_contact': event.emergency_contact,
+                'age_restriction': event.age_restriction,
+                'dress_code': event.dress_code,
+                'lineup': event.lineup,
+                'absorb_fees': event.absorb_fees,
+                'sales_paused': event.sales_paused,
+                'waitlist_enabled': event.waitlist_enabled,
+                'organizer_id': event.organizer.id,
+                'organizer_name': event.organizer.company_name,
+                'category_id': event.category_id,
+            },
+            'ticket_types': tts,
+            'all_organizers': organizers_list,
+        })
+
+
+class AdminEventEditView(APIView):
+    """PATCH /admin/events/<pk>/edit/ — update event fields + reassign organizer."""
+    permission_classes = [IsAdmin]
+
+    EDITABLE_FIELDS = [
+        'title', 'description', 'cover_image', 'event_type', 'status',
+        'country', 'state', 'city', 'location_name',
+        'start_time', 'end_time', 'capacity',
+        'organizer_contact', 'instagram_handle', 'tiktok_handle',
+        'emergency_contact', 'age_restriction', 'dress_code', 'lineup',
+        'absorb_fees', 'sales_paused', 'waitlist_enabled',
+    ]
+
+    def patch(self, request, pk):
+        try:
+            event = Event.objects.get(pk=pk)
+        except Event.DoesNotExist:
+            return Response({'error': 'Event not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        data = request.data
+
+        for field in self.EDITABLE_FIELDS:
+            if field in data:
+                val = data[field]
+                if field in ('start_time', 'end_time'):
+                    val = val if val else None
+                elif field == 'capacity':
+                    try:
+                        val = int(val) if val is not None and val != '' else 0
+                    except (ValueError, TypeError):
+                        val = 0
+                elif field in ('absorb_fees', 'sales_paused', 'waitlist_enabled'):
+                    val = bool(val)
+                setattr(event, field, val)
+
+        if 'organizer_id' in data and data['organizer_id']:
+            try:
+                org = OrganizerProfile.objects.get(pk=data['organizer_id'])
+                event.organizer = org
+            except OrganizerProfile.DoesNotExist:
+                return Response({'error': 'Organizer not found'}, status=status.HTTP_400_BAD_REQUEST)
+
+        event.save()
+        return Response({'success': True, 'message': 'Event updated successfully'})
+
+
+class AdminTicketTypeListCreateView(APIView):
+    """
+    GET  /admin/events/<event_pk>/ticket-types/  — list ticket types
+    POST /admin/events/<event_pk>/ticket-types/  — create new ticket type
+    """
+    permission_classes = [IsAdmin]
+
+    def get(self, request, event_pk):
+        try:
+            event = Event.objects.get(pk=event_pk)
+        except Event.DoesNotExist:
+            return Response({'error': 'Event not found'}, status=404)
+        tts = TicketType.objects.filter(event=event).order_by('sort_order', 'price')
+        data = [{
+            'id': tt.id,
+            'name': tt.name,
+            'tier': tt.tier,
+            'description': tt.description,
+            'price': tt.price,
+            'price_naira': tt.price / 100,
+            'quantity': tt.quantity,
+            'quantity_sold': tt.quantity_sold,
+            'sale_start': tt.sale_start,
+            'sale_end': tt.sale_end,
+            'is_active': tt.is_active,
+            'sort_order': tt.sort_order,
+        } for tt in tts]
+        return Response(data)
+
+    def post(self, request, event_pk):
+        try:
+            event = Event.objects.get(pk=event_pk)
+        except Event.DoesNotExist:
+            return Response({'error': 'Event not found'}, status=404)
+
+        d = request.data
+        try:
+            price_naira = float(d.get('price_naira', 0)) if d.get('price_naira') not in (None, '') else 0
+        except (ValueError, TypeError):
+            price_naira = 0
+        price_kobo = int(round(price_naira * 100))
+
+        try:
+            qty = int(d.get('quantity', 0)) if d.get('quantity') not in (None, '') else 0
+        except (ValueError, TypeError):
+            qty = 0
+
+        try:
+            s_order = int(d.get('sort_order', 0)) if d.get('sort_order') not in (None, '') else 0
+        except (ValueError, TypeError):
+            s_order = 0
+
+        tt = TicketType.objects.create(
+            event=event,
+            name=d.get('name', 'New Ticket'),
+            tier=d.get('tier', 'REGULAR'),
+            description=d.get('description', ''),
+            price=price_kobo,
+            quantity=qty,
+            sale_start=d.get('sale_start') or None,
+            sale_end=d.get('sale_end') or None,
+            is_active=bool(d.get('is_active', True)),
+            sort_order=s_order,
+        )
+        return Response({
+            'id': tt.id,
+            'name': tt.name,
+            'tier': tt.tier,
+            'description': tt.description,
+            'price': tt.price,
+            'price_naira': tt.price / 100,
+            'quantity': tt.quantity,
+            'quantity_sold': tt.quantity_sold,
+            'is_active': tt.is_active,
+            'sort_order': tt.sort_order,
+        }, status=201)
+
+
+class AdminTicketTypeDetailView(APIView):
+    """
+    PATCH  /admin/ticket-types/<pk>/  — update ticket type
+    DELETE /admin/ticket-types/<pk>/  — delete (only if no sales)
+    """
+    permission_classes = [IsAdmin]
+
+    def _get_tt(self, pk):
+        try:
+            return TicketType.objects.get(pk=pk)
+        except TicketType.DoesNotExist:
+            return None
+
+    def patch(self, request, pk):
+        tt = self._get_tt(pk)
+        if not tt:
+            return Response({'error': 'Ticket type not found'}, status=404)
+
+        d = request.data
+        if 'name' in d:
+            tt.name = d['name']
+        if 'tier' in d:
+            tt.tier = d['tier']
+        if 'description' in d:
+            tt.description = d['description']
+        if 'price_naira' in d:
+            try:
+                tt.price = int(round(float(d['price_naira']) * 100))
+            except (ValueError, TypeError):
+                pass
+        if 'price' in d:   # allow raw kobo too
+            try:
+                tt.price = int(d['price'])
+            except (ValueError, TypeError):
+                pass
+        if 'quantity' in d:
+            try:
+                new_qty = int(d['quantity'])
+                if new_qty < tt.quantity_sold:
+                    return Response(
+                        {'error': f'Cannot set quantity below tickets already sold ({tt.quantity_sold})'},
+                        status=400
+                    )
+                tt.quantity = new_qty
+            except (ValueError, TypeError):
+                pass
+        if 'sale_start' in d:
+            tt.sale_start = d['sale_start'] or None
+        if 'sale_end' in d:
+            tt.sale_end = d['sale_end'] or None
+        if 'is_active' in d:
+            tt.is_active = bool(d['is_active'])
+        if 'sort_order' in d:
+            try:
+                tt.sort_order = int(d['sort_order'])
+            except (ValueError, TypeError):
+                pass
+
+        tt.save()
+        return Response({
+            'id': tt.id,
+            'name': tt.name,
+            'tier': tt.tier,
+            'price': tt.price,
+            'price_naira': tt.price / 100,
+            'quantity': tt.quantity,
+            'quantity_sold': tt.quantity_sold,
+            'is_active': tt.is_active,
+        })
+
+    def delete(self, request, pk):
+        tt = self._get_tt(pk)
+        if not tt:
+            return Response({'error': 'Ticket type not found'}, status=404)
+        if tt.quantity_sold > 0:
+            return Response(
+                {'error': f'Cannot delete: {tt.quantity_sold} ticket(s) already sold. Deactivate instead.'},
+                status=400
+            )
+        tt.delete()
+        return Response({'success': True, 'message': 'Ticket type deleted'})
