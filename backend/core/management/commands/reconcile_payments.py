@@ -26,11 +26,15 @@ def run_reconciliation(hours=168, stdout=None, style=None):
         stdout.write(msg)
     logger.info(msg)
 
-    # 1. Check all payments whose order is NOT COMPLETED
+    # 1. Check all payments whose order is NOT COMPLETED and NOT CANCELLED
     pending_payments = Payment.objects.filter(
         created_at__gte=cutoff
     ).exclude(
         order__status='COMPLETED'
+    ).exclude(
+        order__status='CANCELLED'
+    ).exclude(
+        order__status='FAILED'
     ).exclude(
         provider='FREE'
     ).select_related('order', 'order__event')
@@ -42,6 +46,10 @@ def run_reconciliation(hours=168, stdout=None, style=None):
 
     for payment in pending_payments:
         if not payment.reference:
+            continue
+
+        # Safety guard: never re-fulfill CANCELLED or COMPLETED orders
+        if payment.order.status in ('CANCELLED', 'COMPLETED', 'FAILED'):
             continue
 
         total_checked += 1
@@ -106,10 +114,10 @@ def run_reconciliation(hours=168, stdout=None, style=None):
                 stdout.write(style.WARNING(err_msg))
             logger.warning(err_msg)
 
-    # 2. Check orders where payment is SUCCESS but order is still not COMPLETED
+    # 2. Check orders where payment is SUCCESS but order is PENDING or FAILED (not CANCELLED — those are intentionally cancelled)
     stuck_orders = Order.objects.filter(
         created_at__gte=cutoff,
-        status__in=['PENDING', 'CANCELLED', 'FAILED'],
+        status__in=['PENDING', 'FAILED'],
         payment__status='SUCCESS'
     ).select_related('payment')
 
