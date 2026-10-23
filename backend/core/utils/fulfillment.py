@@ -50,7 +50,11 @@ def fulfill_order(order, payment=None):
         # Credit organizer wallet: 95% of the actual amount Paystack collected.
         # CirclePass keeps its 5% commission, and pays Paystack's 1.5%+₦100 fee from that 5%.
         # We never credit from pending; funds go straight to available_balance.
+        import logging
+        _log = logging.getLogger(__name__)
         pmt = payment or getattr(order_fresh, 'payment', None)
+        if not pmt:
+            _log.warning(f'fulfill_order: No payment object for Order #{order_fresh.pk} -- wallet NOT credited.')
         if pmt and pmt.amount > 0:
             if order_fresh.fee_amount > 0:
                 # Buyer paid the fee. CirclePass takes exactly what was charged as the fee.
