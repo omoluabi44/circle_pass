@@ -350,3 +350,24 @@ export async function adminDeleteTicket(token: string, id: number) {
   }
   return true;
 }
+
+
+export async function adminTransferEvent(
+  token: string,
+  eventId: number,
+  payload: { organizer_id?: number | string; email?: string }
+) {
+  const res = await fetch(`${API_URL}/admin/events/${eventId}/transfer/`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(`Failed to transfer event: ${res.status} — ${text}`);
+  }
+  return res.json();
+}

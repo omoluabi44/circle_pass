@@ -106,7 +106,13 @@ export default async function AdminEventsPage({ searchParams }: { searchParams: 
                       View
                     </Link>
                     {session.accessToken && (
-                      <ClientEventButtons id={e.id} token={session.accessToken} status={e.status} />
+                      <ClientEventButtons 
+                        id={e.id} 
+                        token={session.accessToken} 
+                        status={e.status} 
+                        title={e.title}
+                        organizerName={e.organizer_name}
+                      />
                     )}
                   </td>
                 </tr>

@@ -914,3 +914,62 @@ class AdminTicketDetailView(APIView):
 
         t.delete()
         return Response({'success': True, 'message': 'Ticket deleted'})
+
+
+
+class AdminEventTransferView(APIView):
+    """POST /api/admin/events/<pk>/transfer/ — transfer event to another organizer by ID or email."""
+    permission_classes = [IsAdmin]
+
+    def post(self, request, pk):
+        try:
+            event = Event.objects.select_related('organizer').get(pk=pk)
+        except Event.DoesNotExist:
+            return Response({'error': 'Event not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        target_org_id = request.data.get('organizer_id')
+        target_email = request.data.get('email', '').strip()
+
+        target_org = None
+
+        if target_org_id:
+            try:
+                target_org = OrganizerProfile.objects.select_related('user').get(pk=target_org_id)
+            except OrganizerProfile.DoesNotExist:
+                return Response({'error': 'Organizer profile not found'}, status=400)
+        elif target_email:
+            try:
+                user = User.objects.get(email__iexact=target_email)
+            except User.DoesNotExist:
+                return Response({'error': f'No user found with email "{target_email}"'}, status=404)
+
+            if user.role != 'ORGANIZER' and user.role != 'ADMIN':
+                user.role = 'ORGANIZER'
+                user.save(update_fields=['role'])
+
+            target_org, _ = OrganizerProfile.objects.get_or_create(
+                user=user,
+                defaults={
+                    'company_name': user.get_full_name() or user.username or user.email,
+                    'is_verified': True,
+                    'contact_email': user.email,
+                }
+            )
+        else:
+            return Response({'error': 'Please provide either an organizer_id or an email'}, status=400)
+
+        old_org_name = event.organizer.company_name if event.organizer else 'None'
+        event.organizer = target_org
+        event.save(update_fields=['organizer'])
+
+        return Response({
+            'success': True,
+            'message': f'Event successfully transferred from "{old_org_name}" to "{target_org.company_name}" ({target_org.user.email})',
+            'event_id': event.id,
+            'event_title': event.title,
+            'new_organizer': {
+                'id': target_org.id,
+                'company_name': target_org.company_name,
+                'email': target_org.user.email,
+            }
+        })

@@ -2,9 +2,9 @@ import { getSession } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { getAdminOrganizerDetail } from "@/lib/api/admin";
 import Link from "next/link";
-import { 
-  ArrowLeft, Building2, User, Globe, AtSign, Mail, Phone, Calendar, 
-  Ticket, Wallet, Banknote, CheckCircle, Clock, ExternalLink, ShieldCheck, 
+import {
+  ArrowLeft, Building2, User, Globe, AtSign, Mail, Phone, Calendar,
+  Ticket, Wallet, Banknote, CheckCircle, Clock, ExternalLink, ShieldCheck,
   BarChart3, Users, AlertCircle, Pencil
 } from "lucide-react";
 import EditOrganizerButton from "./EditOrganizerButton";
@@ -54,8 +54,8 @@ export default async function AdminOrganizerDashboardPage({
   }
 
   const { organizer, wallet, summary, events, recent_orders } = detail;
-  const checkinRate = summary.total_tickets_sold > 0 
-    ? Math.round((summary.total_tickets_used / summary.total_tickets_sold) * 100) 
+  const checkinRate = summary.total_tickets_sold > 0
+    ? Math.round((summary.total_tickets_used / summary.total_tickets_sold) * 100)
     : 0;
 
   return (
@@ -77,13 +77,12 @@ export default async function AdminOrganizerDashboardPage({
                   {organizer.company_name}
                 </h1>
                 <span
-                  className={`px-3 py-1 rounded-full text-xs font-bold inline-flex items-center gap-1.5 ${
-                    organizer.verification_status === "VERIFIED" || organizer.verification_status === "Verified"
-                      ? "bg-success/10 text-success"
-                      : organizer.verification_status === "REJECTED" || organizer.verification_status === "Rejected"
+                  className={`px-3 py-1 rounded-full text-xs font-bold inline-flex items-center gap-1.5 ${organizer.verification_status === "VERIFIED" || organizer.verification_status === "Verified"
+                    ? "bg-success/10 text-success"
+                    : organizer.verification_status === "REJECTED" || organizer.verification_status === "Rejected"
                       ? "bg-destructive/10 text-destructive"
                       : "bg-warning/10 text-warning"
-                  }`}
+                    }`}
                 >
                   <ShieldCheck className="w-3.5 h-3.5" />
                   {organizer.verification_status || "Unverified"}
@@ -168,7 +167,7 @@ export default async function AdminOrganizerDashboardPage({
               <Banknote className="w-4 h-4 text-success" />
             </div>
             <div className="text-2xl font-bold text-foreground">
-              ₦{((summary.total_revenue || 0) / 100).toLocaleString("en-NG", { minimumFractionDigits: 2 })}
+              ₦{((wallet.available_balance || 0) / 100).toLocaleString("en-NG", { minimumFractionDigits: 2 })}
             </div>
             <div className="text-xs text-muted-foreground">
               Across {summary.total_events} registered event{summary.total_events === 1 ? "" : "s"}
@@ -256,15 +255,14 @@ export default async function AdminOrganizerDashboardPage({
                           <div className="flex flex-wrap items-center gap-2.5">
                             <h3 className="font-bold text-lg text-foreground">{evt.title}</h3>
                             <span
-                              className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
-                                evt.status === "PUBLISHED" || evt.status === "LIVE"
-                                  ? "bg-success/15 text-success"
-                                  : evt.status === "DRAFT"
+                              className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold ${evt.status === "PUBLISHED" || evt.status === "LIVE"
+                                ? "bg-success/15 text-success"
+                                : evt.status === "DRAFT"
                                   ? "bg-muted text-muted-foreground"
                                   : evt.status === "REJECTED"
-                                  ? "bg-destructive/15 text-destructive"
-                                  : "bg-warning/15 text-warning"
-                              }`}
+                                    ? "bg-destructive/15 text-destructive"
+                                    : "bg-warning/15 text-warning"
+                                }`}
                             >
                               {evt.status}
                             </span>
@@ -425,13 +423,12 @@ export default async function AdminOrganizerDashboardPage({
                       </td>
                       <td className="px-4 py-3">
                         <span
-                          className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                            ord.status === "PAID" || ord.status === "COMPLETED"
-                              ? "bg-success/10 text-success"
-                              : ord.status === "FAILED"
+                          className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${ord.status === "PAID" || ord.status === "COMPLETED"
+                            ? "bg-success/10 text-success"
+                            : ord.status === "FAILED"
                               ? "bg-destructive/10 text-destructive"
                               : "bg-warning/10 text-warning"
-                          }`}
+                            }`}
                         >
                           {ord.status}
                         </span>
