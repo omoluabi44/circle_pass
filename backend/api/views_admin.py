@@ -320,7 +320,9 @@ class AdminOrganizerDetailView(APIView):
         events_data = []
 
         for ev in events_qs:
-            ev_tickets_sold = Ticket.objects.filter(order__event=ev, order__status='COMPLETED').count()
+            ev_tickets_sold = Ticket.objects.filter(order__event=ev, order__status='COMPLETED', status='ACTIVE').count()
+            tt_sold = sum(tt.quantity_sold for tt in ev.ticket_types.all())
+            ev_tickets_sold = max(ev_tickets_sold, tt_sold)
             ev_tickets_used = Ticket.objects.filter(order__event=ev, order__status='COMPLETED', status='USED').count()
             total_tickets_sold += ev_tickets_sold
             total_used_tickets += ev_tickets_used
@@ -751,6 +753,11 @@ class AdminTicketTypeDetailView(APIView):
                         status=400
                     )
                 tt.quantity = new_qty
+            except (ValueError, TypeError):
+                pass
+        if 'quantity_sold' in d:
+            try:
+                tt.quantity_sold = max(0, int(d['quantity_sold']))
             except (ValueError, TypeError):
                 pass
         if 'sale_start' in d:

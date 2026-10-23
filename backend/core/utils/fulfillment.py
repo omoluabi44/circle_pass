@@ -50,15 +50,16 @@ def fulfill_order(order, payment=None):
         # Credit organizer wallet: 95% of the actual amount Paystack collected.
         # CirclePass keeps its 5% commission, and pays Paystack's 1.5%+₦100 fee from that 5%.
         # We never credit from pending; funds go straight to available_balance.
-        if payment and payment.amount > 0:
+        pmt = payment or getattr(order_fresh, 'payment', None)
+        if pmt and pmt.amount > 0:
             if order_fresh.fee_amount > 0:
                 # Buyer paid the fee. CirclePass takes exactly what was charged as the fee.
                 cp_fee = order_fresh.fee_amount
-                organizer_credit = payment.amount - cp_fee
+                organizer_credit = pmt.amount - cp_fee
             else:
                 # Organizer absorbed the fee. CirclePass takes 5% of the final payment.
-                cp_fee = int(payment.amount * 0.05)
-                organizer_credit = payment.amount - cp_fee
+                cp_fee = int(pmt.amount * 0.05)
+                organizer_credit = pmt.amount - cp_fee
 
             wallet, _ = OrganizerWallet.objects.get_or_create(organizer=order_fresh.event.organizer)
             OrganizerWallet.objects.filter(pk=wallet.pk).update(
@@ -75,7 +76,7 @@ def fulfill_order(order, payment=None):
                 reference=f'Order #{order_fresh.pk}',
                 description=(
                     f'Ticket sale – {order_fresh.event.title}. '
-                    f'Gross: ₦{payment.amount / 100:,.0f}, '
+                    f'Gross: ₦{pmt.amount / 100:,.0f}, '
                     f'CirclePass fee (5%): ₦{cp_fee / 100:,.0f}, '
                     f'Organizer (95%): ₦{organizer_credit / 100:,.0f}'
                 ),

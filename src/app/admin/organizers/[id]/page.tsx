@@ -8,6 +8,7 @@ import {
   BarChart3, Users, AlertCircle, Pencil
 } from "lucide-react";
 import EditOrganizerButton from "./EditOrganizerButton";
+import TransferOrganizerEventButton from "./TransferOrganizerEventButton";
 
 export default async function AdminOrganizerDashboardPage({
   params,
@@ -167,7 +168,7 @@ export default async function AdminOrganizerDashboardPage({
               <Banknote className="w-4 h-4 text-success" />
             </div>
             <div className="text-2xl font-bold text-foreground">
-              ₦{((wallet.available_balance || 0) / 100).toLocaleString("en-NG", { minimumFractionDigits: 2 })}
+              ₦{(((summary.total_revenue ?? wallet.total_earnings) || 0) / 100).toLocaleString("en-NG", { minimumFractionDigits: 2 })}
             </div>
             <div className="text-xs text-muted-foreground">
               Across {summary.total_events} registered event{summary.total_events === 1 ? "" : "s"}
@@ -297,11 +298,18 @@ export default async function AdminOrganizerDashboardPage({
                             <ExternalLink className="w-3 h-3 text-muted-foreground" />
                           </Link>
                           <Link
-                            href={`/admin/events`}
-                            className="px-3 py-1.5 bg-primary/10 text-primary hover:bg-primary/20 text-xs font-semibold rounded-lg transition-colors"
+                            href={`/admin/events/${evt.id}/edit`}
+                            className="px-3 py-1.5 bg-primary/10 text-primary hover:bg-primary/20 text-xs font-semibold rounded-lg transition-colors inline-flex items-center gap-1"
                           >
-                            Admin Events
+                            <Pencil className="w-3 h-3" />
+                            <span>Edit</span>
                           </Link>
+                          <TransferOrganizerEventButton
+                            eventId={evt.id}
+                            eventTitle={evt.title}
+                            currentOrganizerName={organizer.company_name}
+                            token={(session as any).accessToken}
+                          />
                         </div>
                       </div>
 
