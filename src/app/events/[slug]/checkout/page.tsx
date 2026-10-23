@@ -16,7 +16,7 @@ export default function CheckoutPage() {
   const router = useRouter();
   const { data: session } = useSession();
   const { removeFromCart } = useCart();
-  
+
   const [event, setEvent] = useState<any>(null);
   const [loadingEvent, setLoadingEvent] = useState(true);
   const [eventError, setEventError] = useState<string | null>(null);
@@ -123,13 +123,13 @@ export default function CheckoutPage() {
       )
     );
   }, [event?.ticket_types, totalCapacity, totalSold]);
-  
+
   const isClaimingWaitlist = Boolean(waitlistClaimData && waitlistClaimData.status === 'ACCEPTED');
   const isPast = event ? new Date() > new Date(event.end_time) : false;
   const isWaitlistActive = Boolean(!isClaimingWaitlist && event?.waitlist_enabled && (allSoldOut || isPast));
 
   const [timeLeft, setTimeLeft] = useState(600);
-  
+
   useEffect(() => {
     if (!event || success || isWaitlistActive || (allSoldOut && !isClaimingWaitlist) || isSalesPaused) return;
     const interval = setInterval(() => {
@@ -180,7 +180,7 @@ export default function CheckoutPage() {
   }, [selections, event?.ticket_types]);
 
   const fee = event?.absorb_fees ? 0 : Math.floor(subtotal * 0.05);
-  
+
   let discountAmount = 0;
   if (appliedDiscount) {
     if (appliedDiscount.type === 'PERCENTAGE') {
@@ -200,8 +200,8 @@ export default function CheckoutPage() {
       const res = await fetch(`${API_URL}/events/${event.id}/waitlist/`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          email: waitlistEmail, 
+        body: JSON.stringify({
+          email: waitlistEmail,
           name: waitlistName,
           phone: waitlistPhone,
           ticket_type_id: waitlistTicketType,
@@ -212,9 +212,9 @@ export default function CheckoutPage() {
       if (!res.ok) {
         throw new Error(data.detail || "Failed to join waitlist.");
       }
-      setSuccessData({ 
+      setSuccessData({
         isWaitlist: true,
-        message: data.detail || "You've been added to the waitlist! We will notify you if your request is accepted." 
+        message: data.detail || "You've been added to the waitlist! We will notify you if your request is accepted."
       });
       setSuccess(true);
     } catch (err: any) {
@@ -402,13 +402,13 @@ export default function CheckoutPage() {
         <button onClick={() => router.back()} className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition mb-6">
           <ArrowLeft className="w-5 h-5" /> Back to Event
         </button>
-        
+
         <div className="bg-card rounded-2xl shadow-xl overflow-hidden border border-border">
           {/* Header with Background Image */}
           <div className="relative h-48 sm:h-56 w-full bg-muted overflow-hidden">
             <img src={imageUrl} alt={event.title} className="w-full h-full object-cover" />
             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent"></div>
-            
+
             <div className="absolute bottom-0 left-0 w-full p-6 sm:p-8">
               <h1 className="text-2xl sm:text-3xl font-bold text-white line-clamp-2 drop-shadow-md">
                 {event.title}
@@ -467,9 +467,9 @@ export default function CheckoutPage() {
                       {successData?.payment_required ? "Payment Required" : successData?.message ? "You're on the list!" : "You're in the Circle! 🎉"}
                     </h3>
                     <p className="text-muted-foreground mb-8 text-balance">
-                      {successData?.payment_required 
-                        ? "Redirecting you to complete your payment..." 
-                        : successData?.message 
+                      {successData?.payment_required
+                        ? "Redirecting you to complete your payment..."
+                        : successData?.message
                           ? "We'll notify you if tickets become available."
                           : "Your ticket is confirmed and has been sent to your email. You can also access it anytime from My Circle on your attendee dashboard. See you at the experience!"}
                     </p>
@@ -517,8 +517,8 @@ export default function CheckoutPage() {
                   {isPast ? "Event Ended" : "Event Sold Out"}
                 </h3>
                 <p className="text-muted-foreground mb-6 text-center max-w-sm text-sm">
-                  {isPast 
-                    ? "This event has ended. Join the waitlist to be notified if tickets open up." 
+                  {isPast
+                    ? "This event has ended. Join the waitlist to be notified if tickets open up."
                     : "All tickets are currently sold out. Select your preferred tier and quantity to join the waitlist."}
                 </p>
 
@@ -528,7 +528,7 @@ export default function CheckoutPage() {
                     <span>{claimError}</span>
                   </div>
                 )}
-                
+
                 <form onSubmit={handleJoinWaitlist} className="w-full max-w-md space-y-4 text-left">
                   {/* Ticket Category Selector */}
                   <div>
@@ -587,10 +587,10 @@ export default function CheckoutPage() {
                     <label className="block text-xs font-bold text-foreground uppercase tracking-wider mb-1.5">
                       Your Name
                     </label>
-                    <input 
-                      type="text" 
+                    <input
+                      type="text"
                       required
-                      placeholder="Jane Doe" 
+                      placeholder="Jane Doe"
                       value={waitlistName}
                       onChange={(e) => setWaitlistName(e.target.value)}
                       className="w-full px-4 py-3 rounded-xl border border-border bg-background text-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all text-sm"
@@ -602,10 +602,10 @@ export default function CheckoutPage() {
                     <label className="block text-xs font-bold text-foreground uppercase tracking-wider mb-1.5">
                       Email Address
                     </label>
-                    <input 
-                      type="email" 
+                    <input
+                      type="email"
                       required
-                      placeholder="jane@example.com" 
+                      placeholder="jane@example.com"
                       value={waitlistEmail}
                       onChange={(e) => setWaitlistEmail(e.target.value)}
                       className="w-full px-4 py-3 rounded-xl border border-border bg-background text-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all text-sm"
@@ -617,9 +617,9 @@ export default function CheckoutPage() {
                     <label className="block text-xs font-bold text-foreground uppercase tracking-wider mb-1.5">
                       Phone Number <span className="text-muted-foreground font-normal lowercase">(optional)</span>
                     </label>
-                    <input 
-                      type="tel" 
-                      placeholder="+234 800 000 0000" 
+                    <input
+                      type="tel"
+                      placeholder="+234 800 000 0000"
                       value={waitlistPhone}
                       onChange={(e) => setWaitlistPhone(e.target.value)}
                       className="w-full px-4 py-3 rounded-xl border border-border bg-background text-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all text-sm"
@@ -677,17 +677,17 @@ export default function CheckoutPage() {
 
                 <input type="text" placeholder="Full Name" required
                   value={guestData.name}
-                  onChange={(e) => setGuestData(prev => ({...prev, name: e.target.value}))}
+                  onChange={(e) => setGuestData(prev => ({ ...prev, name: e.target.value }))}
                   className="w-full px-4 py-3 rounded-xl border border-border bg-secondary/50 text-foreground placeholder-muted-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
                 />
                 <input type="email" placeholder="Email address" required
                   value={guestData.email}
-                  onChange={(e) => setGuestData(prev => ({...prev, email: e.target.value}))}
+                  onChange={(e) => setGuestData(prev => ({ ...prev, email: e.target.value }))}
                   className="w-full px-4 py-3 rounded-xl border border-border bg-secondary/50 text-foreground placeholder-muted-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
                 />
                 <input type="tel" placeholder="Phone number" required
                   value={guestData.phone}
-                  onChange={(e) => setGuestData(prev => ({...prev, phone: e.target.value}))}
+                  onChange={(e) => setGuestData(prev => ({ ...prev, phone: e.target.value }))}
                   className="w-full px-4 py-3 rounded-xl border border-border bg-secondary/50 text-foreground placeholder-muted-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
                 />
 
@@ -699,8 +699,8 @@ export default function CheckoutPage() {
                   onClick={handleGuestCheckout}
                   disabled={isLoading}
                   className={`w-full py-3.5 px-4 rounded-xl font-medium text-white shadow-sm flex items-center justify-center gap-2 transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed
-                    ${total === 0 
-                      ? "bg-green-600 hover:bg-green-700 shadow-green-600/20" 
+                    ${total === 0
+                      ? "bg-green-600 hover:bg-green-700 shadow-green-600/20"
                       : "bg-primary hover:bg-primary/90 shadow-primary/20"
                     }`}
                 >
@@ -741,11 +741,10 @@ export default function CheckoutPage() {
                   return (
                     <div
                       key={ticket.id}
-                      className={`p-4 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-colors ${
-                        selected > 0
+                      className={`p-4 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-colors ${selected > 0
                           ? "border-primary bg-primary/5"
                           : "border-border hover:border-primary/30"
-                      } ${isDisabled ? "opacity-60 bg-muted/50" : ""}`}
+                        } ${isDisabled ? "opacity-60 bg-muted/50" : ""}`}
                     >
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-1">
@@ -813,16 +812,16 @@ export default function CheckoutPage() {
             <div className="p-4 sm:p-6 border-t border-border bg-card">
               <div className="mb-6">
                 <div className="flex items-center gap-2">
-                  <input 
-                    type="text" 
-                    placeholder="Promo Code" 
+                  <input
+                    type="text"
+                    placeholder="Promo Code"
                     value={discountCode}
                     onChange={(e) => setDiscountCode(e.target.value)}
                     disabled={!!appliedDiscount || applyingDiscount}
                     className="flex-1 px-4 py-2 text-sm rounded-lg border border-border bg-background outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all disabled:opacity-50"
                   />
                   {!appliedDiscount ? (
-                    <button 
+                    <button
                       onClick={handleApplyDiscount}
                       disabled={applyingDiscount || !discountCode.trim()}
                       className="px-4 py-2 bg-secondary text-secondary-foreground text-sm font-medium rounded-lg hover:bg-secondary/80 transition-colors disabled:opacity-50"
@@ -830,7 +829,7 @@ export default function CheckoutPage() {
                       {applyingDiscount ? "..." : "Apply"}
                     </button>
                   ) : (
-                    <button 
+                    <button
                       onClick={() => { setAppliedDiscount(null); setDiscountCode(""); }}
                       className="px-4 py-2 bg-destructive/10 text-destructive text-sm font-medium rounded-lg hover:bg-destructive/20 transition-colors"
                     >
@@ -847,14 +846,14 @@ export default function CheckoutPage() {
                   <span>Subtotal ({totalQuantity} tickets)</span>
                   <span className="font-medium text-foreground">{formatNaira(subtotal)}</span>
                 </div>
-                
+
                 {discountAmount > 0 && (
                   <div className="flex justify-between text-sm text-success">
                     <span>Discount Saved</span>
                     <span className="font-medium">-{formatNaira(discountAmount)}</span>
                   </div>
                 )}
-                
+
                 {subtotal > 0 && (
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Service Fee</span>
@@ -876,8 +875,8 @@ export default function CheckoutPage() {
                 onClick={handleSubmit}
                 disabled={totalQuantity === 0 || isLoading || isVerifying}
                 className={`w-full py-3.5 px-4 rounded-xl font-medium text-white shadow-sm flex items-center justify-center gap-2 transition-all active:scale-[0.98] disabled:active:scale-100 disabled:opacity-50 disabled:cursor-not-allowed
-                  ${total === 0 
-                    ? "bg-green-600 hover:bg-green-700 shadow-green-600/20" 
+                  ${total === 0
+                    ? "bg-green-600 hover:bg-green-700 shadow-green-600/20"
                     : "bg-primary hover:bg-primary/90 shadow-primary/20"
                   }`}
               >
