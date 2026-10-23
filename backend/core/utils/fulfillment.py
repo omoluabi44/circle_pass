@@ -2,12 +2,15 @@
 Fulfillment logic for completing or failing orders.
 Extracted to be reused by checkout, webhook, and verify endpoints.
 """
+import logging
 from django.db import transaction
 from django.db.models import F
 from django.utils import timezone
 from core.models import Order, Ticket, TicketType, OrganizerWallet, WalletTransaction
 from core.utils.qr import generate_secure_qr_token
 from core.utils.notifications import send_purchase_receipt, send_organizer_sales_notification
+
+_log = logging.getLogger(__name__)
 
 def fulfill_order(order, payment=None):
     """
@@ -48,22 +51,29 @@ def fulfill_order(order, payment=None):
         order_fresh.save(update_fields=['status', 'updated_at'])
 
         # Credit organizer wallet: 95% of the actual amount Paystack collected.
-        # CirclePass keeps its 5% commission, and pays Paystack's 1.5%+₦100 fee from that 5%.
+        # CirclePass keeps its 5% commission, and pays Paystack's 1.5%+100 fee from that 5%.
         # We never credit from pending; funds go straight to available_balance.
-        import logging
-        _log = logging.getLogger(__name__)
         pmt = payment or getattr(order_fresh, 'payment', None)
-        if not pmt:
-            _log.warning(f'fulfill_order: No payment object for Order #{order_fresh.pk} -- wallet NOT credited.')
-        if pmt and pmt.amount > 0:
+
+        # Fall back to order.total_amount if payment object is missing/unlinked.
+        # This ensures the wallet is ALWAYS credited as long as money was collected.
+        gross_amount = (pmt.amount if pmt and pmt.amount else None) or order_fresh.total_amount
+
+        if gross_amount and gross_amount > 0:
             if order_fresh.fee_amount > 0:
                 # Buyer paid the fee. CirclePass takes exactly what was charged as the fee.
                 cp_fee = order_fresh.fee_amount
-                organizer_credit = pmt.amount - cp_fee
+                organizer_credit = gross_amount - cp_fee
             else:
                 # Organizer absorbed the fee. CirclePass takes 5% of the final payment.
-                cp_fee = int(pmt.amount * 0.05)
-                organizer_credit = pmt.amount - cp_fee
+                cp_fee = int(gross_amount * 0.05)
+                organizer_credit = gross_amount - cp_fee
+
+            if not pmt:
+                _log.warning(
+                    f'fulfill_order: Order #{order_fresh.pk} has no payment object. '
+                    f'Crediting wallet from order.total_amount ({gross_amount} kobo).'
+                )
 
             wallet, _ = OrganizerWallet.objects.get_or_create(organizer=order_fresh.event.organizer)
             OrganizerWallet.objects.filter(pk=wallet.pk).update(
@@ -79,12 +89,14 @@ def fulfill_order(order, payment=None):
                 balance_after=wallet.available_balance,
                 reference=f'Order #{order_fresh.pk}',
                 description=(
-                    f'Ticket sale – {order_fresh.event.title}. '
-                    f'Gross: ₦{pmt.amount / 100:,.0f}, '
-                    f'CirclePass fee (5%): ₦{cp_fee / 100:,.0f}, '
-                    f'Organizer (95%): ₦{organizer_credit / 100:,.0f}'
+                    f'Ticket sale - {order_fresh.event.title}. '
+                    f'Gross: {gross_amount / 100:,.0f}, '
+                    f'CirclePass fee (5%): {cp_fee / 100:,.0f}, '
+                    f'Organizer (95%): {organizer_credit / 100:,.0f}'
                 ),
             )
+        else:
+            _log.warning(f'fulfill_order: Order #{order_fresh.pk} has zero gross amount - wallet NOT credited.')
 
         # Complete linked waitlist entries if any
         order_fresh.waitlist_entries.filter(status='ACCEPTED').update(status='COMPLETED')
