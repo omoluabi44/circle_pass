@@ -244,7 +244,8 @@ from core.models import Event, EventCategory
 from .serializers import EventSerializer, EventCreateUpdateSerializer, EventCategorySerializer
 from core.utils.screening import screen_event
 from django.db.models import Q, F, ExpressionWrapper, FloatField
-from django.db.models.functions import Cos, Sin, ASin, Sqrt, Radians, Power
+from django.db.models.functions import Cos, Sin, ASin, Sqrt, Radians, Power, Coalesce
+from django.db.models import Sum, Value, IntegerField
 
 class EventCategoryViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [AllowAny]
@@ -377,6 +378,30 @@ class EventViewSet(viewsets.ModelViewSet):
                 qs = qs.filter(distance__lte=radius).order_by('distance')
             except ValueError:
                 pass # ignore invalid lat/lng/radius
+
+        ordering_param = self.request.query_params.get('ordering', '').strip().lower()
+        if ordering_param in ('trending', 'most_purchased'):
+            qs = qs.annotate(
+                tickets_sold_total=Coalesce(
+                    Sum(
+                        'orders__items__quantity',
+                        filter=Q(orders__status='COMPLETED')
+                    ),
+                    Value(0),
+                    output_field=IntegerField()
+                )
+            ).order_by('-tickets_sold_total', '-page_views', '-id')
+        elif ordering_param == 'most_visited':
+            qs = qs.annotate(
+                tickets_sold_total=Coalesce(
+                    Sum(
+                        'orders__items__quantity',
+                        filter=Q(orders__status='COMPLETED')
+                    ),
+                    Value(0),
+                    output_field=IntegerField()
+                )
+            ).order_by('-page_views', '-tickets_sold_total', '-id')
 
         return qs
 

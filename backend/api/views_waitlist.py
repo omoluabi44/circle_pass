@@ -3,7 +3,7 @@ import secrets
 from datetime import timedelta
 
 from django.db import transaction
-from django.db.models import F
+from django.db.models import F, Sum
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -178,14 +178,22 @@ class OrganizerWaitlistListView(APIView):
         # Available inventory summary per ticket tier
         tiers_inventory = []
         for tt in event.ticket_types.all():
-            available = max(0, tt.quantity - tt.quantity_sold)
+            completed_sold = OrderItem.objects.filter(
+                ticket_type=tt,
+                order__status='COMPLETED'
+            ).aggregate(total=Sum('quantity'))['total']
+            sold = completed_sold if completed_sold is not None else (tt.quantity_sold or 0)
+            if tt.quantity_sold != sold:
+                TicketType.objects.filter(pk=tt.pk).update(quantity_sold=sold)
+                tt.quantity_sold = sold
+            available = max(0, tt.quantity - sold)
             tiers_inventory.append({
                 'id': tt.id,
                 'name': tt.name,
                 'tier': tt.tier,
                 'price': tt.price,
                 'quantity': tt.quantity,
-                'quantity_sold': tt.quantity_sold,
+                'quantity_sold': sold,
                 'available': available,
                 'is_sold_out': tt.is_sold_out or available <= 0
             })
@@ -240,23 +248,35 @@ class OrganizerWaitlistAcceptView(APIView):
 
                 # Lock ticket type row for atomic oversell protection
                 ticket_type = TicketType.objects.select_for_update().get(pk=entry.ticket_type_id)
-                available = ticket_type.quantity - ticket_type.quantity_sold
 
-                # If available is less than requested, check if organizer chose to auto-increase capacity
+                # Sync quantity_sold with authoritative completed orders
+                completed_sold = OrderItem.objects.filter(
+                    ticket_type=ticket_type,
+                    order__status='COMPLETED'
+                ).aggregate(total=Sum('quantity'))['total']
+                sold = completed_sold if completed_sold is not None else (ticket_type.quantity_sold or 0)
+                if ticket_type.quantity_sold != sold:
+                    TicketType.objects.filter(pk=ticket_type.pk).update(quantity_sold=sold)
+                    ticket_type.quantity_sold = sold
+
+                available = max(0, ticket_type.quantity - sold)
+
+                # When organizer accepts a waitlist request, increase the ticket tier quantity
+                # by the needed approved amount so the attendee can purchase their tickets.
                 if available < entry.quantity:
-                    auto_increase = request.data.get('auto_increase_capacity', False)
-                    if auto_increase:
-                        needed = entry.quantity - available
-                        TicketType.objects.filter(pk=ticket_type.pk).update(quantity=F('quantity') + needed)
-                        ticket_type.refresh_from_db()
-                        available = ticket_type.quantity - ticket_type.quantity_sold
-                    else:
-                        return Response({
-                            'detail': f'Cannot accept request: only {available} {ticket_type.name} ticket(s) available (requested: {entry.quantity}). Increase ticket capacity to accept.',
-                            'requires_capacity_increase': True,
-                            'available': available,
-                            'needed': entry.quantity - available
-                        }, status=status.HTTP_400_BAD_REQUEST)
+                    needed = entry.quantity - available
+                    TicketType.objects.filter(pk=ticket_type.pk).update(
+                        quantity=F('quantity') + needed,
+                        is_sold_out=False
+                    )
+                    ticket_type.refresh_from_db()
+                    total_tier_capacity = event.ticket_types.aggregate(total=Sum('quantity'))['total'] or 0
+                    if event.capacity < total_tier_capacity:
+                        Event.objects.filter(pk=event.pk).update(capacity=total_tier_capacity)
+                        event.refresh_from_db()
+                elif ticket_type.is_sold_out:
+                    TicketType.objects.filter(pk=ticket_type.pk).update(is_sold_out=False)
+                    ticket_type.refresh_from_db()
 
                 # Compute pricing & fees for reservation
                 subtotal = ticket_type.price * entry.quantity
@@ -290,9 +310,8 @@ class OrganizerWaitlistAcceptView(APIView):
                     line_total=subtotal
                 )
 
-                # Atomically decrement available inventory by marking quantity_sold
-                ticket_type.quantity_sold = F('quantity_sold') + entry.quantity
-                ticket_type.save(update_fields=['quantity_sold'])
+                # Note: Do NOT increment ticket_type.quantity_sold here.
+                # Inventory quantity_sold is incremented in fulfill_order() when the attendee completes checkout.
 
                 # Update Waitlist Entry
                 if not entry.access_token:
@@ -397,10 +416,13 @@ class WaitlistClaimView(APIView):
                 if entry.order and entry.order.status == 'PENDING':
                     entry.order.status = 'CANCELLED'
                     entry.order.save(update_fields=['status'])
-                    if entry.ticket_type:
-                        TicketType.objects.filter(pk=entry.ticket_type_id).update(
-                            quantity_sold=F('quantity_sold') - entry.quantity
-                        )
+                if entry.ticket_type:
+                    completed_sold = OrderItem.objects.filter(
+                        ticket_type=entry.ticket_type,
+                        order__status='COMPLETED'
+                    ).aggregate(total=Sum('quantity'))['total']
+                    sold = completed_sold if completed_sold is not None else 0
+                    TicketType.objects.filter(pk=entry.ticket_type_id).update(quantity_sold=sold)
 
             return Response({
                 'detail': 'Your reservation has expired and the tickets have been released back to inventory.',
@@ -418,6 +440,24 @@ class WaitlistClaimView(APIView):
                 'detail': f'This reservation is no longer active (status: {entry.status}).',
                 'status': entry.status
             }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Heal ticket_type inventory for this active ACCEPTED reservation so checkout succeeds
+        if entry.ticket_type:
+            with transaction.atomic():
+                tt = TicketType.objects.select_for_update().get(pk=entry.ticket_type_id)
+                completed_sold = OrderItem.objects.filter(
+                    ticket_type=tt,
+                    order__status='COMPLETED'
+                ).aggregate(total=Sum('quantity'))['total']
+                sold = completed_sold if completed_sold is not None else (tt.quantity_sold or 0)
+                new_qty = max(tt.quantity, sold + entry.quantity)
+                if tt.quantity_sold != sold or tt.quantity != new_qty or tt.is_sold_out:
+                    TicketType.objects.filter(pk=tt.pk).update(
+                        quantity_sold=sold,
+                        quantity=new_qty,
+                        is_sold_out=False
+                    )
+                    entry.ticket_type.refresh_from_db()
 
         # Calculate time remaining
         seconds_left = max(0, int((entry.reserved_until - now).total_seconds())) if entry.reserved_until else 0

@@ -107,7 +107,10 @@ export default function EventForm({ initialData, eventId }: { initialData?: any;
       if (initialData.ticket_types && initialData.ticket_types.length > 0) {
         setTicketTypes(initialData.ticket_types.map((t: any) => ({
           ...t,
-          price: t.price ? (t.price / 100).toString() : "0" // Convert kobo to naira
+          price: t.price ? (t.price / 100).toString() : "0", // Convert kobo to naira
+          sale_start: getLocalDatetimeString(t.sale_start),
+          sale_end: getLocalDatetimeString(t.sale_end),
+          is_active: t.is_active !== false,
         })));
       }
     }
@@ -181,7 +184,7 @@ export default function EventForm({ initialData, eventId }: { initialData?: any;
 
 
   const [ticketTypes, setTicketTypes] = useState<any[]>([
-    { name: "General Admission", price: 0, quantity: 100, tier: "FREE", description: "" }
+    { name: "General Admission", price: 0, quantity: 100, tier: "FREE", description: "", sale_start: "", sale_end: "", is_active: true }
   ]);
 
   // Auto-save draft on change (only for new events)
@@ -197,7 +200,7 @@ export default function EventForm({ initialData, eventId }: { initialData?: any;
     }
   }, [formData, ticketTypes, isTBA, locationQuery, eventId]);
 
-  const handleTicketChange = (index: number, field: string, value: string | number) => {
+  const handleTicketChange = (index: number, field: string, value: string | number | boolean) => {
     const updated = [...ticketTypes];
     updated[index] = { ...updated[index], [field]: value };
     if (field === 'tier' && value === 'FREE') {
@@ -207,7 +210,7 @@ export default function EventForm({ initialData, eventId }: { initialData?: any;
   };
 
   const addTicketType = () => {
-    setTicketTypes([...ticketTypes, { name: "", price: 0, quantity: 0, tier: "FREE", description: "" }]);
+    setTicketTypes([...ticketTypes, { name: "", price: 0, quantity: 0, tier: "FREE", description: "", sale_start: "", sale_end: "", is_active: true }]);
   };
 
   const removeTicketType = (index: number) => {
@@ -272,6 +275,11 @@ if (!formData.title || !formData.start_time || !formData.end_time || !formData.o
         toast.error(`Ticket '${ticket.name}' must have a price greater than ₦0.`);
         return false;
       }
+      if (ticket.sale_start && ticket.sale_end && new Date(ticket.sale_end) <= new Date(ticket.sale_start)) {
+        toast.error(`Ticket '${ticket.name}' sale end date must be after sale start date.`);
+        return false;
+        return false;
+      }
     }
     
     return true;
@@ -290,7 +298,10 @@ if (!formData.title || !formData.start_time || !formData.end_time || !formData.o
       const ticketsWithKobo = ticketTypes.map(t => ({
         ...t,
         quantity: parseInt(t.quantity as any) || 0,
-        price: (parseInt(t.price as any) || 0) * 100
+        price: (parseInt(t.price as any) || 0) * 100,
+        sale_start: t.sale_start ? new Date(t.sale_start).toISOString() : null,
+        sale_end: t.sale_end ? new Date(t.sale_end).toISOString() : null,
+        is_active: t.is_active !== false,
       }));
       
       const payload = new FormData();
@@ -588,48 +599,110 @@ if (!formData.title || !formData.start_time || !formData.end_time || !formData.o
           
           <div className="space-y-4">
             {ticketTypes.map((ticket, index) => (
-              <div key={index} className="flex flex-col gap-4 p-4 border border-border rounded-lg bg-secondary/50">
-                <div className="flex flex-wrap items-end gap-4">
-                  <div className="w-32">
-                    <label className="block text-xs font-medium text-muted-foreground mb-1">Tier</label>
-                    <select 
-                      className="w-full border border-border rounded-lg p-2 text-sm outline-none bg-background focus:ring-2 focus:ring-primary"
-                      value={ticket.tier} 
+              <div key={index} className="border border-border rounded-xl p-4 space-y-3 bg-background">
+                {/* Row header */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-semibold text-foreground">{ticket.name || 'Untitled Ticket'}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleTicketChange(index, 'is_active', ticket.is_active === false ? true : false)}
+                      className={`text-xs px-2.5 py-1 rounded-lg font-medium transition-colors border ${
+                        ticket.is_active !== false ? 'bg-success/10 text-success border-success/20' : 'bg-muted text-muted-foreground border-border'
+                      }`}
+                    >
+                      {ticket.is_active !== false ? 'Active' : 'Inactive'}
+                    </button>
+                    {ticketTypes.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => removeTicketType(index)}
+                        className="p-1.5 text-destructive hover:bg-destructive/10 rounded-lg transition-colors"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Fields */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  <div className="col-span-2 sm:col-span-1">
+                    <label className="text-xs text-muted-foreground block mb-1">Name</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Early Bird Pass"
+                      className="w-full px-3 py-1.5 rounded-lg border border-border bg-card text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+                      value={ticket.name}
+                      onChange={e => handleTicketChange(index, 'name', e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-muted-foreground block mb-1">Tier</label>
+                    <select
+                      className="w-full px-3 py-1.5 rounded-lg border border-border bg-card text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+                      value={ticket.tier}
                       onChange={e => handleTicketChange(index, 'tier', e.target.value)}
                     >
-                      <option value="FREE">Free</option>
-                      <option value="EARLY_BIRD">Early Bird</option>
-                      <option value="REGULAR">Regular</option>
+                      <option value="FREE">FREE</option>
+                      <option value="EARLY_BIRD">EARLY_BIRD</option>
+                      <option value="REGULAR">REGULAR</option>
                       <option value="VIP">VIP</option>
                       <option value="VVIP">VVIP</option>
-                      <option value="CUSTOM">Custom</option>
+                      <option value="CUSTOM">CUSTOM</option>
                     </select>
                   </div>
-                  <div className="flex-1 min-w-[200px]">
-                    <label className="block text-xs font-medium text-muted-foreground mb-1">Ticket Name</label>
-                    <input type="text" placeholder="e.g. Early Bird Pass" className="w-full border border-border rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-primary"
-                      value={ticket.name} onChange={e => handleTicketChange(index, 'name', e.target.value)} />
+                  <div>
+                    <label className="text-xs text-muted-foreground block mb-1">Price (₦)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      className="w-full px-3 py-1.5 rounded-lg border border-border bg-card text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:opacity-50 disabled:bg-muted"
+                      value={ticket.price}
+                      onChange={e => handleTicketChange(index, 'price', e.target.value === '' ? '' : parseInt(e.target.value))}
+                      disabled={ticket.tier === 'FREE'}
+                    />
                   </div>
-                  <div className="w-32">
-                    <label className="block text-xs font-medium text-muted-foreground mb-1">Price (₦)</label>
-                    <input type="number" className="w-full border border-border rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-primary disabled:opacity-50 disabled:bg-muted"
-                      value={ticket.price} onChange={e => handleTicketChange(index, 'price', e.target.value === '' ? '' : parseInt(e.target.value))} disabled={ticket.tier === 'FREE'} />
+                  <div>
+                    <label className="text-xs text-muted-foreground block mb-1">Total Qty</label>
+                    <input
+                      type="number"
+                      min="0"
+                      className="w-full px-3 py-1.5 rounded-lg border border-border bg-card text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+                      value={ticket.quantity}
+                      onChange={e => handleTicketChange(index, 'quantity', e.target.value === '' ? '' : parseInt(e.target.value))}
+                    />
                   </div>
-                  <div className="w-32">
-                    <label className="block text-xs font-medium text-muted-foreground mb-1">Quantity</label>
-                    <input type="number" className="w-full border border-border rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-primary"
-                      value={ticket.quantity} onChange={e => handleTicketChange(index, 'quantity', e.target.value === '' ? '' : parseInt(e.target.value))} />
+                  <div>
+                    <label className="text-xs text-muted-foreground block mb-1">Sale Start</label>
+                    <input
+                      type="datetime-local"
+                      className="w-full px-3 py-1.5 rounded-lg border border-border bg-card text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+                      value={ticket.sale_start || ''}
+                      onChange={e => handleTicketChange(index, 'sale_start', e.target.value)}
+                    />
                   </div>
-                  {ticketTypes.length > 1 && (
-                    <button type="button" onClick={() => removeTicketType(index)} className="p-2 text-destructive hover:bg-destructive/10 rounded-lg transition mb-0.5">
-                      <Trash2 className="w-5 h-5" />
-                    </button>
-                  )}
-                </div>
-                <div className="w-full">
-                  <label className="block text-xs font-medium text-muted-foreground mb-1">Description (Optional)</label>
-                  <input type="text" placeholder="Briefly describe what this ticket includes" className="w-full border border-border rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-primary"
-                    value={ticket.description} onChange={e => handleTicketChange(index, 'description', e.target.value)} />
+                  <div>
+                    <label className="text-xs text-muted-foreground block mb-1">Sale End</label>
+                    <input
+                      type="datetime-local"
+                      className="w-full px-3 py-1.5 rounded-lg border border-border bg-card text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+                      value={ticket.sale_end || ''}
+                      onChange={e => handleTicketChange(index, 'sale_end', e.target.value)}
+                    />
+                  </div>
+                  <div className="col-span-2 sm:col-span-3">
+                    <label className="text-xs text-muted-foreground block mb-1">Description (optional)</label>
+                    <input
+                      type="text"
+                      placeholder="Brief ticket description"
+                      className="w-full px-3 py-1.5 rounded-lg border border-border bg-card text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+                      value={ticket.description}
+                      onChange={e => handleTicketChange(index, 'description', e.target.value)}
+                    />
+                  </div>
                 </div>
               </div>
             ))}

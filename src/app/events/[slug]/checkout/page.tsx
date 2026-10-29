@@ -70,6 +70,10 @@ export default function CheckoutPage() {
   }, []);
 
   useEffect(() => {
+    if (session?.user) {
+      if (session.user.email && !waitlistEmail) setWaitlistEmail(session.user.email);
+      if (session.user.name && !waitlistName) setWaitlistName(session.user.name);
+    }
     if (event?.ticket_types && event.ticket_types.length > 0 && !waitlistTicketType) {
       setWaitlistTicketType(event.ticket_types[0].id);
     }
@@ -114,12 +118,16 @@ export default function CheckoutPage() {
     return event?.ticket_types?.reduce((acc: number, t: any) => acc + (t.quantity_sold || 0), 0) || 0;
   }, [event?.ticket_types]);
   const allSoldOut = useMemo(() => {
+    const now = new Date();
     return Boolean(
       event?.ticket_types &&
       event?.ticket_types.length > 0 &&
       (
         (totalCapacity > 0 && totalSold >= totalCapacity) ||
-        event.ticket_types.every((t: any) => t.is_sold_out || (t.quantity > 0 && (t.quantity_sold ?? 0) >= t.quantity))
+        event.ticket_types.every((t: any) => {
+          const isSaleEnded = Boolean(t.sale_end && now > new Date(t.sale_end));
+          return t.is_sold_out || isSaleEnded || (t.quantity > 0 && (t.quantity_sold ?? 0) >= t.quantity);
+        })
       )
     );
   }, [event?.ticket_types, totalCapacity, totalSold]);
@@ -275,7 +283,7 @@ export default function CheckoutPage() {
       const referral_code = window.location.search.includes('ref=') ? new URLSearchParams(window.location.search).get('ref') || "" : "";
 
       const response = await checkout({
-        event_id: event.id, items: tickets, guest_name: name, guest_email: email, guest_phone: phone, referral_code, discount_code: appliedDiscount?.code || "",
+        event_id: event.id, items: tickets, guest_name: name, guest_email: email, guest_phone: phone, referral_code, discount_code: appliedDiscount?.code || "", waitlist_token: waitlistToken || "",
       } as any);
 
       if (response.payment_required && (response as any).paystack?.access_code) {
@@ -325,7 +333,7 @@ export default function CheckoutPage() {
       const referral_code = window.location.search.includes('ref=') ? new URLSearchParams(window.location.search).get('ref') || "" : "";
 
       const response = await checkout({
-        event_id: event.id, items: tickets, referral_code, discount_code: appliedDiscount?.code || "",
+        event_id: event.id, items: tickets, referral_code, discount_code: appliedDiscount?.code || "", waitlist_token: waitlistToken || "",
       } as any, token);
 
       if (response.payment_required && (response as any).paystack?.access_code) {
@@ -736,7 +744,25 @@ export default function CheckoutPage() {
                 {event.ticket_types?.map((ticket: any) => {
                   const isReservedTicket = isClaimingWaitlist && waitlistClaimData?.ticket_type_id === ticket.id;
                   const selected = selections[ticket.id] || 0;
-                  const isDisabled = (ticket.is_sold_out && !isReservedTicket) || !ticket.is_active;
+                  const now = new Date();
+                  const saleStart = ticket.sale_start ? new Date(ticket.sale_start) : null;
+                  const saleEnd = ticket.sale_end ? new Date(ticket.sale_end) : null;
+                  const isNotStarted = Boolean(saleStart && now < saleStart);
+                  const isSaleEnded = Boolean(saleEnd && now > saleEnd);
+                  const isTierSoldOut = Boolean(
+                    ticket.is_sold_out ||
+                    isSaleEnded ||
+                    (ticket.quantity > 0 && (ticket.quantity_sold ?? 0) >= ticket.quantity)
+                  );
+                  const isDisabled = (isTierSoldOut && !isReservedTicket) || isNotStarted || !ticket.is_active;
+                  const formatSaleDate = (d: Date) =>
+                    d.toLocaleString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                      hour: "numeric",
+                      minute: "2-digit",
+                    });
 
                   return (
                     <div
@@ -756,9 +782,14 @@ export default function CheckoutPage() {
                               Reserved for You
                             </span>
                           )}
-                          {isDisabled && !isReservedTicket && (
+                          {isTierSoldOut && !isReservedTicket && (
                             <span className="px-2 py-0.5 text-xs font-medium bg-secondary text-secondary-foreground rounded-full">
                               Sold Out
+                            </span>
+                          )}
+                          {!isTierSoldOut && isNotStarted && (
+                            <span className="px-2 py-0.5 text-xs font-medium bg-amber-500/10 text-amber-600 dark:text-amber-400 rounded-full">
+                              Sales Not Started
                             </span>
                           )}
                         </div>
@@ -767,7 +798,7 @@ export default function CheckoutPage() {
                             {ticket.description}
                           </p>
                         )}
-                        <div className="text-sm text-muted-foreground flex items-center gap-2">
+                        <div className="text-sm text-muted-foreground flex flex-wrap items-center gap-2">
                           <span className="font-medium text-foreground">
                             {ticket.price === 0 ? "Free" : formatNaira(ticket.price)}
                           </span>
@@ -775,6 +806,22 @@ export default function CheckoutPage() {
                             <>
                               <span>&bull;</span>
                               <span>{ticket.quantity_remaining} remaining</span>
+                            </>
+                          )}
+                          {!isTierSoldOut && isNotStarted && saleStart && (
+                            <>
+                              <span>&bull;</span>
+                              <span className="text-xs font-medium text-amber-600 dark:text-amber-400">
+                                Sales start: {formatSaleDate(saleStart)}
+                              </span>
+                            </>
+                          )}
+                          {!isTierSoldOut && !isNotStarted && saleEnd && (
+                            <>
+                              <span>&bull;</span>
+                              <span className="text-xs font-medium text-muted-foreground">
+                                Sales end: {formatSaleDate(saleEnd)}
+                              </span>
                             </>
                           )}
                         </div>
@@ -808,7 +855,7 @@ export default function CheckoutPage() {
             )}
           </div>
 
-          {!success && !isWaitlistActive && !allSoldOut && !isSalesPaused && !(guestStep && !session) && (
+          {!success && !isWaitlistActive && (!allSoldOut || isClaimingWaitlist) && !isSalesPaused && !(guestStep && !session) && (
             <div className="p-4 sm:p-6 border-t border-border bg-card">
               <div className="mb-6">
                 <div className="flex items-center gap-2">

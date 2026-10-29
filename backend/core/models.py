@@ -203,6 +203,9 @@ class TicketType(models.Model):
 
     @property
     def is_sold_out(self):
+        from django.utils import timezone
+        if self.sale_end and timezone.now() > self.sale_end:
+            return True
         return self.quantity_remaining <= 0
 
     def clean(self):

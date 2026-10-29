@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { TicketCheck, Compass, Calendar, MapPin, Clock, ChevronRight, Loader2, Image as ImageIcon } from "lucide-react";
+import { TicketCheck, Compass, Calendar, MapPin, Clock, ChevronRight, Loader2, Image as ImageIcon, ArrowRight } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
@@ -41,13 +41,13 @@ export default function AttendeeDashboard() {
       }
     };
     if (session) fetchDashboard();
-  }, [session]);
+  }, [session, status]);
 
   if (loading) {
     return <div className="p-8 flex justify-center items-center h-full min-h-[50vh]"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
   }
 
-  const { upcoming_tickets = 0, saved_events = 0, following = 0, next_event = null, suggested_events = [] } = data || {};
+  const { upcoming_tickets = 0, saved_events = 0, following = 0, next_event = null, suggested_events = [], waitlist_entries = [], waitlist_count = 0 } = data || {};
 
   return (
     <div className="p-4 md:p-8 max-w-5xl mx-auto space-y-12">
@@ -71,6 +71,10 @@ export default function AttendeeDashboard() {
         <div className="bg-background border border-border p-4 rounded-2xl shadow-sm hover:border-primary/30 transition-colors">
           <p className="text-sm font-bold text-muted-foreground mb-1">Following</p>
           <p className="text-3xl font-extrabold text-foreground">{following}</p>
+        </div>
+        <div className="bg-background border border-border p-4 rounded-2xl shadow-sm hover:border-primary/30 transition-colors">
+          <p className="text-sm font-bold text-muted-foreground mb-1">Active Waitlists</p>
+          <p className="text-3xl font-extrabold text-foreground">{waitlist_count}</p>
         </div>
       </div>
 
@@ -163,17 +167,89 @@ export default function AttendeeDashboard() {
           <div className="bg-card border border-border rounded-3xl p-6 md:p-8 shadow-sm flex-1 flex flex-col justify-center relative overflow-hidden">
             <div className="absolute -right-6 -top-6 w-32 h-32 bg-warning/10 rounded-full blur-2xl"></div>
             
-            <div className="flex items-start gap-5 relative z-10">
-              <div className="w-12 h-12 rounded-full bg-warning/10 flex items-center justify-center shrink-0 border border-warning/20">
-                <Clock className="w-6 h-6 text-warning" />
+            {waitlist_entries.length > 0 ? (
+              <div className="space-y-4 relative z-10 max-h-[340px] overflow-y-auto pr-1">
+                {waitlist_entries.map((entry: any) => {
+                  const statusConfig: Record<string, { label: string; badgeClass: string }> = {
+                    ACCEPTED: {
+                      label: "Approved — Reserved",
+                      badgeClass: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20",
+                    },
+                    PENDING: {
+                      label: "Pending Approval",
+                      badgeClass: "bg-amber-500/10 text-amber-600 border-amber-500/20",
+                    },
+                    COMPLETED: {
+                      label: "Purchased",
+                      badgeClass: "bg-primary/10 text-primary border-primary/20",
+                    },
+                    DECLINED: {
+                      label: "Declined",
+                      badgeClass: "bg-destructive/10 text-destructive border-destructive/20",
+                    },
+                    EXPIRED: {
+                      label: "Expired",
+                      badgeClass: "bg-muted text-muted-foreground border-border",
+                    },
+                  };
+                  const cfg = statusConfig[entry.status] || statusConfig.PENDING;
+                  return (
+                    <div
+                      key={entry.id}
+                      className="p-4 rounded-2xl border border-border bg-background/80 hover:border-primary/30 transition-all space-y-3"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <Link
+                            href={`/events/${entry.event_slug}`}
+                            className="font-bold text-foreground hover:text-primary transition-colors text-[15px] line-clamp-1"
+                          >
+                            {entry.event_title}
+                          </Link>
+                          <p className="text-xs text-muted-foreground font-medium mt-0.5">
+                            {entry.quantity}x {entry.ticket_type_name}
+                            {entry.ticket_price > 0
+                              ? ` • ₦${((entry.ticket_price * entry.quantity) / 100).toLocaleString()}`
+                              : " • Free"}
+                          </p>
+                        </div>
+                        <span
+                          className={`px-2.5 py-1 rounded-full text-[11px] font-bold border shrink-0 ${cfg.badgeClass}`}
+                        >
+                          {cfg.label}
+                        </span>
+                      </div>
+
+                      {entry.status === "ACCEPTED" && entry.checkout_url && (
+                        <div className="pt-1 flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-t border-border/60">
+                          <p className="text-xs text-emerald-600 font-medium">
+                            Your spot is approved! Complete your purchase before the reservation expires.
+                          </p>
+                          <Link
+                            href={entry.checkout_url}
+                            className="inline-flex items-center justify-center gap-1.5 bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-2 rounded-xl text-xs font-bold transition-colors shrink-0"
+                          >
+                            Complete Purchase <ArrowRight className="w-3.5 h-3.5" />
+                          </Link>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
-              <div className="pt-1">
-                <h3 className="font-extrabold text-foreground text-lg mb-1">No waitlist activity</h3>
-                <p className="text-muted-foreground font-medium mb-5 text-[15px] leading-relaxed">
-                  You aren't on any waitlists right now. Waitlists let you get in line for sold-out events.
-                </p>
+            ) : (
+              <div className="flex items-start gap-5 relative z-10">
+                <div className="w-12 h-12 rounded-full bg-warning/10 flex items-center justify-center shrink-0 border border-warning/20">
+                  <Clock className="w-6 h-6 text-warning" />
+                </div>
+                <div className="pt-1">
+                  <h3 className="font-extrabold text-foreground text-lg mb-1">No waitlist activity</h3>
+                  <p className="text-muted-foreground font-medium mb-5 text-[15px] leading-relaxed">
+                    You aren't on any waitlists right now. Waitlists let you get in line for sold-out events.
+                  </p>
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </section>
       </div>

@@ -94,12 +94,26 @@ class TicketTypeSerializer(serializers.ModelSerializer):
         return max((obj.quantity or 0) - sold, 0)
 
     def get_is_sold_out(self, obj):
+        from django.utils import timezone
+        if obj.sale_end and timezone.now() > obj.sale_end:
+            return True
         return self.get_quantity_remaining(obj) <= 0
 
 
 class TicketTypeCreateSerializer(serializers.ModelSerializer):
     """Used when creating/updating ticket types within an event."""
     id = serializers.IntegerField(required=False)
+    sale_start = serializers.DateTimeField(required=False, allow_null=True)
+    sale_end = serializers.DateTimeField(required=False, allow_null=True)
+
+    def to_internal_value(self, data):
+        if isinstance(data, dict):
+            data = dict(data)
+            if not data.get('sale_start'):
+                data['sale_start'] = None
+            if not data.get('sale_end'):
+                data['sale_end'] = None
+        return super().to_internal_value(data)
 
     class Meta:
         model = TicketType
@@ -139,6 +153,7 @@ class EventSerializer(serializers.ModelSerializer):
     ticket_types = TicketTypeSerializer(many=True, read_only=True)
     category = EventCategorySerializer(read_only=True)
     venue = VenueSerializer(read_only=True)
+    tickets_sold_count = serializers.SerializerMethodField()
 
     is_followed = serializers.SerializerMethodField()
     follower_count = serializers.SerializerMethodField()
@@ -151,7 +166,8 @@ class EventSerializer(serializers.ModelSerializer):
             'country', 'state', 'city', 'location_name', 'organizer_contact', 'emergency_contact', 
             'instagram_handle', 'tiktok_handle', 'age_restriction', 'dress_code', 'lineup', 'personalized_dp_enabled',
             'is_online', 'status', 'absorb_fees', 'start_time', 'end_time', 'ticket_types',
-            'sales_paused', 'waitlist_enabled', 'is_followed', 'follower_count'
+            'sales_paused', 'waitlist_enabled', 'is_followed', 'follower_count',
+            'page_views', 'tickets_sold_count'
         )
 
     cover_image = serializers.SerializerMethodField()
@@ -188,6 +204,15 @@ class EventSerializer(serializers.ModelSerializer):
     def get_follower_count(self, obj):
         from core.models import FollowedOrganizer
         return FollowedOrganizer.objects.filter(organizer=obj.organizer).count()
+
+    def get_tickets_sold_count(self, obj):
+        if hasattr(obj, 'tickets_sold_total') and obj.tickets_sold_total is not None:
+            return int(obj.tickets_sold_total)
+        sold = OrderItem.objects.filter(
+            order__event=obj,
+            order__status='COMPLETED'
+        ).aggregate(total=Sum('quantity'))['total']
+        return int(sold or 0)
 
 
 class EventCreateUpdateSerializer(serializers.ModelSerializer):
@@ -351,6 +376,7 @@ class CheckoutRequestSerializer(serializers.Serializer):
     
     # Discounts & Referrals
     discount_code = serializers.CharField(required=False, allow_blank=True, default='')
+    waitlist_token = serializers.CharField(required=False, allow_blank=True, default='')
 
 
 class OrderItemSerializer(serializers.ModelSerializer):
@@ -614,4 +640,10 @@ class WaitlistEntrySerializer(serializers.ModelSerializer):
     def get_available_inventory(self, obj):
         if not obj.ticket_type:
             return 0
-        return max(0, obj.ticket_type.quantity - obj.ticket_type.quantity_sold)
+        from django.db.models import Sum
+        completed_sold = OrderItem.objects.filter(
+            ticket_type=obj.ticket_type,
+            order__status='COMPLETED'
+        ).aggregate(total=Sum('quantity'))['total']
+        sold = completed_sold if completed_sold is not None else (obj.ticket_type.quantity_sold or 0)
+        return max(0, obj.ticket_type.quantity - sold)

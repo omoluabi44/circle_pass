@@ -560,74 +560,130 @@ export default function EventDetailsPage() {
                 
                 <div className="bg-card h-full w-full rounded-[1.35rem] border border-border/50 relative overflow-hidden">
                   <div className="p-8 border-b-2 border-dashed border-border/60">
-                    <div className="text-center mb-4">
-                      <p className="text-sm font-bold text-primary uppercase tracking-widest mb-1">Admit One</p>
-                      <p className="text-4xl font-black text-foreground">{priceStr}</p>
-                    </div>
-
                     {(() => {
-                      const totalCapacity = event.ticket_types?.reduce((acc: number, t: any) => acc + (t.quantity || 0), 0) || 0;
-                      const totalSold = event.ticket_types?.reduce((acc: number, t: any) => acc + (t.quantity_sold || 0), 0) || 0;
+                      const now = new Date();
+                      const formatSaleDate = (d: Date) =>
+                        d.toLocaleString("en-US", {
+                          month: "short",
+                          day: "numeric",
+                          year: "numeric",
+                          hour: "numeric",
+                          minute: "2-digit",
+                        });
+
+                      const tiers = event.ticket_types || [];
+                      const isTierSoldOutFn = (t: any) => {
+                        const saleEnd = t.sale_end ? new Date(t.sale_end) : null;
+                        const isSaleEnded = Boolean(saleEnd && now > saleEnd);
+                        return Boolean(
+                          t.is_sold_out ||
+                            isSaleEnded ||
+                            (t.quantity > 0 && (t.quantity_sold ?? 0) >= t.quantity)
+                        );
+                      };
+
+                      const totalCapacity = tiers.reduce((acc: number, t: any) => acc + (t.quantity || 0), 0) || 0;
+                      const totalSold = tiers.reduce((acc: number, t: any) => acc + (t.quantity_sold || 0), 0) || 0;
                       const isSoldOut = Boolean(
-                        event.ticket_types &&
-                        event.ticket_types.length > 0 &&
-                        (
-                          (totalCapacity > 0 && totalSold >= totalCapacity) ||
-                          event.ticket_types.every((t: any) => t.is_sold_out || (t.quantity > 0 && (t.quantity_sold ?? 0) >= t.quantity))
-                        )
+                        tiers.length > 0 &&
+                          ((totalCapacity > 0 && totalSold >= totalCapacity) ||
+                            tiers.every((t: any) => isTierSoldOutFn(t)))
                       );
-                      const waitlistEnabled = Boolean(event.waitlist_enabled);
-                      const isPast = new Date() > new Date(event.end_time);
-                      
-                      if (event.sales_paused) {
-                        return (
-                          <button 
-                            disabled
-                            className="w-full py-4 bg-muted text-muted-foreground rounded-xl font-bold text-lg cursor-not-allowed flex items-center justify-center gap-2"
-                          >
-                            <span className="relative z-10">Sales Paused</span>
-                          </button>
-                        );
-                      } else if ((isPast || isSoldOut) && waitlistEnabled) {
-                        return (
-                          <Link 
-                            href={`/events/${slug}/checkout`}
-                            className="w-full py-4 bg-orange-500 text-white rounded-xl font-bold text-lg hover:bg-orange-600 transition shadow-[0_4px_14px_0_rgba(249,115,22,0.39)] flex items-center justify-center gap-2 relative overflow-hidden group"
-                          >
-                            <Ticket className="w-5 h-5 relative z-10" />
-                            <span className="relative z-10">Join Waitlist</span>
-                          </Link>
-                        );
-                      } else if (isPast) {
-                        return (
-                          <button 
-                            disabled
-                            className="w-full py-4 bg-muted text-muted-foreground rounded-xl font-bold text-lg cursor-not-allowed flex items-center justify-center gap-2"
-                          >
-                            <span className="relative z-10">Event Over</span>
-                          </button>
-                        );
-                      } else if (isSoldOut) {
-                        return (
-                          <button 
-                            disabled
-                            className="w-full py-4 bg-muted text-muted-foreground rounded-xl font-bold text-lg cursor-not-allowed flex items-center justify-center gap-2"
-                          >
-                            <span className="relative z-10">Sold Out</span>
-                          </button>
-                        );
-                      } else {
-                        return (
-                          <Link 
-                            href={`/events/${slug}/checkout`}
-                            className="w-full py-4 bg-primary text-primary-foreground rounded-xl font-bold text-lg hover:bg-primary/90 transition shadow-[0_4px_14px_0_rgba(99,102,241,0.39)] flex items-center justify-center gap-2 relative overflow-hidden group"
-                          >
-                            <div className="absolute inset-0 w-full h-full bg-white/20 scale-x-0 group-hover:scale-x-100 origin-left transition-transform duration-300" />
-                            <Ticket className="w-5 h-5 relative z-10" />
-                            <span className="relative z-10">Get Tickets</span>
-                          </Link>
-                        );
+
+                      const availableTiers = tiers.filter((t: any) => !isTierSoldOutFn(t));
+                      const activeTiers = availableTiers.filter(
+                        (t: any) => !t.sale_start || now >= new Date(t.sale_start)
+                      );
+                      const upcomingTiers = availableTiers.filter(
+                        (t: any) => t.sale_start && now < new Date(t.sale_start)
+                      );
+                      const allNotStarted =
+                        !isSoldOut && availableTiers.length > 0 && activeTiers.length === 0 && upcomingTiers.length > 0;
+
+                      // Determine headline sale window label under priceStr
+                      let headlineSaleText: string | null = null;
+                      if (!isSoldOut) {
+                        if (allNotStarted) {
+                          const earliestStart = upcomingTiers
+                            .map((t: any) => new Date(t.sale_start))
+                            .sort((a: Date, b: Date) => a.getTime() - b.getTime())[0];
+                          if (earliestStart) {
+                            headlineSaleText = `Sales start: ${formatSaleDate(earliestStart)}`;
+                          }
+                        } else if (activeTiers.length > 0) {
+                          const activeWithEnd = activeTiers
+                            .filter((t: any) => t.sale_end && now <= new Date(t.sale_end))
+                            .map((t: any) => new Date(t.sale_end))
+                            .sort((a: Date, b: Date) => a.getTime() - b.getTime());
+                          if (activeWithEnd.length > 0) {
+                            headlineSaleText = `Sales end: ${formatSaleDate(activeWithEnd[0])}`;
+                          }
+                        }
                       }
+
+                      const waitlistEnabled = Boolean(event.waitlist_enabled);
+                      const isPast = now > new Date(event.end_time);
+
+                      return (
+                        <>
+                          <div className="text-center mb-4">
+                            <p className="text-sm font-bold text-primary uppercase tracking-widest mb-1">Admit One</p>
+                            <p className="text-4xl font-black text-foreground">{priceStr}</p>
+                            {headlineSaleText && (
+                              <p className="text-xs font-semibold text-muted-foreground mt-1.5">
+                                {headlineSaleText}
+                              </p>
+                            )}
+                          </div>
+
+                          {event.sales_paused ? (
+                            <button 
+                              disabled
+                              className="w-full py-4 bg-muted text-muted-foreground rounded-xl font-bold text-lg cursor-not-allowed flex items-center justify-center gap-2"
+                            >
+                              <span className="relative z-10">Sales Paused</span>
+                            </button>
+                          ) : (isPast || isSoldOut) && waitlistEnabled ? (
+                            <Link 
+                              href={`/events/${slug}/checkout`}
+                              className="w-full py-4 bg-orange-500 text-white rounded-xl font-bold text-lg hover:bg-orange-600 transition shadow-[0_4px_14px_0_rgba(249,115,22,0.39)] flex items-center justify-center gap-2 relative overflow-hidden group"
+                            >
+                              <Ticket className="w-5 h-5 relative z-10" />
+                              <span className="relative z-10">Join Waitlist</span>
+                            </Link>
+                          ) : isPast ? (
+                            <button 
+                              disabled
+                              className="w-full py-4 bg-muted text-muted-foreground rounded-xl font-bold text-lg cursor-not-allowed flex items-center justify-center gap-2"
+                            >
+                              <span className="relative z-10">Event Over</span>
+                            </button>
+                          ) : isSoldOut ? (
+                            <button 
+                              disabled
+                              className="w-full py-4 bg-muted text-muted-foreground rounded-xl font-bold text-lg cursor-not-allowed flex items-center justify-center gap-2"
+                            >
+                              <span className="relative z-10">Sold Out</span>
+                            </button>
+                          ) : allNotStarted ? (
+                            <button 
+                              disabled
+                              className="w-full py-4 bg-muted text-muted-foreground rounded-xl font-bold text-lg cursor-not-allowed flex items-center justify-center gap-2"
+                            >
+                              <span className="relative z-10">Sales Yet to Start</span>
+                            </button>
+                          ) : (
+                            <Link 
+                              href={`/events/${slug}/checkout`}
+                              className="w-full py-4 bg-primary text-primary-foreground rounded-xl font-bold text-lg hover:bg-primary/90 transition shadow-[0_4px_14px_0_rgba(99,102,241,0.39)] flex items-center justify-center gap-2 relative overflow-hidden group"
+                            >
+                              <div className="absolute inset-0 w-full h-full bg-white/20 scale-x-0 group-hover:scale-x-100 origin-left transition-transform duration-300" />
+                              <Ticket className="w-5 h-5 relative z-10" />
+                              <span className="relative z-10">Get Tickets</span>
+                            </Link>
+                          )}
+                        </>
+                      );
                     })()}
                   </div>
                   
@@ -637,19 +693,57 @@ export default function EventDetailsPage() {
                       Available Tiers
                     </h3>
                     <div className="space-y-4">
-                      {event.ticket_types?.map((ticket: any) => (
-                        <div key={ticket.id} className="flex flex-col gap-1 pb-3 border-b border-border/50 last:border-0 last:pb-0">
-                          <div className="flex items-center justify-between text-sm">
-                            <span className="text-foreground font-bold">{ticket.name}</span>
-                            <span className="font-bold text-primary">
-                              {ticket.price === 0 ? "Free" : `₦${(ticket.price / 100).toLocaleString()}`}
-                            </span>
+                      {event.ticket_types?.map((ticket: any) => {
+                        const now = new Date();
+                        const saleStart = ticket.sale_start ? new Date(ticket.sale_start) : null;
+                        const saleEnd = ticket.sale_end ? new Date(ticket.sale_end) : null;
+                        const isNotStarted = Boolean(saleStart && now < saleStart);
+                        const isSaleEnded = Boolean(saleEnd && now > saleEnd);
+                        const isTierSoldOut = Boolean(
+                          ticket.is_sold_out ||
+                            isSaleEnded ||
+                            (ticket.quantity > 0 && (ticket.quantity_sold ?? 0) >= ticket.quantity)
+                        );
+                        const formatSaleDate = (d: Date) =>
+                          d.toLocaleString("en-US", {
+                            month: "short",
+                            day: "numeric",
+                            year: "numeric",
+                            hour: "numeric",
+                            minute: "2-digit",
+                          });
+
+                        return (
+                          <div key={ticket.id} className="flex flex-col gap-1 pb-3 border-b border-border/50 last:border-0 last:pb-0">
+                            <div className="flex items-center justify-between text-sm">
+                              <div className="flex items-center gap-2">
+                                <span className="text-foreground font-bold">{ticket.name}</span>
+                                {isTierSoldOut && (
+                                  <span className="px-2 py-0.5 text-[10px] font-bold uppercase bg-destructive/10 text-destructive rounded-full">
+                                    Sold Out
+                                  </span>
+                                )}
+                              </div>
+                              <span className={`font-bold ${isTierSoldOut ? "text-muted-foreground line-through" : "text-primary"}`}>
+                                {ticket.price === 0 ? "Free" : `₦${(ticket.price / 100).toLocaleString()}`}
+                              </span>
+                            </div>
+                            {!isTierSoldOut && isNotStarted && saleStart && (
+                              <p className="text-xs font-medium text-amber-600 dark:text-amber-400">
+                                Sales start: {formatSaleDate(saleStart)}
+                              </p>
+                            )}
+                            {!isTierSoldOut && !isNotStarted && saleEnd && (
+                              <p className="text-xs font-medium text-muted-foreground">
+                                Sales end: {formatSaleDate(saleEnd)}
+                              </p>
+                            )}
+                            {ticket.description && (
+                              <p className="text-xs text-muted-foreground line-clamp-2">{ticket.description}</p>
+                            )}
                           </div>
-                          {ticket.description && (
-                            <p className="text-xs text-muted-foreground line-clamp-2">{ticket.description}</p>
-                          )}
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
                 </div>

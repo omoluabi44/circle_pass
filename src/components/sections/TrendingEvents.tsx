@@ -16,11 +16,20 @@ export function TrendingEvents() {
     async function fetchEvents() {
       try {
         const { getPublicEvents } = await import('@/lib/api/events');
-        const data = await getPublicEvents();
+        const data = await getPublicEvents({ ordering: 'trending', public: 'true' });
         const eventsList = Array.isArray(data) ? data : (data.results || []);
         
         // Filter out past events
         const upcomingEvents = eventsList.filter((e: any) => new Date(e.end_time) > new Date());
+        upcomingEvents.sort((a: any, b: any) => {
+          const aSold = a.tickets_sold_count ?? (a.ticket_types?.reduce((sum: number, t: any) => sum + (t.quantity_sold || 0), 0) || 0);
+          const bSold = b.tickets_sold_count ?? (b.ticket_types?.reduce((sum: number, t: any) => sum + (t.quantity_sold || 0), 0) || 0);
+          if (bSold !== aSold) return bSold - aSold;
+          const aViews = a.page_views || 0;
+          const bViews = b.page_views || 0;
+          if (bViews !== aViews) return bViews - aViews;
+          return (b.id || 0) - (a.id || 0);
+        });
         
         const mapped = upcomingEvents.slice(0, 3).map((e: any) => {
           const startDate = new Date(e.start_time);

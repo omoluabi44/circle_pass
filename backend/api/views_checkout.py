@@ -8,14 +8,14 @@ and return Paystack initialization data.
 import logging
 
 from django.db import transaction
-from django.db.models import F
+from django.db.models import F, Sum
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from core.models import Event, TicketType, Order, OrderItem, Ticket, AttendeeProfile, Payment
+from core.models import Event, TicketType, Order, OrderItem, Ticket, AttendeeProfile, Payment, WaitlistEntry
 from core.utils.qr import generate_secure_qr_token
 from core.utils.paystack import initialize_transaction
 from core.utils.fulfillment import fulfill_order
@@ -121,6 +121,42 @@ class CheckoutView(APIView):
                             status=status.HTTP_400_BAD_REQUEST,
                         )
 
+                    # Sync quantity_sold with authoritative completed orders
+                    completed_sold = OrderItem.objects.filter(
+                        ticket_type=tt,
+                        order__status='COMPLETED'
+                    ).aggregate(total=Sum('quantity'))['total']
+                    if completed_sold is not None and tt.quantity_sold != completed_sold:
+                        TicketType.objects.filter(pk=tt.pk).update(quantity_sold=completed_sold)
+                        tt.quantity_sold = completed_sold
+
+                    # Resolve active ACCEPTED waitlist reservation if present
+                    waitlist_token = (data.get('waitlist_token') or request.data.get('waitlist_token') or '').strip()
+                    buyer_lookup_email = (guest_email or (request.user.email if request.user.is_authenticated else '')).strip()
+                    waitlist_entry = None
+                    if waitlist_token:
+                        waitlist_entry = WaitlistEntry.objects.select_for_update().filter(
+                            access_token=waitlist_token,
+                            event=event,
+                            ticket_type=tt,
+                            status='ACCEPTED'
+                        ).first()
+                    if not waitlist_entry and buyer_lookup_email:
+                        waitlist_entry = WaitlistEntry.objects.select_for_update().filter(
+                            event=event,
+                            ticket_type=tt,
+                            email__iexact=buyer_lookup_email,
+                            status='ACCEPTED'
+                        ).first()
+                    if waitlist_entry:
+                        item['_waitlist_entry'] = waitlist_entry
+                        if tt.quantity_sold + item['quantity'] > tt.quantity:
+                            needed_qty = (tt.quantity_sold + item['quantity']) - tt.quantity
+                            TicketType.objects.filter(pk=tt.pk).update(
+                                quantity=F('quantity') + needed_qty
+                            )
+                            tt.refresh_from_db()
+
                     # Check inventory — OVERSELL PREVENTION
                     if tt.quantity_sold + item['quantity'] > tt.quantity:
                         remaining = tt.quantity - tt.quantity_sold
@@ -218,6 +254,14 @@ class CheckoutView(APIView):
 
                 # Note: Inventory quantity_sold is recorded only upon successful payment fulfillment
                 # (in fulfill_order). Free orders fulfill immediately below.
+                # Link any matched waitlist entry to this order so fulfill_order marks it COMPLETED
+                for item in items:
+                    wl_entry = item.get('_waitlist_entry')
+                    if wl_entry:
+                        if wl_entry.order_id and wl_entry.order_id != order.id:
+                            Order.objects.filter(pk=wl_entry.order_id, status='PENDING').update(status='CANCELLED')
+                        wl_entry.order = order
+                        wl_entry.save(update_fields=['order', 'updated_at'])
                 # Paid orders remain PENDING until Paystack confirms payment.
                 if total_amount > 0:
                     try:

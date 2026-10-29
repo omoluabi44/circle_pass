@@ -7,6 +7,14 @@ import { useParams } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { toast } from 'react-hot-toast';
 
+function getLocalDatetimeString(dateString: string | null | undefined) {
+  if (!dateString) return "";
+  const d = new Date(dateString);
+  if (isNaN(d.getTime())) return "";
+  const pad = (n: number) => n.toString().padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
 export default function TicketsPage() {
   const params = useParams();
   const id = params?.id as string;
@@ -21,6 +29,10 @@ export default function TicketsPage() {
   const [price, setPrice] = useState('');
   const [quantity, setQuantity] = useState('');
   const [tier, setTier] = useState('REGULAR');
+  const [saleStart, setSaleStart] = useState('');
+  const [saleEnd, setSaleEnd] = useState('');
+  const [description, setDescription] = useState('');
+  const [isActive, setIsActive] = useState(true);
   const [loading, setLoading] = useState(true);
   const [editingTicketId, setEditingTicketId] = useState<number | null>(null);
 
@@ -47,6 +59,10 @@ export default function TicketsPage() {
     setPrice('');
     setQuantity('');
     setTier('REGULAR');
+    setSaleStart('');
+    setSaleEnd('');
+    setDescription('');
+    setIsActive(true);
   };
 
   const openEditModal = (ticket: any) => {
@@ -55,6 +71,10 @@ export default function TicketsPage() {
     setPrice((ticket.price / 100).toString());
     setQuantity(ticket.quantity.toString());
     setTier(ticket.tier);
+    setSaleStart(getLocalDatetimeString(ticket.sale_start));
+    setSaleEnd(getLocalDatetimeString(ticket.sale_end));
+    setDescription(ticket.description || '');
+    setIsActive(ticket.is_active !== false);
     setShowModal(true);
   };
 
@@ -84,6 +104,10 @@ export default function TicketsPage() {
       toast.error('Please fill all required fields correctly (FREE must have 0 price).');
       return;
     }
+    if (saleStart && saleEnd && new Date(saleEnd) <= new Date(saleStart)) {
+      toast.error('Sale End must be after Sale Start.');
+      return;
+    }
     
     setUpdating(true);
     try {
@@ -92,8 +116,10 @@ export default function TicketsPage() {
         tier,
         price: (Number(price) || 0) * 100,
         quantity: Number(quantity),
-        description: "",
-        is_active: true
+        sale_start: saleStart ? new Date(saleStart).toISOString() : null,
+        sale_end: saleEnd ? new Date(saleEnd).toISOString() : null,
+        description: description || "",
+        is_active: isActive
       };
       
       let updatedTicketTypes;
@@ -236,7 +262,7 @@ export default function TicketsPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-muted-foreground mb-1">Quantity</label>
+                  <label className="block text-sm font-medium text-muted-foreground mb-1">Total Qty</label>
                   <input 
                     type="number" 
                     value={quantity}
@@ -244,6 +270,36 @@ export default function TicketsPage() {
                     className="w-full bg-background border border-border rounded-xl px-3 py-2 text-foreground" 
                   />
                 </div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-muted-foreground mb-1">Sale Start</label>
+                  <input 
+                    type="datetime-local" 
+                    value={saleStart}
+                    onChange={(e) => setSaleStart(e.target.value)}
+                    className="w-full bg-background border border-border rounded-xl px-3 py-2 text-foreground text-sm" 
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-muted-foreground mb-1">Sale End</label>
+                  <input 
+                    type="datetime-local" 
+                    value={saleEnd}
+                    onChange={(e) => setSaleEnd(e.target.value)}
+                    className="w-full bg-background border border-border rounded-xl px-3 py-2 text-foreground text-sm" 
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-muted-foreground mb-1">Description (optional)</label>
+                <input 
+                  type="text" 
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="Brief ticket description"
+                  className="w-full bg-background border border-border rounded-xl px-3 py-2 text-foreground text-sm" 
+                />
               </div>
             </div>
             <div className="mt-6 flex justify-end space-x-3">
