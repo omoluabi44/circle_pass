@@ -5,7 +5,7 @@ import Link from "next/link";
 import {
   ArrowLeft, Building2, User, Globe, AtSign, Mail, Phone, Calendar,
   Ticket, Wallet, Banknote, CheckCircle, Clock, ExternalLink, ShieldCheck,
-  BarChart3, Users, AlertCircle, Pencil
+  BarChart3, Users, AlertCircle, Pencil, FileText, MapPin
 } from "lucide-react";
 import EditOrganizerButton from "./EditOrganizerButton";
 import TransferOrganizerEventButton from "./TransferOrganizerEventButton";
@@ -198,6 +198,57 @@ export default async function AdminOrganizerDashboardPage({
             </div>
             <div className="text-xs text-muted-foreground">
               Status: Published & Live
+            </div>
+          </div>
+        </div>
+
+        {/* Compliance & Address Verification Details */}
+        <div className="bg-card border border-border rounded-xl p-5 shadow-sm space-y-4">
+          <h2 className="text-sm font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+            <ShieldCheck className="w-4 h-4 text-primary" /> Identity & Address Verification
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
+            <div>
+              <span className="text-xs text-muted-foreground block mb-1 flex items-center gap-1">
+                <MapPin className="w-3.5 h-3.5 text-primary" /> Verified Address
+              </span>
+              <span className="font-semibold text-foreground">{organizer.address || "Not provided"}</span>
+            </div>
+            <div>
+              <span className="text-xs text-muted-foreground block mb-1 flex items-center gap-1">
+                <FileText className="w-3.5 h-3.5 text-primary" /> CAC Document
+              </span>
+              {organizer.cac_document ? (
+                <a href={organizer.cac_document} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline font-semibold inline-flex items-center gap-1">
+                  View CAC <ExternalLink className="w-3 h-3" />
+                </a>
+              ) : (
+                <span className="text-muted-foreground">Not uploaded</span>
+              )}
+            </div>
+            <div>
+              <span className="text-xs text-muted-foreground block mb-1 flex items-center gap-1">
+                <FileText className="w-3.5 h-3.5 text-primary" /> Director ID
+              </span>
+              {organizer.id_document ? (
+                <a href={organizer.id_document} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline font-semibold inline-flex items-center gap-1">
+                  View ID <ExternalLink className="w-3 h-3" />
+                </a>
+              ) : (
+                <span className="text-muted-foreground">Not uploaded</span>
+              )}
+            </div>
+            <div>
+              <span className="text-xs text-muted-foreground block mb-1 flex items-center gap-1">
+                <FileText className="w-3.5 h-3.5 text-primary" /> Proof of Address
+              </span>
+              {organizer.address_document ? (
+                <a href={organizer.address_document} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline font-semibold inline-flex items-center gap-1">
+                  View Address Doc <ExternalLink className="w-3 h-3" />
+                </a>
+              ) : (
+                <span className="text-muted-foreground">Not uploaded</span>
+              )}
             </div>
           </div>
         </div>

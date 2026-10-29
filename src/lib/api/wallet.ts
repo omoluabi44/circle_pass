@@ -40,7 +40,7 @@ export async function addBankAccount(token: string, data: {
   });
   if (!res.ok) {
     const err = await res.json();
-    throw new Error(err.detail || 'Failed to add bank account');
+    throw new Error(err.detail || err.error || 'Failed to add bank account');
   }
   return res.json();
 }

@@ -58,6 +58,10 @@ export default async function AdminUsersPage() {
                           {v.id_document ? (
                             <a href={v.id_document} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline font-medium">ID</a>
                           ) : <span className="text-muted-foreground">No ID</span>}
+                          <span className="text-border">|</span>
+                          {v.address_document ? (
+                            <a href={v.address_document} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline font-medium" title={v.address || "Proof of Address"}>Address</a>
+                          ) : <span className="text-muted-foreground">No Address</span>}
                         </div>
                       </td>
                       <td className="px-4 py-3">

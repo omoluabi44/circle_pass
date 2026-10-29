@@ -8,6 +8,12 @@ from rest_framework.views import APIView
 
 from api.permissions import IsOrganizerOrAdmin
 from core.models import OrganizerWallet, WalletTransaction
+from core.utils.transfers import (
+    resolve_account_number,
+    is_organizer_bank_name_match,
+    get_organizer_bank_name_mismatch_error,
+)
+
 
 class OrganizerWalletView(APIView):
     """
@@ -41,13 +47,51 @@ class OrganizerWalletView(APIView):
             wallet, _ = OrganizerWallet.objects.get_or_create(organizer=profile)
         except Exception:
             return Response({'detail': 'Wallet not found.'}, status=status.HTTP_404_NOT_FOUND)
-        
+
+        bank_code = (request.data.get('bank_code') or '').strip()
+        account_number = (request.data.get('account_number') or '').strip()
+        bank_name = (request.data.get('bank_name') or '').strip()
+        submitted_account_name = (request.data.get('account_name') or '').strip()
+
+        if any(k in request.data for k in ('bank_code', 'account_number', 'bank_name', 'account_name')):
+            if not bank_code or not account_number:
+                return Response(
+                    {'detail': 'bank_code and account_number are required.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            try:
+                resolved = resolve_account_number(bank_code, account_number)
+                account_name = resolved.get('account_name', '') or submitted_account_name
+            except Exception as e:
+                return Response(
+                    {'detail': f'Account verification failed: {str(e)}'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            if not is_organizer_bank_name_match(profile.company_name, account_name):
+                err_msg = get_organizer_bank_name_mismatch_error(profile.company_name, account_name)
+                return Response(
+                    {
+                        'detail': err_msg,
+                        'error': err_msg,
+                        'account_name': account_name,
+                        'organizer_name': profile.company_name,
+                        'name_mismatch': True,
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            wallet.bank_code = bank_code
+            wallet.bank_name = bank_name
+            wallet.account_number = account_number
+            wallet.account_name = account_name
+            wallet.save(update_fields=['bank_code', 'bank_name', 'account_number', 'account_name', 'updated_at'])
+
         from api.serializers import OrganizerWalletSerializer
-        serializer = OrganizerWalletSerializer(wallet, data=request.data, partial=True)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        serializer = OrganizerWalletSerializer(wallet)
+        return Response(serializer.data)
+
 
 class WalletTransactionListView(generics.ListAPIView):
     """
@@ -61,8 +105,6 @@ class WalletTransactionListView(generics.ListAPIView):
         return WalletTransactionSerializer
 
     def get_queryset(self):
-
-
         return WalletTransaction.objects.filter(
             wallet__organizer__user=self.request.user
         ).order_by('-created_at')

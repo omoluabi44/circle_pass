@@ -73,6 +73,28 @@ class PaystackResolveAccountView(APIView):
             res_data = res.json()
             if not res_data.get('status'):
                 return Response({'error': res_data.get('message', 'Failed to resolve account')}, status=400)
+            account_name = (res_data.get('data') or {}).get('account_name', '')
+            organizer = getattr(request.user, 'organizer_profile', None)
+            if organizer:
+                from core.utils.transfers import (
+                    is_organizer_bank_name_match,
+                    get_organizer_bank_name_mismatch_error,
+                )
+                if not is_organizer_bank_name_match(organizer.company_name, account_name):
+                    err_msg = get_organizer_bank_name_mismatch_error(organizer.company_name, account_name)
+                    return Response(
+                        {
+                            'status': False,
+                            'error': err_msg,
+                            'detail': err_msg,
+                            'message': err_msg,
+                            'account_name': account_name,
+                            'organizer_name': organizer.company_name,
+                            'name_mismatch': True,
+                        },
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+
             return Response(res_data)
         except Exception as e:
             return Response({'error': str(e)}, status=400)

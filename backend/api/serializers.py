@@ -57,7 +57,7 @@ from core.models import OrganizerVerification
 class OrganizerVerificationSerializer(serializers.ModelSerializer):
     class Meta:
         model = OrganizerVerification
-        fields = ('id', 'status', 'cac_document', 'id_document', 'updated_at')
+        fields = ('id', 'status', 'cac_document', 'id_document', 'address', 'address_document', 'updated_at')
         read_only_fields = ('id', 'status', 'updated_at')
 
 
@@ -449,6 +449,7 @@ class OrganizerWalletSerializer(serializers.ModelSerializer):
         fields = (
             'available_balance', 'total_earnings', 'total_payouts',
             'pending_payout', 'updated_at',
+            'bank_name', 'bank_code', 'account_number', 'account_name',
         )
         read_only_fields = fields
 

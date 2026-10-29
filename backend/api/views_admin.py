@@ -38,7 +38,7 @@ class AdminOrganizerVerificationSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = OrganizerVerification
-        fields = ('id', 'organizer', 'company_name', 'user_email', 'bio', 'website', 'instagram_handle', 'status', 'cac_document', 'id_document')
+        fields = ('id', 'organizer', 'company_name', 'user_email', 'bio', 'website', 'instagram_handle', 'status', 'cac_document', 'id_document', 'address', 'address_document')
 
 class AdminEventSerializer(serializers.ModelSerializer):
     organizer_name = serializers.CharField(source='organizer.company_name', read_only=True)
@@ -418,10 +418,14 @@ class AdminOrganizerDetailView(APIView):
             verif_status = verif.status if verif else ("Verified" if organizer.is_verified else "Unverified")
             cac_doc = verif.cac_document.url if (verif and verif.cac_document) else None
             id_doc = verif.id_document.url if (verif and verif.id_document) else None
+            verif_address = verif.address if verif else ""
+            address_doc = verif.address_document.url if (verif and verif.address_document) else None
         except Exception:
             verif_status = "Verified" if organizer.is_verified else "Unverified"
             cac_doc = None
             id_doc = None
+            verif_address = ""
+            address_doc = None
 
         summary_data = {
             "total_events": events_qs.count(),
@@ -451,6 +455,8 @@ class AdminOrganizerDetailView(APIView):
                 "verification_status": verif_status,
                 "cac_document": cac_doc,
                 "id_document": id_doc,
+                "address": verif_address,
+                "address_document": address_doc,
                 "created_at": organizer.user.date_joined,
                 "user": {
                     "id": organizer.user.id,

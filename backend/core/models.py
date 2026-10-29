@@ -51,6 +51,8 @@ class OrganizerVerification(models.Model):
     status = models.CharField(max_length=50, default='Unverified') # Unverified, Verification Submitted, Under Review, Verified, Rejected
     cac_document = models.FileField(upload_to='verifications/cac/', null=True, blank=True)
     id_document = models.FileField(upload_to='verifications/id/', null=True, blank=True)
+    address = models.TextField(blank=True, default='')
+    address_document = models.FileField(upload_to='verifications/address/', null=True, blank=True)
     updated_at = models.DateTimeField(auto_now=True)
 
 # ==========================================

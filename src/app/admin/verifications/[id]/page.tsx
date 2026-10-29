@@ -2,7 +2,7 @@ import { getSession } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { getAdminOrganizerVerification } from "@/lib/api/admin";
 import Link from "next/link";
-import { ArrowLeft, Building2, User, Globe, AtSign, FileText } from "lucide-react";
+import { ArrowLeft, Building2, User, Globe, AtSign, FileText, MapPin } from "lucide-react";
 import ClientVerificationButtons from "@/app/admin/users/ClientVerificationButtons";
 
 export default async function AdminVerificationDetailPage({ params }: { params: Promise<{ id: string }> | { id: string } }) {
@@ -70,6 +70,15 @@ export default async function AdminVerificationDetailPage({ params }: { params: 
                 </span>
                 <p className="font-medium text-foreground">{verification.user_email}</p>
               </div>
+
+              <div>
+                <span className="flex items-center gap-2 text-sm font-bold text-muted-foreground mb-1">
+                  <MapPin className="w-4 h-4" /> Verified Address
+                </span>
+                <p className="font-medium text-foreground">
+                  {verification.address || <span className="italic text-muted-foreground text-sm font-normal">No address provided</span>}
+                </p>
+              </div>
               
               <div>
                 <span className="text-sm font-bold text-muted-foreground mb-1 block">Bio / Description</span>
@@ -125,6 +134,26 @@ export default async function AdminVerificationDetailPage({ params }: { params: 
                 {verification.id_document ? (
                   <a href={verification.id_document} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center w-full px-4 py-2.5 bg-background border-2 border-primary text-primary rounded-xl font-bold hover:bg-primary/5 transition-colors">
                     View ID Document
+                  </a>
+                ) : (
+                  <div className="px-4 py-2.5 bg-destructive/10 text-destructive text-center rounded-xl font-bold text-sm">Missing</div>
+                )}
+              </div>
+
+              <div className="bg-secondary/30 p-4 rounded-xl border border-border/50">
+                <h3 className="font-bold text-foreground flex items-center gap-2 mb-2">
+                  <FileText className="w-4 h-4 text-primary" /> Address Verification
+                </h3>
+                <p className="text-xs text-muted-foreground mb-2">Utility Bill / Proof of Address Document.</p>
+                {verification.address && (
+                  <p className="text-xs font-medium text-foreground bg-background/80 border border-border/60 rounded-lg px-3 py-2 mb-3">
+                    <span className="text-muted-foreground font-bold mr-1">Address:</span>
+                    {verification.address}
+                  </p>
+                )}
+                {verification.address_document ? (
+                  <a href={verification.address_document} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center w-full px-4 py-2.5 bg-background border-2 border-primary text-primary rounded-xl font-bold hover:bg-primary/5 transition-colors">
+                    View Address Document
                   </a>
                 ) : (
                   <div className="px-4 py-2.5 bg-destructive/10 text-destructive text-center rounded-xl font-bold text-sm">Missing</div>

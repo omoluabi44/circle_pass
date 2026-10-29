@@ -5,6 +5,7 @@ Handles creating transfer recipients and initiating bank transfers for organizer
 import hashlib
 import hmac
 import os
+import re
 
 import requests
 
@@ -116,3 +117,49 @@ def resolve_account_number(bank_code: str, account_number: str) -> dict:
         raise ValueError(f"Paystack error: {data.get('message', 'Unknown error')}")
 
     return data['data']
+
+
+def normalize_name_tokens(name: str) -> list[str]:
+    """
+    Normalize a person or business name into uppercase alphanumeric word tokens,
+    stripping punctuation and extra whitespace.
+    """
+    if not name:
+        return []
+    return re.findall(r'[A-Z0-9]+', str(name).upper())
+
+
+def is_organizer_bank_name_match(organizer_name: str, account_name: str) -> bool:
+    """
+    Validate that the resolved bank account holder name matches the organizer's
+    profile name (company_name).
+    - Case-insensitive and punctuation-insensitive.
+    - Supports word-order variations (e.g. 'John Doe' vs 'DOE JOHN').
+    - Supports middle names when at least 2 name tokens are present and all tokens
+      of the shorter name appear in the longer name.
+    """
+    org_tokens = normalize_name_tokens(organizer_name)
+    acc_tokens = normalize_name_tokens(account_name)
+    if not org_tokens or not acc_tokens:
+        return False
+
+    org_set = set(org_tokens)
+    acc_set = set(acc_tokens)
+
+    if org_set == acc_set:
+        return True
+
+    if len(org_set) >= 2 and len(acc_set) >= 2:
+        if org_set.issubset(acc_set) or acc_set.issubset(org_set):
+            return True
+
+    return False
+
+
+def get_organizer_bank_name_mismatch_error(organizer_name: str, account_name: str) -> str:
+    """Return a clear user-facing error message when bank account name != organizer name."""
+    return (
+        f'Bank account name "{account_name}" does not match your organizer name '
+        f'"{organizer_name}". Please use a bank account that matches your organizer '
+        f'name or update your Organization Name in Account Settings.'
+    )

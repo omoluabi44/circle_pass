@@ -178,6 +178,8 @@ function VerificationTab() {
 
   const [cacFile, setCacFile] = useState<File | null>(null);
   const [idFile, setIdFile] = useState<File | null>(null);
+  const [address, setAddress] = useState("");
+  const [addressFile, setAddressFile] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -188,6 +190,7 @@ function VerificationTab() {
 
         const data = await getVerificationStatus(token);
         setStatus(data.status);
+        if (data.address) setAddress(data.address);
       } catch (err) {
         console.error(err);
       } finally {
@@ -199,8 +202,8 @@ function VerificationTab() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!cacFile || !idFile) {
-      toast.error("Please upload both documents.");
+    if (!cacFile || !idFile || !address.trim() || !addressFile) {
+      toast.error("Please provide your CAC document, Government ID, address, and proof of address.");
       return;
     }
 
@@ -210,6 +213,8 @@ function VerificationTab() {
       const formData = new FormData();
       formData.append("cac_document", cacFile);
       formData.append("id_document", idFile);
+      formData.append("address", address.trim());
+      formData.append("address_document", addressFile);
 
       const data = await submitVerification(token, formData);
       setStatus(data.status);
@@ -289,6 +294,33 @@ function VerificationTab() {
             </div>
           </div>
 
+          <div className="bg-background border border-border rounded-xl p-6 space-y-4">
+            <div>
+              <label className="text-sm font-bold text-foreground block mb-1">Business / Residential Address</label>
+              <p className="text-xs text-muted-foreground mb-2">Enter the full verifiable physical address of your business or primary director.</p>
+              <input
+                type="text"
+                required
+                value={address}
+                onChange={e => setAddress(e.target.value)}
+                placeholder="e.g., 14 Admiralty Way, Lekki Phase 1, Lagos"
+                className="w-full px-4 py-2.5 rounded-xl bg-background border border-input focus:outline-none focus:ring-2 focus:ring-ring text-sm"
+              />
+            </div>
+
+            <div className="pt-4 border-t border-border">
+              <label className="text-sm font-bold text-foreground block mb-2">Address Verification (Proof of Address)</label>
+              <p className="text-xs text-muted-foreground mb-2">Upload a recent utility bill (electricity, water, waste), bank statement, or tenancy agreement showing the address above (PDF or Image).</p>
+              <input
+                type="file"
+                accept=".pdf,image/*"
+                required
+                onChange={e => setAddressFile(e.target.files?.[0] || null)}
+                className="w-full text-sm text-muted-foreground file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-secondary file:text-foreground hover:file:bg-secondary/80"
+              />
+            </div>
+          </div>
+
           <div className="flex justify-end">
             <button
               type="submit"
@@ -356,6 +388,7 @@ function PayoutSettingsTab() {
   const resolveAccount = async (bankCode: string, accNum: string) => {
     if (!bankCode || accNum.length !== 10) {
       setFormData(prev => ({ ...prev, account_name: "" }));
+      setResolveError("");
       return;
     }
     
@@ -378,7 +411,7 @@ function PayoutSettingsTab() {
       if (res.ok && data.status) {
         setFormData(prev => ({ ...prev, account_name: data.data.account_name }));
       } else {
-        setResolveError(data.message || data.error || "Could not resolve account");
+        setResolveError(data.error || data.detail || data.message || "Could not resolve account");
       }
     } catch (err) {
       setResolveError("Network error while resolving account");
@@ -400,6 +433,7 @@ function PayoutSettingsTab() {
       resolveAccount(formData.bank_name, num);
     } else {
       setFormData(prev => ({ ...prev, account_name: "" }));
+      setResolveError("");
     }
   };
 
@@ -502,7 +536,7 @@ function PayoutSettingsTab() {
         </div>
 
         <div className="pt-4 flex justify-end">
-          <button type="submit" disabled={saving} className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-primary-foreground rounded-xl font-bold hover:bg-primary/90 transition-colors disabled:opacity-70">
+          <button type="submit" disabled={saving || resolving || !formData.account_name || !!resolveError} className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-primary-foreground rounded-xl font-bold hover:bg-primary/90 transition-colors disabled:opacity-70">
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
             {saving ? 'Saving...' : 'Save Details'}
           </button>

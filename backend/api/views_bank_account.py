@@ -13,7 +13,12 @@ from rest_framework import permissions
 
 from api.permissions import IsOrganizerOrAdmin
 from core.models import OrganizerBankAccount, OrganizerProfile
-from core.utils.transfers import resolve_account_number, create_transfer_recipient
+from core.utils.transfers import (
+    resolve_account_number,
+    create_transfer_recipient,
+    is_organizer_bank_name_match,
+    get_organizer_bank_name_mismatch_error,
+)
 
 
 class OrganizerBankAccountListCreateView(APIView):
@@ -63,6 +68,20 @@ class OrganizerBankAccountListCreateView(APIView):
         except Exception as e:
             return Response(
                 {'detail': f'Account verification failed: {str(e)}'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Step 1b: Validate that bank account name matches organizer profile name
+        if not is_organizer_bank_name_match(organizer.company_name, account_name):
+            err_msg = get_organizer_bank_name_mismatch_error(organizer.company_name, account_name)
+            return Response(
+                {
+                    'detail': err_msg,
+                    'error': err_msg,
+                    'account_name': account_name,
+                    'organizer_name': organizer.company_name,
+                    'name_mismatch': True,
+                },
                 status=status.HTTP_400_BAD_REQUEST,
             )
 

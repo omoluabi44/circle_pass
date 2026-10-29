@@ -176,3 +176,129 @@ class AdminPayoutTests(PayoutTestBase):
             wallet=self.wallet, type='REVERSAL',
         ).first()
         self.assertIsNotNone(reversal)
+
+
+class BankAccountNameValidationTests(TestCase):
+    """Tests for validating organizer name against resolved bank account name."""
+
+    def setUp(self):
+        self.org_user = User.objects.create_user(
+            username='acmeorg', email='acme@example.com',
+            password='password', role='ORGANIZER',
+        )
+        self.organizer, _ = OrganizerProfile.objects.get_or_create(user=self.org_user)
+        self.organizer.company_name = 'Acme Events'
+        self.organizer.save(update_fields=['company_name'])
+
+    def get_token(self, user):
+        return str(RefreshToken.for_user(user).access_token)
+
+    def test_is_organizer_bank_name_match_helper(self):
+        from core.utils.transfers import is_organizer_bank_name_match
+
+        # Exact & case-insensitive matches
+        self.assertTrue(is_organizer_bank_name_match('Acme Events', 'ACME EVENTS'))
+        self.assertTrue(is_organizer_bank_name_match('John Doe', 'DOE, JOHN'))
+        # Middle name on bank account with >= 2 organizer tokens
+        self.assertTrue(is_organizer_bank_name_match('John Doe', 'DOE JOHN OLUMIDE'))
+        # Mismatches
+        self.assertFalse(is_organizer_bank_name_match('Acme Events', 'JOHN DOE'))
+        self.assertFalse(is_organizer_bank_name_match('Acme Events', 'ACME TECHNOLOGIES'))
+        self.assertFalse(is_organizer_bank_name_match('John', 'JOHN DOE'))
+        self.assertFalse(is_organizer_bank_name_match('', 'JOHN DOE'))
+
+    def test_add_bank_account_rejected_when_name_mismatches(self):
+        from unittest.mock import patch
+        from core.models import OrganizerBankAccount
+
+        token = self.get_token(self.org_user)
+        with patch('api.views_bank_account.resolve_account_number') as mock_resolve, \
+             patch('api.views_bank_account.create_transfer_recipient') as mock_recipient:
+            mock_resolve.return_value = {
+                'account_number': '0123456789',
+                'account_name': 'JOHN DOE',
+            }
+
+            response = self.client.post(
+                reverse('bank_accounts'),
+                {
+                    'bank_code': '058',
+                    'bank_name': 'Guaranty Trust Bank',
+                    'account_number': '0123456789',
+                },
+                content_type='application/json',
+                HTTP_AUTHORIZATION=f'Bearer {token}',
+            )
+
+            self.assertEqual(response.status_code, 400)
+            self.assertTrue(response.data.get('name_mismatch'))
+            self.assertIn('does not match your organizer name', response.data.get('detail', ''))
+            mock_recipient.assert_not_called()
+            self.assertEqual(OrganizerBankAccount.objects.filter(organizer=self.organizer).count(), 0)
+
+    def test_add_bank_account_succeeds_when_name_matches(self):
+        from unittest.mock import patch
+        from core.models import OrganizerBankAccount
+
+        token = self.get_token(self.org_user)
+        with patch('api.views_bank_account.resolve_account_number') as mock_resolve, \
+             patch('api.views_bank_account.create_transfer_recipient') as mock_recipient:
+            mock_resolve.return_value = {
+                'account_number': '0123456789',
+                'account_name': 'ACME EVENTS',
+            }
+            mock_recipient.return_value = 'RCP_test123'
+
+            response = self.client.post(
+                reverse('bank_accounts'),
+                {
+                    'bank_code': '058',
+                    'bank_name': 'Guaranty Trust Bank',
+                    'account_number': '0123456789',
+                },
+                content_type='application/json',
+                HTTP_AUTHORIZATION=f'Bearer {token}',
+            )
+
+            self.assertEqual(response.status_code, 201)
+            self.assertEqual(response.data['account_name'], 'ACME EVENTS')
+            self.assertEqual(OrganizerBankAccount.objects.filter(organizer=self.organizer).count(), 1)
+
+    def test_resolve_account_endpoint_rejects_mismatch_until_updated(self):
+        from unittest.mock import patch, MagicMock
+
+        token = self.get_token(self.org_user)
+        mock_res = MagicMock()
+        mock_res.json.return_value = {
+            'status': True,
+            'message': 'Account number resolved',
+            'data': {
+                'account_number': '0123456789',
+                'account_name': 'JOHN DOE',
+            },
+        }
+
+        with patch('api.views_payout.requests.get', return_value=mock_res):
+            # 1. Fails while company_name is 'Acme Events'
+            res1 = self.client.post(
+                reverse('resolve_account'),
+                {'bank_code': '058', 'account_number': '0123456789'},
+                content_type='application/json',
+                HTTP_AUTHORIZATION=f'Bearer {token}',
+            )
+            self.assertEqual(res1.status_code, 400)
+            self.assertTrue(res1.data.get('name_mismatch'))
+
+            # 2. Update organizer name to 'John Doe' and retry -> succeeds
+            self.organizer.company_name = 'John Doe'
+            self.organizer.save(update_fields=['company_name'])
+
+            res2 = self.client.post(
+                reverse('resolve_account'),
+                {'bank_code': '058', 'account_number': '0123456789'},
+                content_type='application/json',
+                HTTP_AUTHORIZATION=f'Bearer {token}',
+            )
+            self.assertEqual(res2.status_code, 200)
+            self.assertEqual(res2.data['data']['account_name'], 'JOHN DOE')
+

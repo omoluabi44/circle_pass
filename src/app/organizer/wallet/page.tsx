@@ -555,13 +555,13 @@ export default function WalletPage() {
                     </div>
                   )}
                   {addBankError && (
-                    <div className="flex items-center gap-2 text-sm text-red-500">
-                      <AlertCircle className="w-4 h-4 shrink-0" />{addBankError}
+                    <div className="flex items-start gap-2 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-4 py-3">
+                      <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" /><span>{addBankError}</span>
                     </div>
                   )}
 
                   <button
-                    disabled={!resolvedName || savingBank}
+                    disabled={!resolvedName || savingBank || resolving || !!addBankError}
                     onClick={handleSaveAccount}
                     className="w-full bg-primary hover:bg-primary/90 text-white font-medium py-3 rounded-xl transition-colors disabled:opacity-40 flex items-center justify-center gap-2"
                   >
