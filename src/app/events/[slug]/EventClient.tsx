@@ -111,9 +111,9 @@ function EventCountdown({ targetDate }: { targetDate?: string }) {
 }
 
 // Fetch real event details from the backend
-export default function EventDetailsPage() {
-  const params = useParams();
-  const slug = params.slug as string;
+export default function EventDetailsPage({ initialSlug }: { initialSlug?: string }) {
+
+  const params = useParams();`n  const slug = initialSlug || (params?.slug as string);
   const router = useRouter();
 
   const { data: session } = useSession();
@@ -155,10 +155,10 @@ export default function EventDetailsPage() {
         if (session?.accessToken) {
           headers['Authorization'] = `Bearer ${session.accessToken}`;
         }
-        const res = await fetch(`${API_URL}/events/?slug=${slug}&public=true`, { 
-          cache: 'no-store',
-          headers 
-        });
+        let res = await fetch(`${API_URL}/events/?slug=${slug}&public=true`, { cache: 'no-store', headers });
+        if (res.status === 401 && headers['Authorization']) {
+            res = await fetch(`${API_URL}/events/?slug=${slug}&public=true`, { cache: 'no-store' });
+        }
         if (!res.ok) throw new Error("Event not found");
         const data = await res.json();
         
@@ -896,3 +896,5 @@ export default function EventDetailsPage() {
     </div>
   );
 }
+
+

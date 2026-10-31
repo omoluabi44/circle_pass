@@ -80,7 +80,9 @@ export async function generateMetadata(
 }
 
 export default async function EventPage({ params }: Props) {
-  // Pass the slug to the client component or let it use useParams
-  // It already uses useParams internally
-  return <EventClient />;
+  const resolvedParams = await params;
+  return <EventClient initialSlug={resolvedParams.slug} />;
+
+
+
 }
