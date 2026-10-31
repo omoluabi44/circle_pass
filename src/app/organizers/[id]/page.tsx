@@ -24,11 +24,14 @@ export default function OrganizerProfilePage() {
     // Fetch the organizer profile and their public events.
     const fetchProfile = async () => {
       try {
-        const res = await fetch(`${API_URL}/organizers/${id}/`, {
-          headers: session?.accessToken ? {
-            'Authorization': `Bearer ${session.accessToken}`
-          } : undefined
-        });
+        const headers: any = {};
+        if (session?.accessToken) {
+          headers['Authorization'] = `Bearer ${session.accessToken}`;
+        }
+        let res = await fetch(`${API_URL}/organizers/${id}/`, { headers });
+        if (res.status === 401 && headers['Authorization']) {
+            res = await fetch(`${API_URL}/organizers/${id}/`);
+        }
         
         if (!res.ok) throw new Error("Organizer not found");
         const data = await res.json();
