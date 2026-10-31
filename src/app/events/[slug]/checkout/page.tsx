@@ -187,7 +187,7 @@ export default function CheckoutPage() {
     return { subtotal: sub, totalQuantity: qty };
   }, [selections, event?.ticket_types]);
 
-  const fee = event?.absorb_fees ? 0 : Math.floor(subtotal * 0.05);
+
 
   let discountAmount = 0;
   if (appliedDiscount) {
@@ -197,7 +197,9 @@ export default function CheckoutPage() {
       discountAmount = Math.min(appliedDiscount.value, subtotal);
     }
   }
-  const total = Math.max(0, subtotal - discountAmount) + fee;
+  const discountedSubtotal = Math.max(0, subtotal - discountAmount);
+  const fee = event?.absorb_fees ? 0 : Math.floor(discountedSubtotal * 0.05);
+  const total = discountedSubtotal + fee;
 
   const handleJoinWaitlist = async (e: React.FormEvent) => {
     e.preventDefault();

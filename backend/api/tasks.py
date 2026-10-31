@@ -118,7 +118,11 @@ def send_abandoned_cart_email(order_id, time_period):
         else: # 7days
             message = "Last chance! This is your final reminder to complete your ticket purchase for {}.".format(order.event.title)
             
-        send_html_email(subject, message, [order.user.email if order.user else order.guest_email], title_for_html=title)
+        email_to = order.guest_email or (order.attendee.user.email if order.attendee else None)
+        if not email_to:
+            return "No email to send to."
+            
+        send_html_email(subject, message, [email_to], title_for_html=title)
         return f"Sent {time_period} email for order {order_id}"
     except Order.DoesNotExist:
         return "Order does not exist."
@@ -445,7 +449,7 @@ def send_organizer_weekly_summary(organizer_id, test_recipient=None):
         checked_in_last_week = Ticket.objects.filter(order__event__in=events_qs, status='USED', updated_at__gte=last_week_start, updated_at__lte=now).count()
         checked_in_prev_week = Ticket.objects.filter(order__event__in=events_qs, status='USED', updated_at__gte=previous_week_start, updated_at__lt=last_week_start).count()
 
-        page_views_last_week = sum(getattr(ev, 'views_count', 0) for ev in events_qs) or (tickets_sold_last_week * 6)
+        page_views_last_week = sum(getattr(ev, 'page_views', 0) for ev in events_qs) or (tickets_sold_last_week * 6)
         page_views_prev_week = int(page_views_last_week * 0.8)
 
         def calc_pct(cur, prev):
@@ -465,7 +469,7 @@ def send_organizer_weekly_summary(organizer_id, test_recipient=None):
             ev_rev = ev_orders.aggregate(total=Sum('total_amount'))['total'] or 0
 
             date_str = ev.start_time.strftime('%b %d, %Y • %I:%M %p') if ev.start_time else 'Date TBA'
-            venue_str = ev.venue_name or ('Online Event' if getattr(ev, 'is_online', False) else 'Location TBA')
+            venue_str = ev.venue.name if ev.venue else (ev.location_name or ('Online Event' if getattr(ev, 'is_online', False) else 'Location TBA'))
             status_label = 'Live' if ev.status in ['LIVE', 'PUBLISHED'] else ('Completed' if ev.status == 'COMPLETED' else 'Upcoming')
 
             events_data.append({
@@ -476,7 +480,7 @@ def send_organizer_weekly_summary(organizer_id, test_recipient=None):
                 'venue_name': venue_str,
                 'status': status_label,
                 'tickets_sold_week': ev_tickets,
-                'revenue_week_formatted': f"{ev_rev:,.0f}",
+                'revenue_week_formatted': f"{ev_rev/100:,.0f}",
             })
 
         frontend_url = getattr(settings, 'FRONTEND_URL', 'https://thecirclepass.com')
@@ -487,7 +491,7 @@ def send_organizer_weekly_summary(organizer_id, test_recipient=None):
             'frontend_url': frontend_url,
             'tickets_sold': f"{tickets_sold_last_week:,}",
             'tickets_sold_change': tickets_sold_change,
-            'total_revenue_formatted': f"{rev_last_week:,.0f}",
+            'total_revenue_formatted': f"{rev_last_week/100:,.0f}",
             'revenue_change': revenue_change,
             'checked_in': f"{checked_in_last_week:,}",
             'checked_in_change': checked_in_change,

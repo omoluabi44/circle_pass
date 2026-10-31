@@ -50,7 +50,7 @@ export default function DiscountsPage() {
       await createEventDiscount(session?.accessToken as string, id, {
         code,
         discount_type: type,
-        value: Number(value),
+        value: type === "FIXED" ? Math.round(Number(value) * 100) : Number(value),
         usage_limit: usageLimit ? Number(usageLimit) : null
       });
       toast.success("Discount created successfully");
@@ -107,7 +107,7 @@ export default function DiscountsPage() {
                 <h3 className="text-lg font-bold text-foreground">{discount.code}</h3>
                 <p className="text-sm text-muted-foreground">
                   {discount.discount_type === 'REFERRAL' ? 'Referral Tracker' :
-                   discount.discount_type === 'PERCENTAGE' ? `${discount.value}% Off` : `₦${discount.value} Off`}
+                   discount.discount_type === 'PERCENTAGE' ? `${discount.value}% Off` : `₦${discount.value / 100} Off`}
                 </p>
               </div>
               <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${discount.is_active !== false ? 'bg-success/10 text-success' : 'bg-secondary text-muted-foreground'}`}>

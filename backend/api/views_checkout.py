@@ -205,12 +205,12 @@ class CheckoutView(APIView):
                         pass # Ignore invalid codes silently for now, or you can return error
                         
                 # Calculate fee (5% of subtotal, only for paid orders where buyer pays)
-                if subtotal == 0:
+                if max(0, subtotal - discount_amount) == 0:
                     fee_amount = 0  # Free tickets: no fee ever
                 elif event.absorb_fees:
                     fee_amount = 0  # Organizer absorbs the fee
                 else:
-                    fee_amount = int(subtotal * CIRCLEPASS_FEE_RATE / 100)
+                    fee_amount = int(max(0, subtotal - discount_amount) * CIRCLEPASS_FEE_RATE / 100)
 
                 total_amount = subtotal - discount_amount + fee_amount
 

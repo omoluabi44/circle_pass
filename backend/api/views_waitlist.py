@@ -267,16 +267,12 @@ class OrganizerWaitlistAcceptView(APIView):
                     needed = entry.quantity - available
                     TicketType.objects.filter(pk=ticket_type.pk).update(
                         quantity=F('quantity') + needed,
-                        is_sold_out=False
                     )
                     ticket_type.refresh_from_db()
                     total_tier_capacity = event.ticket_types.aggregate(total=Sum('quantity'))['total'] or 0
                     if event.capacity < total_tier_capacity:
                         Event.objects.filter(pk=event.pk).update(capacity=total_tier_capacity)
                         event.refresh_from_db()
-                elif ticket_type.is_sold_out:
-                    TicketType.objects.filter(pk=ticket_type.pk).update(is_sold_out=False)
-                    ticket_type.refresh_from_db()
 
                 # Compute pricing & fees for reservation
                 subtotal = ticket_type.price * entry.quantity
@@ -451,11 +447,10 @@ class WaitlistClaimView(APIView):
                 ).aggregate(total=Sum('quantity'))['total']
                 sold = completed_sold if completed_sold is not None else (tt.quantity_sold or 0)
                 new_qty = max(tt.quantity, sold + entry.quantity)
-                if tt.quantity_sold != sold or tt.quantity != new_qty or tt.is_sold_out:
+                if tt.quantity_sold != sold or tt.quantity != new_qty:
                     TicketType.objects.filter(pk=tt.pk).update(
                         quantity_sold=sold,
                         quantity=new_qty,
-                        is_sold_out=False
                     )
                     entry.ticket_type.refresh_from_db()
 

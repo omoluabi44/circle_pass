@@ -64,8 +64,8 @@ class AdminOverviewView(APIView):
         active_events = Event.objects.filter(status__in=['PUBLISHED', 'LIVE']).count()
         events_awaiting_review = Event.objects.filter(status='UNDER_REVIEW').count()
         
-        pending_payouts_count = Payout.objects.filter(status='Pending').count()
-        failed_payouts_count = Payout.objects.filter(status='Failed').count()
+        pending_payouts_count = Payout.objects.filter(status__in=['Pending', 'PROCESSING']).count()
+        failed_payouts_count = Payout.objects.filter(status__in=['Failed', 'FAILED']).count()
         
         total_tickets_sold = Ticket.objects.filter(status__in=['ISSUED', 'ACTIVE', 'USED']).count()
         total_ticket_scans = Ticket.objects.filter(status='USED').count()
@@ -154,8 +154,8 @@ class AdminPayoutViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'])
     def approve(self, request, pk=None):
         payout = self.get_object()
-        if payout.status == 'Pending':
-            payout.status = 'Completed'
+        if payout.status in ['Pending', 'PROCESSING']:
+            payout.status = 'SUCCESSFUL'
             payout.save()
             
             # Deduct from wallet's pending balance
@@ -171,8 +171,8 @@ class AdminPayoutViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'])
     def reject(self, request, pk=None):
         payout = self.get_object()
-        if payout.status == 'Pending':
-            payout.status = 'Rejected'
+        if payout.status in ['Pending', 'PROCESSING']:
+            payout.status = 'FAILED'
             payout.save()
             
             # Refund to available balance? Depending on exact logic. Let's just update status for now.

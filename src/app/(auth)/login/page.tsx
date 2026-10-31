@@ -62,8 +62,7 @@ export default function LoginPage() {
             </p>
           </div>
           
-          {/* Login form commented out per requirement - only Google login allowed */}
-          {/*
+
           <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
             {error && <p className="text-destructive text-sm bg-destructive/10 p-3 rounded-lg border border-destructive/20">{error}</p>}
             
@@ -122,7 +121,7 @@ export default function LoginPage() {
               <span className="bg-background px-4 text-muted-foreground font-medium">Or continue with</span>
             </div>
           </div>
-          */}
+
 
           <div className="mt-8 space-y-4">
             <button

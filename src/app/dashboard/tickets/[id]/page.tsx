@@ -3,6 +3,7 @@ import Link from "next/link";
 import { getSession } from "@/lib/auth";
 import { getTicketById } from "@/lib/api/tickets";
 import { redirect } from "next/navigation";
+import { format } from "date-fns";
 import { QRCodeSVG } from "qrcode.react";
 
 export default async function TicketDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -74,7 +75,7 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
             </div>
             <div>
               <p className="text-xs text-muted-foreground font-bold uppercase tracking-wider">Date & Time</p>
-              <p className="font-semibold text-foreground">{ticket.event_date || "Sat, Oct 10, 2026"} • {ticket.event_time || "10:00 AM"}</p>
+              <p className="font-semibold text-foreground">{ticket.event_start_time ? format(new Date(ticket.event_start_time), "EEE, MMM d, yyyy") : "Sat, Oct 10, 2026"} • {ticket.event_start_time ? format(new Date(ticket.event_start_time), "h:mm a") : "10:00 AM"}</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -83,7 +84,7 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
             </div>
             <div>
               <p className="text-xs text-muted-foreground font-bold uppercase tracking-wider">Venue</p>
-              <p className="font-semibold text-foreground">{ticket.event_venue || "Eko Convention Center, Lagos"}</p>
+              <p className="font-semibold text-foreground">{ticket.event_is_online ? "Online Event" : (ticket.event_venue || ticket.event_location_name || "Eko Convention Center, Lagos")}</p>
             </div>
           </div>
         </div>

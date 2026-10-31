@@ -9,7 +9,7 @@ import hashlib
 from django.conf import settings
 
 from core.models import (
-    User, OrganizerProfile, OrganizerWallet, Event, TicketType,
+    User, OrganizerProfile, AttendeeProfile, OrganizerWallet, Event, TicketType,
     Order, Payment, OrganizerBankAccount, Payout, WalletTransaction, EventCategory, Venue
 )
 from core.utils.fulfillment import fulfill_order
@@ -28,6 +28,7 @@ class FinancialFlowTests(APITestCase):
         self.buyer_user = User.objects.create_user(
             username='buyer', email='buyer@test.com', password='password', role='ATTENDEE'
         )
+        self.buyer_profile = AttendeeProfile.objects.get(user=self.buyer_user)
         
         # Setup Event
         self.category = EventCategory.objects.create(name='Test Cat', slug='test-cat')
@@ -47,7 +48,7 @@ class FinancialFlowTests(APITestCase):
             event=self.event,
             name='Regular',
             price=1000000, # 10,000 NGN
-            capacity=100
+            quantity=100
         )
 
         
@@ -66,7 +67,7 @@ class FinancialFlowTests(APITestCase):
         """Test that fulfilling a paid order credits exactly 95% directly to available_balance."""
         # Create an order
         order = Order.objects.create(
-            user=self.buyer_user,
+            attendee=self.buyer_profile,
             event=self.event,
             subtotal=1000000,
             fee_amount=50000, # 5% circlepass fee (charged to buyer in this scenario)

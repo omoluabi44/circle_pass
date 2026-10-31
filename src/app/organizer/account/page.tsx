@@ -755,7 +755,7 @@ function SecuritySettingsForm() {
     setUpdatingPassword(true);
     try {
       const token = (session as any)?.accessToken;
-      const res = await fetch(`${API_URL}/users/set_password/`, {
+      const res = await fetch(`${API_URL}/auth/users/set_password/`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

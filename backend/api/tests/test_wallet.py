@@ -40,7 +40,7 @@ class WalletTestBase(TestCase):
         self.event = Event.objects.create(
             organizer=self.organizer,
             title='Test Concert',
-            capacity=100,
+            quantity=100,
             start_time=timezone.now(),
             end_time=timezone.now() + timezone.timedelta(days=1),
             status='PUBLISHED',

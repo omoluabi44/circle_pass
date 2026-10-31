@@ -78,7 +78,7 @@ class CheckInScanView(APIView):
                 scan_status = 'Invalid'
                 response_detail = "This ticket is invalidated."
 
-            elif ticket.status == 'ACTIVE':
+            elif ticket.status in ['ACTIVE', 'ISSUED']:
                 # Success path
                 ticket.status = 'USED'
                 ticket.save(update_fields=['status'])

@@ -28,14 +28,12 @@ class OrganizerAnalyticsView(APIView):
         total_tickets = tickets.count()
 
         # 2. Total Revenue (in kobo - Organizer Net Revenue excluding CirclePass platform fee)
-        revenue_aggr = completed_orders.aggregate(
-            subtotal_sum=Sum('subtotal'),
-            discount_sum=Sum('discount_amount'),
-            fee_sum=Sum('fee_amount')
-        )
-        subtotal = revenue_aggr['subtotal_sum'] or 0
-        discount = revenue_aggr['discount_sum'] or 0
-        total_revenue = subtotal - discount
+        total_revenue = 0
+        for o in completed_orders.select_related('event'):
+            net = o.subtotal - o.discount_amount
+            if o.event.absorb_fees and net > 0:
+                net = int(net * 0.95)
+            total_revenue += max(0, net)
 
         # 3. Avg Check-in Rate
         checkins = tickets.filter(status='USED').count()

@@ -406,6 +406,7 @@ class TicketSerializer(serializers.ModelSerializer):
     event_title = serializers.CharField(source='order.event.title', read_only=True)
     event_start_time = serializers.DateTimeField(source='order.event.start_time', read_only=True)
     event_end_time = serializers.DateTimeField(source='order.event.end_time', read_only=True)
+    event_is_online = serializers.BooleanField(source='order.event.is_online', read_only=True)
     event_image = serializers.SerializerMethodField()
     event_venue = serializers.SerializerMethodField()
 
@@ -413,7 +414,7 @@ class TicketSerializer(serializers.ModelSerializer):
         model = Ticket
         fields = (
             'id', 'ticket_type_name', 'ticket_type_tier', 'event_title',
-            'event_start_time', 'event_end_time', 'event_image', 'event_venue',
+            'event_start_time', 'event_end_time', 'event_is_online', 'event_image', 'event_venue',
             'attendee_name', 'attendee_email', 'status', 'qr_token',
             'issued_at', 'created_at',
         )
@@ -568,6 +569,10 @@ class FindTicketResultSerializer(serializers.Serializer):
     status = serializers.CharField()
     order_reference = serializers.CharField()
     ticket_count = serializers.IntegerField()
+    ticket_type = serializers.CharField(required=False)
+    attendee_name = serializers.CharField(required=False)
+    quantity = serializers.IntegerField(required=False)
+    qr_token = serializers.CharField(required=False, allow_null=True)
 
 
 # ==========================================

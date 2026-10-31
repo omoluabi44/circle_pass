@@ -64,9 +64,11 @@ class FindTicketView(APIView):
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
 
-        reference = data.get('reference', '').strip()
+        # Get reference from either 'reference' or 'order_reference'
+        reference = data.get('reference', '').strip() or data.get('order_reference', '').strip()
         email = data.get('email', '').strip().lower()
-        phone = data.get('phone', '').strip()
+        # Get phone from either 'phone' or 'phone_number'
+        phone = data.get('phone', '').strip() or data.get('phone_number', '').strip()
 
         # Build query across orders
         order_filter = Q()
@@ -81,9 +83,9 @@ class FindTicketView(APIView):
             order_filter |= Q(attendee__user__email__iexact=email)
 
         if phone:
-            # Phone isn't stored on Order directly; search ticket attendee fields
-            # For now, we'll skip phone (no phone field on model) and return empty
-            pass
+            # Phone search
+            order_filter |= Q(guest_phone__icontains=phone)
+            order_filter |= Q(attendee__phone_number__icontains=phone)
 
         if not order_filter:
             return Response(
@@ -168,11 +170,15 @@ class FindTicketView(APIView):
             results.append({
                 'event_title': order.event.title,
                 'ticket_type_name': ticket_type_name,
+                'ticket_type': ticket_type_name,
+                'attendee_name': attendee_name,
                 'attendee_name_masked': mask_name(attendee_name),
                 'attendee_email_masked': mask_email(attendee_email),
-                'status': order.status,
+                'status': first_ticket.status if first_ticket else 'COMPLETED',
                 'order_reference': payment_ref,
+                'quantity': order.ticket_count,
                 'ticket_count': order.ticket_count,
+                'qr_token': first_ticket.qr_token if first_ticket else None,
             })
 
         from api.serializers import FindTicketResultSerializer

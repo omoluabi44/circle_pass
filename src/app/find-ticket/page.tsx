@@ -137,21 +137,31 @@ export default function FindTicketPage() {
                       <h3 className="text-lg font-bold text-gray-900 mb-1">{ticket.event_title || "Event Name"}</h3>
                       <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-gray-500">
                         <span className="flex items-center gap-1 font-medium text-primary bg-primary/10 px-2 py-0.5 rounded">
-                          {ticket.ticket_type || "Standard"}
+                          {ticket.ticket_type_name || ticket.ticket_type || "Standard"}
                         </span>
-                        <span>{ticket.attendee_name || "Attendee"}</span>
-                        <span>Quantity: {ticket.quantity || 1}</span>
+                        <span>{ticket.attendee_name_masked || ticket.attendee_name || "Attendee"}</span>
+                        <span>Quantity: {ticket.ticket_count || ticket.quantity || 1}</span>
                       </div>
                     </div>
                     
-                    <div className="flex items-center gap-3">
-                      <span className={`px-3 py-1 rounded-full text-xs font-bold ${
-                        ticket.status === 'VALID' || ticket.status === 'ACTIVE' ? 'bg-green-100 text-green-700' : 
+                    <div className="flex flex-col sm:flex-row items-center gap-3">
+                      <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${
+                        ticket.status === 'VALID' || ticket.status === 'ACTIVE' || ticket.status === 'ISSUED' ? 'bg-green-100 text-green-700' : 
                         ticket.status === 'USED' ? 'bg-gray-100 text-gray-700' :
                         'bg-yellow-100 text-yellow-700'
                       }`}>
                         {ticket.status || "VALID"}
                       </span>
+                      {ticket.qr_token && (
+                        <a 
+                          href={`/t/${ticket.qr_token}`} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="bg-primary text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors"
+                        >
+                          View Pass
+                        </a>
+                      )}
                     </div>
                   </div>
                 ))}

@@ -74,7 +74,7 @@ class PaystackResolveAccountView(APIView):
             if not res_data.get('status'):
                 return Response({'error': res_data.get('message', 'Failed to resolve account')}, status=400)
             account_name = (res_data.get('data') or {}).get('account_name', '')
-            organizer = getattr(request.user, 'organizer_profile', None)
+            organizer = getattr(request.user, 'organizerprofile', None) or getattr(request.user, 'organizer_profile', None)
             if organizer:
                 from core.utils.transfers import (
                     is_organizer_bank_name_match,

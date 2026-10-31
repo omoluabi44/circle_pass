@@ -51,7 +51,7 @@ export default function PublicTicketView() {
     );
   }
 
-  const startDate = new Date(ticket.event.start_time);
+  const startDate = new Date(ticket.event_start_time);
 
 
   return (
@@ -98,8 +98,8 @@ export default function PublicTicketView() {
                 <div className="flex items-start gap-3 text-muted-foreground">
                   <MapPin className="w-5 h-5 mt-0.5 shrink-0 text-primary" />
                   <div>
-                    <p className="font-semibold text-foreground">{ticket.event.is_online ? "Online Event" : ticket.event.venue?.name}</p>
-                    {!ticket.event.is_online && <p>{ticket.event.venue?.location}</p>}
+                    <p className="font-semibold text-foreground">{ticket.event_is_online ? "Online Event" : ticket.event_venue}</p>
+
                   </div>
                 </div>
                 
@@ -115,7 +115,7 @@ export default function PublicTicketView() {
                       <QRCodeSVG value={ticket.qr_token} size={160} />
                     </div>
                     <span className="px-4 py-1.5 bg-green-100 text-green-700 font-bold rounded-full text-sm">
-                      ACTIVE
+                      {ticket.status}
                     </span>
                   </>
               </div>

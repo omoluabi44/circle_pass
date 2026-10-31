@@ -235,6 +235,8 @@ class OrganizerVerificationView(APIView):
         if serializer.is_valid():
             # Automatically verify organizers instead of requiring admin approval
             serializer.save(status='Verified')
+            obj.organizer.is_verified = True
+            obj.organizer.save(update_fields=['is_verified'])
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -429,6 +431,15 @@ class EventViewSet(viewsets.ModelViewSet):
         if old_status not in ['LIVE', 'PUBLISHED'] and updated_event.status in ['LIVE', 'PUBLISHED']:
             from .tasks import notify_waitlist_on_launch
             notify_waitlist_on_launch.delay(updated_event.id)
+
+    def get_object(self):
+        obj = super().get_object()
+        user = self.request.user
+        if self.request.method not in permissions.SAFE_METHODS:
+            if user.is_authenticated and user.role != 'ADMIN' and getattr(obj.organizer, 'user', None) != user:
+                from rest_framework.exceptions import PermissionDenied
+                raise PermissionDenied("You do not have permission to modify this event.")
+        return obj
 
     @action(detail=True, methods=['post'], permission_classes=[IsOrganizerOrAdmin])
     def submit(self, request, pk=None):

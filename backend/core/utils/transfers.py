@@ -10,13 +10,19 @@ import re
 import requests
 
 
+from django.conf import settings
+
 PAYSTACK_SECRET_KEY = os.environ.get('PAYSTACK_SECRET_KEY', '')
 PAYSTACK_BASE_URL = 'https://api.paystack.co'
 
 
+def _get_secret_key() -> str:
+    return getattr(settings, 'PAYSTACK_SECRET_KEY', '') or os.environ.get('PAYSTACK_SECRET_KEY', '')
+
+
 def _headers():
     return {
-        'Authorization': f'Bearer {PAYSTACK_SECRET_KEY}',
+        'Authorization': f'Bearer {_get_secret_key()}',
         'Content-Type': 'application/json',
     }
 
