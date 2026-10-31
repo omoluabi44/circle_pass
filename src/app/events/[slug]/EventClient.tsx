@@ -113,7 +113,8 @@ function EventCountdown({ targetDate }: { targetDate?: string }) {
 // Fetch real event details from the backend
 export default function EventDetailsPage({ initialSlug }: { initialSlug?: string }) {
 
-  const params = useParams();`n  const slug = initialSlug || (params?.slug as string);
+  const params = useParams();
+  const slug = initialSlug || (params?.slug as string);
   const router = useRouter();
 
   const { data: session } = useSession();
