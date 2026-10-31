@@ -3,7 +3,7 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Ticket, Minus, Plus, AlertCircle, CheckCircle2, ArrowLeft } from "lucide-react";
-import { useSession } from "next-auth/react";
+import { useSession, signOut } from "next-auth/react";
 import { useParams, useRouter } from "next/navigation";
 import { checkout } from "@/lib/api/checkout";
 import { API_URL } from "@/lib/api/config";
@@ -362,7 +362,12 @@ export default function CheckoutPage() {
         setIsLoading(false);
       }
     } catch (err: any) {
-      setError(err.message || "An unexpected error occurred during checkout.");
+      if (err.message && err.message.includes("session has expired")) {
+          setError(err.message);
+          setTimeout(() => { signOut({ callbackUrl: '/login' }); }, 3000);
+      } else {
+          setError(err.message || "An unexpected error occurred during checkout.");
+      }
       setIsLoading(false);
     }
   };

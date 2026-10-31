@@ -17,6 +17,9 @@ export async function checkout(data: CheckoutRequest, token?: string): Promise<C
   
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({}));
+    if (res.status === 401 || errorData?.code === 'token_not_valid' || errorData?.detail === 'Given token not valid for any token type') {
+      throw new Error("Your session has expired. Please refresh the page or log in again.");
+    }
     throw new Error(errorData.detail || 'Checkout failed');
   }
   
