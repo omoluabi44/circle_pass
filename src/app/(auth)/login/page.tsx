@@ -29,10 +29,15 @@ function LoginForm() {
       redirect: false,
     });
 
-    if (res?.error) {
+    // Check both error and ok — NextAuth can return ok:false without an error string
+    if (res?.error || !res?.ok) {
       setError("Invalid email or password");
       setIsLoading(false);
     } else {
+      // Small delay to allow the session cookie to be fully written before
+      // fetching the session — prevents a race on production.
+      await new Promise((resolve) => setTimeout(resolve, 300));
+
       const session = await getSession();
       const role = (session?.user as any)?.role;
       const rawCallback = searchParams.get("callbackUrl");
@@ -57,8 +62,6 @@ function LoginForm() {
       } else {
         router.push("/dashboard");
       }
-      // Note: router.refresh() intentionally removed — it races with router.push()
-      // and can cause a flash back to the login page before navigation completes.
     }
   };
 

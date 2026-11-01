@@ -82,7 +82,9 @@ export const authOptions: NextAuthOptions = {
         sameSite: "lax",
         path: "/",
         secure: useSecureCookies,
-        domain: hostName, // undefined for localhost & Docker internal names
+        // Do NOT scope to a specific domain — let the browser match any hostname
+        // that serves the app (avoids breakage from www vs non-www, Docker
+        // internal hostnames, or reverse-proxy rewrites).
       },
     },
   },
@@ -166,10 +168,13 @@ export const authOptions: NextAuthOptions = {
     async jwt({ token, user, account, profile }) {
       // ── Global logout guard ───────────────────────────────────────────────
       // If the stored session version doesn't match CURRENT_SESSION_VERSION,
-      // return an empty token — NextAuth will treat the session as invalid and
-      // redirect the user to /login on their next protected-route visit.
-      if (token.sessionVersion !== CURRENT_SESSION_VERSION && !user && !account) {
-        return {} as typeof token;
+      // wipe the token so the session callback returns no accessToken and the
+      // user is prompted to log in again. Only applies to existing tokens
+      // (when !user && !account) — never block a fresh sign-in.
+      if (!user && !account && token.sessionVersion !== CURRENT_SESSION_VERSION) {
+        // Return a minimal token — NOT an empty object. An empty object causes
+        // NextAuth to enter a broken state on subsequent requests.
+        return { sessionVersion: -1 } as typeof token;
       }
       // ─────────────────────────────────────────────────────────────────────
       if (account?.provider === "google" && profile) {
