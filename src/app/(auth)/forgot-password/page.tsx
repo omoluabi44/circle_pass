@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { API_URL } from "@/lib/api/config";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
@@ -13,10 +14,10 @@ export default function ForgotPasswordPage() {
     setStatus("loading");
 
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/users/reset_password/`, {
+      const res = await fetch(`${API_URL}/auth/users/reset_password/`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email: email.trim().toLowerCase() }),
       });
 
       if (res.ok) {
