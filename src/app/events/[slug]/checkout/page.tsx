@@ -3,7 +3,7 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Ticket, Minus, Plus, AlertCircle, CheckCircle2, ArrowLeft } from "lucide-react";
-import { useSession, signOut } from "next-auth/react";
+import { useSession, signOut } from "@/context/AuthContext";
 import { useParams, useRouter } from "next/navigation";
 import { checkout } from "@/lib/api/checkout";
 import { API_URL } from "@/lib/api/config";

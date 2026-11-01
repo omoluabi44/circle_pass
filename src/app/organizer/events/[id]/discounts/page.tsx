@@ -3,7 +3,7 @@
 import React, { useState, useEffect, use } from 'react';
 import { Plus, Trash2, Power } from 'lucide-react';
 import { useParams } from 'next/navigation';
-import { useSession } from "next-auth/react";
+import { useSession } from "@/context/AuthContext";
 import { toast } from "react-hot-toast";
 import { getEventDiscounts, createEventDiscount, deleteEventDiscount } from "@/lib/api/events";
 

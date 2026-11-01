@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { useSession } from "next-auth/react";
+import { useSession } from "@/context/AuthContext";
 import Image from "next/image";
 import { UploadCloud, Loader2, X } from "lucide-react";
 import { uploadToS3 } from "@/utils/s3Upload";

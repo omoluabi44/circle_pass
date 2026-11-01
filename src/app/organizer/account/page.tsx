@@ -2,7 +2,7 @@
 
 import { Building2, ShieldCheck, CreditCard, Lock, Save, Loader2, Bell, AlertTriangle } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
-import { useSession, signOut } from "next-auth/react";
+import { useSession, signOut } from "@/context/AuthContext";
 import Image from "next/image";
 import { API_URL } from "@/lib/api/config";
 import { uploadToS3 } from "@/utils/s3Upload";

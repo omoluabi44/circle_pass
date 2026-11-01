@@ -3,7 +3,7 @@
 import { LifeBuoy, MessageCircle, ExternalLink, HelpCircle, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useState, useEffect } from "react";
-import { useSession } from "next-auth/react";
+import { useSession } from "@/context/AuthContext";
 import { API_URL } from "@/lib/api/config";
 import { toast } from "react-hot-toast";
 

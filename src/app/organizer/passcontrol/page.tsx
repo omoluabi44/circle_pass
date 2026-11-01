@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useSession } from 'next-auth/react';
+import { useSession } from "@/context/AuthContext";
 import { QRScanner } from '@/components/checkin/QRScanner';
 import { ManualSearch } from '@/components/checkin/ManualSearch';
 import { LiveFeed } from '@/components/checkin/LiveFeed';

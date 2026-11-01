@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Search, UserCheck, AlertCircle } from 'lucide-react';
 
-import { useSession } from 'next-auth/react';
+import { useSession } from "@/context/AuthContext";
 import { API_URL } from "@/lib/api/config";
 
 interface Ticket {

@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useState, useRef, useEffect } from 'react';
-import { useSession } from "next-auth/react";
+import { useSession } from "@/context/AuthContext";
 
 export function Hero() {
   const [activeVideo, setActiveVideo] = useState(0);

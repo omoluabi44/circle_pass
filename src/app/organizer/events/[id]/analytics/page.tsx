@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { TrendingUp, Users, Ticket, DollarSign } from 'lucide-react';
 import { useParams } from 'next/navigation';
-import { useSession } from 'next-auth/react';
+import { useSession } from "@/context/AuthContext";
 import { getEventAnalytics } from '@/lib/api/events';
 import { toast } from 'react-hot-toast';
 

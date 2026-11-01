@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Save, AlertTriangle, Loader2 } from 'lucide-react';
 import { useParams } from 'next/navigation';
-import { useSession } from 'next-auth/react';
+import { useSession } from "@/context/AuthContext";
 import { getEventById, updateEvent } from '@/lib/api/events';
 import { toast } from 'react-hot-toast';
 

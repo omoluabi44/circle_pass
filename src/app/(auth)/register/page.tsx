@@ -1,6 +1,5 @@
 "use client";
 
-import { signIn } from "next-auth/react";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -229,7 +228,13 @@ export default function RegisterPage() {
             <button
               onClick={() => {
                 Cookies.set('oauth_role', role, { expires: 1 });
-                signIn("google", { callbackUrl: role === "ORGANIZER" ? "/organizer" : "/dashboard" });
+                const target = role === "ORGANIZER" ? "/organizer" : "/dashboard";
+                if (process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID) {
+                  const redirectUri = `${window.location.origin}/login/redirect`;
+                  window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=token&scope=email%20profile&state=${encodeURIComponent(target)}`;
+                } else {
+                  router.push(target);
+                }
               }}
               className="flex w-full justify-center items-center gap-3 rounded-xl border border-border bg-background px-4 py-3.5 text-sm font-bold text-foreground hover:bg-secondary focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 transition-colors shadow-sm"
             >

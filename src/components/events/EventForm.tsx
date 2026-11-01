@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useSession } from "next-auth/react";
+import { useSession } from "@/context/AuthContext";
 import { createEvent, updateEvent, submitEvent, getCategories } from "@/lib/api/events";
 import { Save, Send, AlertCircle, Plus, Trash2, ArrowLeft } from "lucide-react";
 import Link from "next/link";

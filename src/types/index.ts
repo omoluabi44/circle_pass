@@ -1,3 +1,14 @@
+export interface User {
+  id: string | number;
+  email: string;
+  username?: string;
+  name?: string;
+  role: 'ATTENDEE' | 'ORGANIZER' | 'ADMIN' | string;
+  isEmailVerified?: boolean;
+  phone_number?: string;
+  avatar?: string | null;
+}
+
 // Ticket tier options
 export type TicketTier = 'FREE' | 'EARLY_BIRD' | 'REGULAR' | 'VIP' | 'VVIP' | 'CUSTOM';
 

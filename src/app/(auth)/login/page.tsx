@@ -1,6 +1,6 @@
 "use client";
 
-import { signIn, getSession } from "next-auth/react";
+import { useAuth } from "@/context/AuthContext";
 import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
@@ -11,6 +11,7 @@ import { Eye, EyeOff, Loader2 } from "lucide-react";
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { login } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -23,32 +24,19 @@ function LoginForm() {
     setError("");
     setIsLoading(true);
 
-    const res = await signIn("credentials", {
-      email,
-      password,
-      redirect: false,
-    });
+    const res = await login(email, password);
 
-    // Check both error and ok — NextAuth can return ok:false without an error string
-    if (res?.error || !res?.ok) {
-      setError("Invalid email or password");
+    if (!res.success) {
+      setError(res.error || "Invalid email or password");
       setIsLoading(false);
     } else {
-      // Small delay to allow the session cookie to be fully written before
-      // fetching the session — prevents a race on production.
-      await new Promise((resolve) => setTimeout(resolve, 300));
-
-      const session = await getSession();
-      const role = (session?.user as any)?.role;
-      const rawCallback = searchParams.get("callbackUrl");
-      // Sanitize: if a full URL was stored (e.g. Docker internal hostname),
-      // extract just the pathname so we never redirect to a wrong host.
+      const role = res.user?.role;
+      const rawCallback = searchParams.get("callbackUrl") || searchParams.get("redirect");
       let callback: string | null = null;
       if (rawCallback) {
         try {
           callback = new URL(rawCallback).pathname;
         } catch {
-          // rawCallback is already a relative path
           callback = rawCallback;
         }
       }
@@ -66,9 +54,17 @@ function LoginForm() {
   };
 
   const handleGoogleSignIn = () => {
-    const callbackParam = searchParams.get("callbackUrl");
-    const target = callbackParam && !callbackParam.includes("/login") ? callbackParam : "/login/redirect";
-    signIn("google", { callbackUrl: target });
+    // Direct Google Sign In can redirect to Django Google endpoint or provider
+    const callbackParam = searchParams.get("callbackUrl") || searchParams.get("redirect");
+    const target = callbackParam && !callbackParam.includes("/login") ? callbackParam : "/dashboard";
+    // If NEXT_PUBLIC_GOOGLE_CLIENT_ID is set, standard OAuth redirect or alert
+    if (process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID) {
+      const redirectUri = `${window.location.origin}/login/redirect`;
+      const googleOAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=token&scope=email%20profile&state=${encodeURIComponent(target)}`;
+      window.location.href = googleOAuthUrl;
+    } else {
+      router.push(target);
+    }
   };
 
   return (

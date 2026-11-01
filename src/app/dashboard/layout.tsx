@@ -6,7 +6,7 @@ import { Compass, CircleUserRound, Ticket, UserCircle, LogOut, Bookmark, Users }
 import Image from "next/image";
 import { RoleSwitcher } from "@/components/ui/RoleSwitcher";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
-import { signOut, useSession } from "next-auth/react";
+import { signOut, useSession } from "@/context/AuthContext";
 import { useState, useEffect } from "react";
 import { API_URL } from "@/lib/api/config";
 

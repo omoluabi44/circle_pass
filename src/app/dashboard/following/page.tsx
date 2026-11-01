@@ -1,5 +1,5 @@
 "use client";
-import { useSession } from "next-auth/react";
+import { useSession } from "@/context/AuthContext";
 import { useEffect, useState } from "react";
 import { Users, Calendar, ExternalLink } from "lucide-react";
 import Link from "next/link";

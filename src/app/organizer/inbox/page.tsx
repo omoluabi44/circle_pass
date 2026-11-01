@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import { Inbox, Bell, Loader2 } from "lucide-react";
-import { useSession } from "next-auth/react";
+import { useSession } from "@/context/AuthContext";
 import { API_URL } from "@/lib/api/config";
 
 export default function OrganizerInboxPage() {

@@ -6,13 +6,14 @@ import Link from "next/link";
 import Image from "next/image";
 import { InteractiveExperience } from "@/components/ui/InteractiveExperience";
 import { Mail, ArrowRight, Loader2 } from "lucide-react";
-import { signIn } from "next-auth/react";
+import { useAuth } from "@/context/AuthContext";
 import { API_URL } from "@/lib/api/config";
 import toast from "react-hot-toast";
 
 function VerifyEmailContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const { setSession } = useAuth();
   const email = searchParams.get("email");
   
   const [code, setCode] = useState(["", "", "", ""]);
@@ -84,26 +85,15 @@ function VerifyEmailContent() {
       toast.success("Email verified successfully!");
       
       // Auto login using the tokens returned from our backend
-      const result = await signIn("credentials", {
-        redirect: false,
-        access_token: data.access,
-        refresh_token: data.refresh,
-        user_data: JSON.stringify(data.user)
-      });
+      setSession(data.access, data.refresh, data.user);
       
-      if (result?.error) {
-        toast.error("Verified successfully, but couldn't log in automatically. Please login.");
-        router.push("/login?verified=true");
+      const userRole = data.user?.role;
+      if (userRole === "ORGANIZER") {
+        router.push("/organizer");
+      } else if (userRole === "ADMIN") {
+        router.push("/admin");
       } else {
-        // Redirect to dashboard as requested!
-        const userRole = data.user?.role;
-        if (userRole === "ORGANIZER") {
-          router.push("/organizer");
-        } else if (userRole === "ADMIN") {
-          router.push("/admin");
-        } else {
-          router.push("/dashboard/tickets");
-        }
+        router.push("/dashboard/tickets");
       }
       
     } catch (err: any) {

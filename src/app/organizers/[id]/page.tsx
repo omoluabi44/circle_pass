@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import { Music2, MapPin, Calendar, CheckCircle, Link as LinkIcon } from "lucide-react";
 import { InstagramIcon } from "@/components/ui/InstagramIcon";
 import Link from "next/link";
-import { useSession } from "next-auth/react";
+import { useSession } from "@/context/AuthContext";
 import { API_URL } from "@/lib/api/config";
 import { toggleFollowOrganizer } from "@/lib/api/engagement";
 

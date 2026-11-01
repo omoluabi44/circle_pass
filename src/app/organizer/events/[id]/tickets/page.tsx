@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Edit2, Trash2, CheckCircle2 } from 'lucide-react';
 import { getEventById, updateEvent } from '@/lib/api/events';
 import { useParams } from 'next/navigation';
-import { useSession } from 'next-auth/react';
+import { useSession } from "@/context/AuthContext";
 import { toast } from 'react-hot-toast';
 
 function parseSafeDate(dateString: string | null | undefined): Date | null {

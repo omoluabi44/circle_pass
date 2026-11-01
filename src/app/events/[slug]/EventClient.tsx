@@ -7,7 +7,7 @@ import { Calendar, MapPin, Clock, Share2, Ticket, ArrowLeft, Users, Bookmark, Mu
 import { QRCodeCanvas } from "qrcode.react";
 import { InstagramIcon } from "@/components/ui/InstagramIcon";
 import Link from "next/link";
-import { useSession } from "next-auth/react";
+import { useSession } from "@/context/AuthContext";
 import { toggleSaveEvent, toggleFollowOrganizer } from "@/lib/api/engagement";
 import { API_URL, getMediaBaseUrl } from "@/lib/api/config";
 import { getPublicEvents } from "@/lib/api/events";

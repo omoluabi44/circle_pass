@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useSession } from 'next-auth/react';
+import { useSession } from "@/context/AuthContext";
 import { API_URL } from '@/lib/api/config';
 import { Shield, QrCode, ArrowRight, Loader2 } from 'lucide-react';
 import Link from 'next/link';

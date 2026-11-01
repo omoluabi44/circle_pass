@@ -8,7 +8,7 @@ import {
   LayoutDashboard, CalendarDays, Wallet, ScanLine, Users, Inbox, 
   BarChart3, UserPlus, Settings, LifeBuoy, Menu, X, LogOut 
 } from "lucide-react";
-import { signOut, useSession } from "next-auth/react";
+import { signOut, useSession } from "@/context/AuthContext";
 import { RoleSwitcher } from "@/components/ui/RoleSwitcher";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { useEffect } from "react";

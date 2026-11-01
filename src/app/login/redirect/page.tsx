@@ -1,23 +1,23 @@
 "use client";
 
 import { useEffect } from "react";
-import { useSession } from "next-auth/react";
+import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 
 export default function LoginRedirectPage() {
-  const { data: session, status } = useSession();
+  const { user, isLoggedIn, isLoading } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    if (status === "loading") return;
+    if (isLoading) return;
 
-    if (status === "unauthenticated") {
+    if (!isLoggedIn) {
       router.replace("/login");
       return;
     }
 
-    const role = (session?.user as any)?.role;
+    const role = user?.role;
     if (role === "ORGANIZER") {
       router.replace("/organizer");
     } else if (role === "ADMIN") {
@@ -25,7 +25,7 @@ export default function LoginRedirectPage() {
     } else {
       router.replace("/dashboard");
     }
-  }, [session, status, router]);
+  }, [user, isLoggedIn, isLoading, router]);
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-background gap-3">

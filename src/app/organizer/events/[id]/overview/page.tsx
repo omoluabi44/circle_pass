@@ -5,7 +5,7 @@ import { Activity, PauseCircle, PlayCircle, ListPlus, Users, ArrowLeft, Ticket }
 import Link from "next/link";
 import { useParams } from 'next/navigation';
 import { getEventOverview, updateEvent } from "@/lib/api/events";
-import { useSession } from "next-auth/react";
+import { useSession } from "@/context/AuthContext";
 import { toast } from "react-hot-toast";
 
 export default function RealTimeEventDashboard() {

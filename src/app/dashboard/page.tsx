@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { TicketCheck, Compass, Calendar, MapPin, Clock, ChevronRight, Loader2, Image as ImageIcon, ArrowRight } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { useSession } from "next-auth/react";
+import { useSession } from "@/context/AuthContext";
 import { API_URL } from "@/lib/api/config";
 
 export default function AttendeeDashboard() {

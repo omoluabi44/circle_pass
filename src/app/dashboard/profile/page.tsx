@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { User, Mail, Phone, Bell, Settings, LogOut, ChevronRight, Loader2, X, Lock, AlertTriangle, Check, Shield } from "lucide-react";
-import { useSession, signOut } from "next-auth/react";
+import { useSession, signOut } from "@/context/AuthContext";
 import { API_URL } from "@/lib/api/config";
 import toast from "react-hot-toast";
 

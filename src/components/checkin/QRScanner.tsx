@@ -4,7 +4,7 @@ import { useEffect, useState, useRef } from 'react';
 import { Html5Qrcode, CameraDevice, Html5QrcodeSupportedFormats } from 'html5-qrcode';
 import { CheckCircle2, XCircle, AlertCircle, RefreshCw, Camera, ChevronDown, Scan } from 'lucide-react';
 
-import { useSession } from 'next-auth/react';
+import { useSession } from "@/context/AuthContext";
 import { API_URL } from "@/lib/api/config";
 
 interface QRScannerProps {

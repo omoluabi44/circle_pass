@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useParams } from 'next/navigation';
 import { QRScanner } from '@/components/checkin/QRScanner';
 import { QrCode, LogOut } from 'lucide-react';
-import { signOut } from 'next-auth/react';
+import { signOut } from "@/context/AuthContext";
 
 export default function StaffScanPage() {
   const params = useParams();

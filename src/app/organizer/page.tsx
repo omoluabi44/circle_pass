@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { Plus, ArrowUpRight, Loader2 } from "lucide-react";
 import { useState, useEffect } from "react";
-import { useSession } from "next-auth/react";
+import { useSession } from "@/context/AuthContext";
 import { API_URL } from "@/lib/api/config";
 
 export default function OrganizerDashboard() {

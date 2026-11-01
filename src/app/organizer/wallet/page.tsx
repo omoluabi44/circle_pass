@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useSession } from "next-auth/react";
+import { useSession } from "@/context/AuthContext";
 import {
   ArrowUpRight, ArrowDownLeft, Clock, CheckCircle2, Wallet,
   RefreshCw, X, AlertCircle, ChevronRight, Plus, Building2,

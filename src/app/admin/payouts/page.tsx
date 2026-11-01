@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useSession } from "next-auth/react";
+import { useSession } from "@/context/AuthContext";
 import { RefreshCw, AlertCircle, ChevronRight, X } from "lucide-react";
 import { API_URL as API } from "@/lib/api/config";
 

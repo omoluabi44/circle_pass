@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { Logo } from '@/components/ui/Logo';
 import { Menu, X, ShoppingCart, LayoutDashboard, User, Plus, Ticket, LogOut } from 'lucide-react';
-import { useSession, signOut } from 'next-auth/react';
+import { useSession, signOut } from "@/context/AuthContext";
 import { useCart } from '@/context/CartContext';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 

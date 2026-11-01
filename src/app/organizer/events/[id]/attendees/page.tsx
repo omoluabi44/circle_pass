@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Search, Download } from 'lucide-react';
 import { getEventAttendees } from '@/lib/api/events';
 import { useParams } from 'next/navigation';
-import { useSession } from 'next-auth/react';
+import { useSession } from "@/context/AuthContext";
 import { toast } from 'react-hot-toast';
 
 export default function AttendeesPage() {

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
-import { useSession } from "next-auth/react";
+import { useSession } from "@/context/AuthContext";
 import { toast } from "react-hot-toast";
 import { 
   Clock, Users, CheckCircle2, XCircle, AlertCircle, 

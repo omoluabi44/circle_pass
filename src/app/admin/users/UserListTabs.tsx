@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Trash2, BarChart3 } from "lucide-react";
 import { toast } from "react-hot-toast";
-import { useSession } from "next-auth/react";
+import { useSession } from "@/context/AuthContext";
 import { deleteAdminUser } from "@/lib/api/admin";
 import Link from "next/link";
 

@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Activity, Users, CheckCircle, Clock, Ticket, AlertCircle } from 'lucide-react';
 
-import { useSession } from 'next-auth/react';
+import { useSession } from "@/context/AuthContext";
 import { API_URL } from "@/lib/api/config";
 
 function timeAgo(dateString: string) {

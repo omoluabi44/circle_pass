@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useSession } from "next-auth/react";
+import { useSession } from "@/context/AuthContext";
 import { toast } from "react-hot-toast";
 import { Loader2, MessageSquare } from "lucide-react";
 import { format } from "date-fns";

@@ -5,7 +5,7 @@ import {
   ArrowRight, Users, Calendar, Ticket, Banknote, ScanLine, AlertCircle, BarChart3, Clock, CheckCircle2, XCircle, Loader2 
 } from "lucide-react";
 import { useEffect, useState } from "react";
-import { useSession } from "next-auth/react";
+import { useSession } from "@/context/AuthContext";
 import { API_URL } from "@/lib/api/config";
 
 export default function AdminDashboardPage() {
