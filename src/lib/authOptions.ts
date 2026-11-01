@@ -29,16 +29,10 @@ export const authOptions: NextAuthOptions = {
   secret: process.env.NEXTAUTH_SECRET,
   session: { strategy: "jwt" },
 
-  // ─── FIX: "State cookie was missing" on Google OAuth ───────────────────────
-  // When Google redirects back to the app after OAuth, the browser performs a
-  // cross-site redirect. Browsers with strict SameSite defaults (Chrome 80+,
-  // Firefox, Safari) DROP cookies that are SameSite=Lax on cross-site POSTs/
-  // redirects. NextAuth's state & PKCE cookies default to SameSite=Lax, so
-  // the state cookie is gone by the time the callback runs → "State cookie was
-  // missing" → NextAuth throws, session is never created, middleware bounces
-  // the user back to /login. The user had to click twice because the second
-  // click hit a GET-based redirect instead of the cross-site POST that drops
-  // the cookie. Fix: set SameSite=None; Secure on all OAuth-flow cookies.
+  // ─── Cookie config ───────────────────────────────────────────────────────────
+  // OAuth-flow cookies (state, pkce, callbackUrl, csrf) need SameSite=None so
+  // they survive the Google cross-site redirect. The session token itself stays
+  // SameSite=Lax (first-party only).
   cookies: {
     pkceCodeVerifier: {
       name: `${cookiePrefix}next-auth.pkce.code_verifier`,
@@ -56,7 +50,7 @@ export const authOptions: NextAuthOptions = {
         sameSite: "none",
         path: "/",
         secure: useSecureCookies,
-        maxAge: 900, // 15 min — enough for the OAuth round-trip
+        maxAge: 900,
       },
     },
     callbackUrl: {
@@ -80,14 +74,14 @@ export const authOptions: NextAuthOptions = {
       name: `${cookiePrefix}next-auth.session-token`,
       options: {
         httpOnly: true,
-        sameSite: "lax", // session token is first-party only — keep Lax
+        sameSite: "lax",
         path: "/",
         secure: useSecureCookies,
         domain: hostName, // undefined for localhost & Docker internal names
       },
     },
   },
-  // ────────────────────────────────────────────────────────────────────────────
+  // ─────────────────────────────────────────────────────────────────────────────
 
   providers: [
     GoogleProvider({
@@ -104,6 +98,7 @@ export const authOptions: NextAuthOptions = {
         user_data: { label: "Data", type: "text" }
       },
       async authorize(credentials) {
+        // Pre-authenticated path (e.g. Google OAuth redirect passing tokens directly)
         if (credentials?.access_token && credentials?.user_data) {
           const user = JSON.parse(credentials.user_data);
           return {
@@ -113,7 +108,6 @@ export const authOptions: NextAuthOptions = {
             role: user.role,
             isEmailVerified: true,
             accessToken: credentials.access_token,
-            refreshToken: credentials.refresh_token,
           };
         }
 
@@ -152,8 +146,9 @@ export const authOptions: NextAuthOptions = {
             email: user.email,
             role: user.role,
             isEmailVerified: user.is_email_verified ?? user.is_active ?? true,
+            // NOTE: do NOT store refreshToken in the JWT — it bloats the cookie
+            // beyond 4KB which causes chunking issues on mobile browsers.
             accessToken: tokens.access,
-            refreshToken: tokens.refresh,
           };
         } catch (error) {
           console.error("Network or fetch error during login:", error);
@@ -166,8 +161,6 @@ export const authOptions: NextAuthOptions = {
     async jwt({ token, user, account, profile }) {
       if (account?.provider === "google" && profile) {
         // Exchange Google profile for Django JWT tokens.
-        // Do NOT use next/headers cookies() here — that context is unavailable
-        // during the OAuth callback and causes silent failures.
         try {
           console.log("Attempting Google Auth to backend with:", profile.email, "URL:", `${API_URL}/auth/google/`);
 
@@ -197,7 +190,7 @@ export const authOptions: NextAuthOptions = {
             const data = await res.json();
             token.role = data.role;
             token.accessToken = data.access;
-            token.refreshToken = data.refresh;
+            // Do NOT store data.refresh — keep cookie small
             console.log("Successfully set tokens from backend!");
           } else {
             console.error("Backend returned error:", await res.text());
@@ -206,11 +199,11 @@ export const authOptions: NextAuthOptions = {
           console.error("Google auth to backend failed", error);
         }
       } else if (user) {
-        // Initial credentials sign-in
-        token.role = user.role;
-        token.isEmailVerified = user.isEmailVerified;
-        token.accessToken = user.accessToken;
-        token.refreshToken = user.refreshToken;
+        // Initial credentials sign-in — copy only what we need
+        token.role = (user as any).role;
+        token.isEmailVerified = (user as any).isEmailVerified;
+        token.accessToken = (user as any).accessToken;
+        // refreshToken intentionally omitted to keep JWT small
       }
       return token;
     },
@@ -225,6 +218,5 @@ export const authOptions: NextAuthOptions = {
   },
   pages: {
     signIn: '/login',
-    // newUser: '/register' intentionally removed — Google users go straight to dashboard
   }
 };

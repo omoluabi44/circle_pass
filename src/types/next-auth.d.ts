@@ -25,6 +25,7 @@ declare module "next-auth/jwt" {
     role?: string;
     isEmailVerified?: boolean;
     accessToken?: string;
-    refreshToken?: string;
+    // refreshToken intentionally removed — storing it bloated the cookie > 4KB
+    // causing NextAuth JWT chunking which broke useSession() on mobile browsers.
   }
 }
