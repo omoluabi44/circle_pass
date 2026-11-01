@@ -35,7 +35,18 @@ function LoginForm() {
     } else {
       const session = await getSession();
       const role = (session?.user as any)?.role;
-      const callback = searchParams.get("callbackUrl");
+      const rawCallback = searchParams.get("callbackUrl");
+      // Sanitize: if a full URL was stored (e.g. Docker internal hostname),
+      // extract just the pathname so we never redirect to a wrong host.
+      let callback: string | null = null;
+      if (rawCallback) {
+        try {
+          callback = new URL(rawCallback).pathname;
+        } catch {
+          // rawCallback is already a relative path
+          callback = rawCallback;
+        }
+      }
 
       if (callback && !callback.includes("/login")) {
         router.push(callback);

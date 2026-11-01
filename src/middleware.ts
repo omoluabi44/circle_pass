@@ -15,12 +15,12 @@ export async function middleware(req: NextRequest) {
   }
 
   // 1. Direct cookie check (Bulletproof fallback for Edge runtime bugs & chunked cookies)
-  const hasSessionCookie = req.cookies.getAll().some(c => 
-    c.name.startsWith("next-auth.session-token") || 
+  const hasSessionCookie = req.cookies.getAll().some(c =>
+    c.name.startsWith("next-auth.session-token") ||
     c.name.startsWith("__Secure-next-auth.session-token")
   );
 
-  // 2. Attempt to decode the JWT 
+  // 2. Attempt to decode the JWT
   const token = await getToken({
     req,
     secret: process.env.NEXTAUTH_SECRET,
@@ -29,11 +29,14 @@ export async function middleware(req: NextRequest) {
   // If there is NO token AND NO session cookie, redirect to login
   if (!token && !hasSessionCookie) {
     const loginUrl = new URL("/login", req.url);
-    loginUrl.searchParams.set("callbackUrl", req.url);
+    // Use only the pathname+search so Docker/proxy internal hostnames never
+    // leak into the callbackUrl that the login page will router.push() to.
+    const callbackPath = req.nextUrl.pathname + (req.nextUrl.search || "");
+    loginUrl.searchParams.set("callbackUrl", callbackPath);
     return NextResponse.redirect(loginUrl);
   }
 
-  // If token decoding failed (Edge runtime issue) but cookie exists, 
+  // If token decoding failed (Edge runtime issue) but cookie exists,
   // we let the user pass. Client components (useSession) and Backend will handle real validation.
   if (!token && hasSessionCookie) {
     return NextResponse.next();
@@ -49,7 +52,7 @@ export async function middleware(req: NextRequest) {
   // Organizer routes require ORGANIZER or ADMIN role
   if (
     path.startsWith("/organizer") &&
-    role && 
+    role &&
     role !== "ORGANIZER" &&
     role !== "ADMIN"
   ) {

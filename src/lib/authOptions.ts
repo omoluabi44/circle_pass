@@ -6,9 +6,24 @@ import { API_URL } from "@/lib/api/config";
 // Determine if we're running on HTTPS (production)
 const useSecureCookies = process.env.NEXTAUTH_URL?.startsWith("https://") ?? false;
 const cookiePrefix = useSecureCookies ? "__Secure-" : "";
-const hostName = process.env.NEXTAUTH_URL
-  ? new URL(process.env.NEXTAUTH_URL).hostname
-  : "localhost";
+
+// Resolve hostname from NEXTAUTH_URL but guard against Docker internal hostnames
+// (container IDs / service names with no dots). Falls back to undefined so the
+// session cookie is not scoped to a bogus domain.
+function resolveHostname(): string | undefined {
+  try {
+    const raw = process.env.NEXTAUTH_URL;
+    if (!raw) return undefined;
+    const h = new URL(raw).hostname;
+    if (h === "localhost") return undefined;
+    // A real domain always has at least one dot. Container IDs don't.
+    if (!h.includes(".")) return undefined;
+    return h;
+  } catch {
+    return undefined;
+  }
+}
+const hostName = resolveHostname();
 
 export const authOptions: NextAuthOptions = {
   secret: process.env.NEXTAUTH_SECRET,
@@ -68,7 +83,7 @@ export const authOptions: NextAuthOptions = {
         sameSite: "lax", // session token is first-party only — keep Lax
         path: "/",
         secure: useSecureCookies,
-        domain: hostName === "localhost" ? undefined : hostName,
+        domain: hostName, // undefined for localhost & Docker internal names
       },
     },
   },
