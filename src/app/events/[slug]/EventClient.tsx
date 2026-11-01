@@ -9,7 +9,7 @@ import { InstagramIcon } from "@/components/ui/InstagramIcon";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { toggleSaveEvent, toggleFollowOrganizer } from "@/lib/api/engagement";
-import { API_URL } from "@/lib/api/config";
+import { API_URL, getMediaBaseUrl } from "@/lib/api/config";
 import { getPublicEvents } from "@/lib/api/events";
 import toast from "react-hot-toast";
 
@@ -317,7 +317,7 @@ export default function EventDetailsPage({ initialSlug }: { initialSlug?: string
             if (img.startsWith('http')) return img;
             // Django ImageField without request context returns "event_covers/..." instead of "/media/event_covers/..."
             const mediaPath = img.startsWith('/media/') ? img : (img.startsWith('/') ? `/media${img}` : `/media/${img}`);
-            return `http://127.0.0.1:8000${mediaPath}`;
+            return `${getMediaBaseUrl()}${mediaPath}`;
           })()} 
           alt={event.title}
           fill
@@ -840,7 +840,7 @@ export default function EventDetailsPage({ initialSlug }: { initialSlug?: string
                 const recImage = recEvent.cover_image 
                   ? (recEvent.cover_image.startsWith('http') 
                       ? recEvent.cover_image 
-                      : `http://127.0.0.1:8000${recEvent.cover_image.startsWith('/media/') ? '' : '/media/'}${recEvent.cover_image}`)
+                      : `${getMediaBaseUrl()}${recEvent.cover_image.startsWith('/media/') ? '' : '/media/'}${recEvent.cover_image}`)
                   : "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=500&q=80";
 
                 return (

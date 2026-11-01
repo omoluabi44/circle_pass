@@ -3,8 +3,7 @@ import { useSession } from "next-auth/react";
 import { useEffect, useState } from "react";
 import { Users, Calendar, ExternalLink } from "lucide-react";
 import Link from "next/link";
-
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000/api';
+import { API_URL } from "@/lib/api/config";
 
 export default function FollowingPage() {
   const { data: session } = useSession();
@@ -13,7 +12,7 @@ export default function FollowingPage() {
 
   useEffect(() => {
     if (!session?.accessToken) return;
-    fetch(`${API}/followed-organizers/`, {
+    fetch(`${API_URL}/followed-organizers/`, {
       headers: { Authorization: `Bearer ${session.accessToken}` },
     })
       .then(r => r.json())

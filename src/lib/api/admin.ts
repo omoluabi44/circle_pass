@@ -24,7 +24,8 @@ export async function getAdminUsers(token: string) {
     cache: 'no-store'
   });
   if (!res.ok) throw new Error('Failed to fetch admin users');
-  return res.json();
+  const data = await res.json();
+  return Array.isArray(data) ? data : (data.results || []);
 }
 
 export async function getAdminOrganizerDetail(token: string, organizerIdOrUserId: number | string) {
@@ -49,7 +50,8 @@ export async function getAdminOrganizerVerifications(token: string) {
     cache: 'no-store'
   });
   if (!res.ok) throw new Error('Failed to fetch admin organizer verifications');
-  return res.json();
+  const data = await res.json();
+  return Array.isArray(data) ? data : (data.results || []);
 }
 
 export async function getAdminOrganizerVerification(token: string, id: number) {

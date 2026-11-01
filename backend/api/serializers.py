@@ -43,9 +43,16 @@ class UserCreateSerializer(BaseUserCreateSerializer):
         return user
 
 class UserSerializer(BaseUserSerializer):
+    role = serializers.SerializerMethodField()
+
     class Meta(BaseUserSerializer.Meta):
         model = User
         fields = ('id', 'username', 'email', 'role')
+
+    def get_role(self, obj):
+        if getattr(obj, 'is_superuser', False) or getattr(obj, 'is_staff', False):
+            return 'ADMIN'
+        return getattr(obj, 'role', 'ATTENDEE')
 
 class OrganizerProfileSerializer(serializers.ModelSerializer):
     class Meta:

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Mail, CheckCircle } from "lucide-react";
+import { API_URL } from "@/lib/api/config";
 
 export function FooterNewsletter() {
   const [email, setEmail] = useState("");
@@ -14,8 +15,8 @@ export function FooterNewsletter() {
 
     setStatus("loading");
     try {
-      const API = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api";
-      const res = await fetch(`${API}/newsletter/subscribe/`, {
+
+      const res = await fetch(`${API_URL}/newsletter/subscribe/`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),

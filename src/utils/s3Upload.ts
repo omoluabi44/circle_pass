@@ -1,6 +1,6 @@
 import Cookies from 'js-cookie';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
+import { API_URL } from '@/lib/api/config';
 
 export async function uploadToS3(file: File, folder: string = 'uploads', token?: string): Promise<string> {
   const authToken = token || Cookies.get('accessToken');

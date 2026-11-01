@@ -1,12 +1,10 @@
 "use client";
 import { useSession } from "next-auth/react";
 import { useEffect, useState } from "react";
-import { Bookmark, Calendar, MapPin, ExternalLink } from "lucide-react";
+import { Bookmark, Calendar, MapPin } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
-import { API_URL } from "@/lib/api/config";
-
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000/api';
+import { API_URL, getMediaBaseUrl } from "@/lib/api/config";
 
 export default function SavedEventsPage() {
   const { data: session } = useSession();
@@ -15,7 +13,7 @@ export default function SavedEventsPage() {
 
   useEffect(() => {
     if (!session?.accessToken) return;
-    fetch(`${API}/saved-events/`, {
+    fetch(`${API_URL}/saved-events/`, {
       headers: { Authorization: `Bearer ${session.accessToken}` },
     })
       .then(r => r.json())
@@ -23,6 +21,8 @@ export default function SavedEventsPage() {
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [session]);
+
+  const mediaBase = getMediaBaseUrl();
 
   return (
     <div className="p-6 md:p-10 max-w-5xl mx-auto">
@@ -61,13 +61,11 @@ export default function SavedEventsPage() {
                     <Image 
                       src={
                         typeof event.cover_image === 'string' 
-                          ? event.cover_image.startsWith('http://localhost:')
-                            ? event.cover_image.replace('http://localhost:', 'http://127.0.0.1:')
-                            : event.cover_image.startsWith('/media/')
-                              ? `${API_URL?.replace('/api', '') || 'http://127.0.0.1:8000'}${event.cover_image}`
-                              : !event.cover_image.startsWith('http') && !event.cover_image.startsWith('/')
-                                ? `${API_URL?.replace('/api', '') || 'http://127.0.0.1:8000'}/media/${event.cover_image}`
-                                : event.cover_image
+                          ? event.cover_image.startsWith('/media/')
+                            ? `${mediaBase}${event.cover_image}`
+                            : !event.cover_image.startsWith('http') && !event.cover_image.startsWith('/')
+                              ? `${mediaBase}/media/${event.cover_image}`
+                              : event.cover_image
                           : event.cover_image
                       } 
                       alt={event.title} 
