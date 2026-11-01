@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { Logo } from '@/components/ui/Logo';
-import { Menu, X, ShoppingCart, LayoutDashboard } from 'lucide-react';
+import { Menu, X, ShoppingCart, LayoutDashboard, User, Plus, Ticket, LogOut } from 'lucide-react';
 import { useSession, signOut } from 'next-auth/react';
 import { useCart } from '@/context/CartContext';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
@@ -170,8 +170,72 @@ export function Navbar() {
             </Link>
 
             {status === 'authenticated' ? (
-              <>
-              </>
+              <div className="space-y-3 pt-2">
+                {/* User info card */}
+                <div className="flex items-center justify-between p-3 rounded-xl bg-secondary/60 border border-border">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-sm">
+                      {session?.user?.name ? session.user.name.charAt(0).toUpperCase() : <User className="w-4 h-4" />}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-bold text-foreground truncate">{session?.user?.name || "Account"}</p>
+                      <p className="text-xs text-muted-foreground truncate">{session?.user?.email}</p>
+                    </div>
+                  </div>
+                  <span className="text-[10px] font-extrabold uppercase px-2.5 py-1 rounded-full bg-primary/10 text-primary border border-primary/20">
+                    {(session?.user as any)?.role || 'User'}
+                  </span>
+                </div>
+
+                {/* Dashboard button */}
+                <Link
+                  href={(session?.user as any)?.role === 'ADMIN' ? '/admin' : (session?.user as any)?.role === 'ORGANIZER' ? '/organizer' : '/dashboard'}
+                  className="flex items-center justify-center gap-2 w-full text-base font-bold px-4 py-3 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 transition-colors shadow-sm"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  <LayoutDashboard className="w-5 h-5" />
+                  <span>Go to Dashboard</span>
+                </Link>
+
+                {/* Create Event for Organizers */}
+                {(session?.user as any)?.role === 'ORGANIZER' && (
+                  <Link
+                    href="/organizer/events/create"
+                    className="flex items-center justify-center gap-2 w-full text-sm font-semibold px-4 py-2.5 rounded-xl border border-border bg-background hover:bg-secondary text-foreground transition-colors"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>Create Event</span>
+                  </Link>
+                )}
+
+                {/* Quick link for Attendee Tickets */}
+                {(session?.user as any)?.role === 'ATTENDEE' && (
+                  <Link
+                    href="/dashboard/tickets"
+                    className="flex items-center justify-between w-full text-sm font-medium px-4 py-2.5 rounded-xl border border-border bg-background hover:bg-secondary text-foreground transition-colors"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    <span className="flex items-center gap-2">
+                      <Ticket className="w-4 h-4 text-primary" />
+                      My Tickets
+                    </span>
+                    <span className="text-xs text-muted-foreground">View</span>
+                  </Link>
+                )}
+
+                {/* Sign Out */}
+                <button
+                  onClick={() => {
+                    setIsMobileMenuOpen(false);
+                    signOut({ callbackUrl: '/login' });
+                  }}
+                  className="flex items-center justify-center gap-2 w-full text-sm font-bold px-4 py-2.5 rounded-xl text-destructive hover:bg-destructive/10 transition-colors"
+                >
+                  <LogOut className="w-4 h-4" />
+                  <span>Sign Out</span>
+                </button>
+              </div>
             ) : (
               <>
                 <Link

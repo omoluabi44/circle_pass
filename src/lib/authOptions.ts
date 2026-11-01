@@ -25,6 +25,11 @@ function resolveHostname(): string | undefined {
 }
 const hostName = resolveHostname();
 
+// Bump this number to immediately invalidate ALL existing sessions.
+// Any JWT token that doesn't carry this exact version will be rejected
+// and the user will be redirected to /login.
+const CURRENT_SESSION_VERSION = 2;
+
 export const authOptions: NextAuthOptions = {
   secret: process.env.NEXTAUTH_SECRET,
   session: { strategy: "jwt" },
@@ -159,6 +164,14 @@ export const authOptions: NextAuthOptions = {
   ],
   callbacks: {
     async jwt({ token, user, account, profile }) {
+      // ── Global logout guard ───────────────────────────────────────────────
+      // If the stored session version doesn't match CURRENT_SESSION_VERSION,
+      // return an empty token — NextAuth will treat the session as invalid and
+      // redirect the user to /login on their next protected-route visit.
+      if (token.sessionVersion !== CURRENT_SESSION_VERSION && !user && !account) {
+        return {} as typeof token;
+      }
+      // ─────────────────────────────────────────────────────────────────────
       if (account?.provider === "google" && profile) {
         // Exchange Google profile for Django JWT tokens.
         try {
@@ -190,6 +203,7 @@ export const authOptions: NextAuthOptions = {
             const data = await res.json();
             token.role = data.role;
             token.accessToken = data.access;
+            token.sessionVersion = CURRENT_SESSION_VERSION;
             // Do NOT store data.refresh — keep cookie small
             console.log("Successfully set tokens from backend!");
           } else {
@@ -203,11 +217,15 @@ export const authOptions: NextAuthOptions = {
         token.role = (user as any).role;
         token.isEmailVerified = (user as any).isEmailVerified;
         token.accessToken = (user as any).accessToken;
+        token.sessionVersion = CURRENT_SESSION_VERSION;
         // refreshToken intentionally omitted to keep JWT small
       }
       return token;
     },
     async session({ session, token }) {
+      if (!token?.accessToken || token.sessionVersion !== CURRENT_SESSION_VERSION) {
+        return null as any;
+      }
       if (token && session.user) {
         session.user.role = token.role as string;
         session.user.isEmailVerified = token.isEmailVerified as boolean;
