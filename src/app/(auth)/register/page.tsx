@@ -235,7 +235,7 @@ export default function RegisterPage() {
                 Cookies.set('oauth_role', role, { expires: 1 });
                 const target = role === "ORGANIZER" ? "/organizer" : "/dashboard";
                 const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "413688429189-q9elgjdcbqptpk89hea90rq6ceuv5ccm.apps.googleusercontent.com";
-                const redirectUri = `${window.location.origin}/login/redirect`;
+                const redirectUri = `${window.location.origin}/api/auth/callback/google`;
                 window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=token&scope=email%20profile&state=${encodeURIComponent(target)}`;
               }}
               className="flex w-full justify-center items-center gap-3 rounded-xl border border-border bg-background px-4 py-3.5 text-sm font-bold text-foreground hover:bg-secondary focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 transition-colors shadow-sm"
