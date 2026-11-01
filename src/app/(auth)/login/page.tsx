@@ -27,7 +27,8 @@ function LoginForm() {
     setError("");
     setIsLoading(true);
 
-    const res = await login(email, password);
+    const cleanEmail = email.trim().toLowerCase();
+    const res = await login(cleanEmail, password);
 
     if (!res.success) {
       setError(res.error || "Invalid email or password");

@@ -83,10 +83,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = useCallback(async (email: string, password: string) => {
     try {
+      const cleanEmail = email.trim().toLowerCase();
       const res = await fetch(`${API_URL}/auth/jwt/create/`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email: cleanEmail, password }),
       });
 
       if (!res.ok) {
