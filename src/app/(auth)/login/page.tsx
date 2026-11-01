@@ -44,15 +44,15 @@ function LoginForm() {
         }
       }
 
+      let destination = "/dashboard";
       if (callback && !callback.includes("/login")) {
-        router.push(callback);
+        destination = callback;
       } else if (role === "ORGANIZER") {
-        router.push("/organizer");
+        destination = "/organizer";
       } else if (role === "ADMIN") {
-        router.push("/admin");
-      } else {
-        router.push("/dashboard");
+        destination = "/admin";
       }
+      window.location.href = destination;
     }
   };
 
@@ -95,9 +95,8 @@ function LoginForm() {
                     isEmailVerified: true,
                   });
 
-                  if (data.role === "ORGANIZER") router.push("/organizer");
-                  else if (data.role === "ADMIN") router.push("/admin");
-                  else router.push(target);
+                  const dest = data.role === "ORGANIZER" ? "/organizer" : data.role === "ADMIN" ? "/admin" : target;
+                  window.location.href = dest;
                   return;
                 }
               } catch (err) {
@@ -122,6 +121,13 @@ function LoginForm() {
 
   return (
     <div className="flex min-h-[calc(100vh-5rem)] w-full">
+      {googleLoading && (
+        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-background/80 backdrop-blur-sm">
+          <Loader2 className="w-10 h-10 animate-spin text-primary mb-3" />
+          <p className="text-base font-semibold text-foreground">Signing in with Google...</p>
+          <p className="text-xs text-muted-foreground mt-1">Taking you to your dashboard</p>
+        </div>
+      )}
       {/* Left Column: Interactive Experience */}
       <InteractiveExperience />
 
