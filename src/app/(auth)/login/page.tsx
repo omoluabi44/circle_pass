@@ -57,7 +57,8 @@ function LoginForm() {
       } else {
         router.push("/dashboard");
       }
-      router.refresh();
+      // Note: router.refresh() intentionally removed — it races with router.push()
+      // and can cause a flash back to the login page before navigation completes.
     }
   };
 

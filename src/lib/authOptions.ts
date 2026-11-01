@@ -223,8 +223,15 @@ export const authOptions: NextAuthOptions = {
       return token;
     },
     async session({ session, token }) {
-      if (!token?.accessToken || token.sessionVersion !== CURRENT_SESSION_VERSION) {
-        return null as any;
+      if (!token?.accessToken) {
+        // No access token — return session without accessToken so the app
+        // can handle it gracefully rather than crashing on null.
+        return { ...session, user: { ...session.user }, accessToken: undefined } as any;
+      }
+      // Reject tokens whose session version doesn't match (forces re-login after
+      // a global logout). Tokens without a version (pre-versioning) are also rejected.
+      if (token.sessionVersion !== CURRENT_SESSION_VERSION) {
+        return { ...session, user: { ...session.user }, accessToken: undefined } as any;
       }
       if (token && session.user) {
         session.user.role = token.role as string;
