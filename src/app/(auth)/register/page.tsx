@@ -228,8 +228,8 @@ export default function RegisterPage() {
           <div className="mt-6">
             <button
               onClick={() => {
-                Cookies.set('oauth_role', role);
-                signIn("google", { callbackUrl: "/dashboard" });
+                Cookies.set('oauth_role', role, { expires: 1 });
+                signIn("google", { callbackUrl: role === "ORGANIZER" ? "/organizer" : "/dashboard" });
               }}
               className="flex w-full justify-center items-center gap-3 rounded-xl border border-border bg-background px-4 py-3.5 text-sm font-bold text-foreground hover:bg-secondary focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 transition-colors shadow-sm"
             >

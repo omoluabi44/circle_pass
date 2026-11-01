@@ -37,6 +37,26 @@ interface Props {
   token: string;
 }
 
+function parseSafeDate(dateString: string | null | undefined): Date | null {
+  if (!dateString) return null;
+  let str = String(dateString).trim();
+  if (/^\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}(:\d{2})?/.test(str)) {
+    str = str.replace(' ', 'T');
+  }
+  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(str)) {
+    str += ':00';
+  }
+  const d = new Date(str);
+  return isNaN(d.getTime()) ? null : d;
+}
+
+function getLocalDatetimeString(dateString: string | null | undefined): string {
+  const d = parseSafeDate(dateString);
+  if (!d) return "";
+  const pad = (n: number) => n.toString().padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
 export default function AdminEventEditForm({ event, ticketTypes, allOrganizers, token }: Props) {
   const router = useRouter();
 
@@ -50,8 +70,8 @@ export default function AdminEventEditForm({ event, ticketTypes, allOrganizers, 
     state: event.state || '',
     city: event.city || '',
     location_name: event.location_name || '',
-    start_time: event.start_time ? event.start_time.slice(0, 16) : '',
-    end_time: event.end_time ? event.end_time.slice(0, 16) : '',
+    start_time: getLocalDatetimeString(event.start_time),
+    end_time: getLocalDatetimeString(event.end_time),
     capacity: event.capacity || 0,
     organizer_contact: event.organizer_contact || '',
     instagram_handle: event.instagram_handle || '',
@@ -159,8 +179,8 @@ export default function AdminEventEditForm({ event, ticketTypes, allOrganizers, 
         ...form,
         capacity: Number(form.capacity),
         organizer_id: form.organizer_id ? Number(form.organizer_id) : undefined,
-        start_time: form.start_time || null,
-        end_time: form.end_time || null,
+        start_time: form.start_time ? (parseSafeDate(form.start_time)?.toISOString() || null) : null,
+        end_time: form.end_time ? (parseSafeDate(form.end_time)?.toISOString() || null) : null,
       });
 
       // 2. Delete marked ticket types

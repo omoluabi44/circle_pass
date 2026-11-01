@@ -96,7 +96,14 @@ function VerifyEmailContent() {
         router.push("/login?verified=true");
       } else {
         // Redirect to dashboard as requested!
-        router.push("/dashboard/tickets");
+        const userRole = data.user?.role;
+        if (userRole === "ORGANIZER") {
+          router.push("/organizer");
+        } else if (userRole === "ADMIN") {
+          router.push("/admin");
+        } else {
+          router.push("/dashboard/tickets");
+        }
       }
       
     } catch (err: any) {

@@ -156,13 +156,23 @@ export const authOptions: NextAuthOptions = {
         try {
           console.log("Attempting Google Auth to backend with:", profile.email, "URL:", `${API_URL}/auth/google/`);
 
+          let desiredRole = 'ATTENDEE';
+          try {
+            const { cookies } = await import("next/headers");
+            const cookieStore = await cookies();
+            const oauthCookie = cookieStore.get('oauth_role')?.value;
+            if (oauthCookie === 'ORGANIZER' || oauthCookie === 'ATTENDEE') {
+              desiredRole = oauthCookie;
+            }
+          } catch (e) {}
+
           const res = await fetch(`${API_URL}/auth/google/`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               email: profile.email,
               name: profile.name,
-              role: 'ATTENDEE'
+              role: desiredRole
             })
           });
 

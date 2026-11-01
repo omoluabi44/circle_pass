@@ -30,11 +30,28 @@ def google_auth(request):
         'is_active': True
     })
     
-    # PERMANENT FIX: If the user registered manually but didn't verify their email,
+    # If the user registered manually but didn't verify their email,
     # and then logs in via Google, Google has verified their email. So activate them automatically!
-    if not created and not user.is_active:
-        user.is_active = True
-        user.save(update_fields=['is_active'])
+    needs_save = False
+    if not created:
+        if not user.is_active:
+            user.is_active = True
+            needs_save = True
+        if role == 'ORGANIZER' and user.role == 'ATTENDEE':
+            user.role = 'ORGANIZER'
+            needs_save = True
+        if needs_save:
+            user.save()
+
+    # Ensure organizer dependencies exist if role is ORGANIZER
+    if user.role == 'ORGANIZER':
+        from core.models import OrganizerProfile, OrganizerWallet, OrganizerVerification
+        org_profile, _ = OrganizerProfile.objects.get_or_create(
+            user=user,
+            defaults={'company_name': f"{user.username} Events"}
+        )
+        OrganizerWallet.objects.get_or_create(organizer=org_profile)
+        OrganizerVerification.objects.get_or_create(organizer=org_profile)
     
     refresh = RefreshToken.for_user(user)
     return Response({
@@ -411,12 +428,15 @@ class EventViewSet(viewsets.ModelViewSet):
         try:
             organizer = OrganizerProfile.objects.get(user=self.request.user)
         except OrganizerProfile.DoesNotExist:
-            if self.request.user.role == 'ADMIN':
+            if self.request.user.role in ['ADMIN', 'ORGANIZER']:
+                from core.models import OrganizerWallet, OrganizerVerification
                 organizer = OrganizerProfile.objects.create(
                     user=self.request.user,
-                    company_name="CirclePass Admin",
-                    is_verified=True
+                    company_name=f"{self.request.user.username} Events" if self.request.user.role == 'ORGANIZER' else "CirclePass Admin",
+                    is_verified=(self.request.user.role == 'ADMIN')
                 )
+                OrganizerWallet.objects.get_or_create(organizer=organizer)
+                OrganizerVerification.objects.get_or_create(organizer=organizer)
             else:
                 raise serializers.ValidationError("User is not an organizer.")
                 

@@ -1,16 +1,16 @@
 "use client";
 
-import { signIn } from "next-auth/react";
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { signIn, getSession } from "next-auth/react";
+import { useState, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { InteractiveExperience } from "@/components/ui/InteractiveExperience";
+import { Eye, EyeOff, Loader2 } from "lucide-react";
 
-import { Eye, EyeOff } from "lucide-react";
-
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -33,8 +33,27 @@ export default function LoginPage() {
       setError("Invalid email or password");
       setIsLoading(false);
     } else {
-      router.push("/dashboard");
+      const session = await getSession();
+      const role = (session?.user as any)?.role;
+      const callback = searchParams.get("callbackUrl");
+
+      if (callback && !callback.includes("/login")) {
+        router.push(callback);
+      } else if (role === "ORGANIZER") {
+        router.push("/organizer");
+      } else if (role === "ADMIN") {
+        router.push("/admin");
+      } else {
+        router.push("/dashboard");
+      }
+      router.refresh();
     }
+  };
+
+  const handleGoogleSignIn = () => {
+    const callbackParam = searchParams.get("callbackUrl");
+    const target = callbackParam && !callbackParam.includes("/login") ? callbackParam : "/login/redirect";
+    signIn("google", { callbackUrl: target });
   };
 
   return (
@@ -61,7 +80,6 @@ export default function LoginPage() {
               Sign in to manage your events and tickets
             </p>
           </div>
-          
 
           <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
             {error && <p className="text-destructive text-sm bg-destructive/10 p-3 rounded-lg border border-destructive/20">{error}</p>}
@@ -122,10 +140,9 @@ export default function LoginPage() {
             </div>
           </div>
 
-
           <div className="mt-8 space-y-4">
             <button
-              onClick={() => signIn("google", { callbackUrl: "/dashboard" })}
+              onClick={handleGoogleSignIn}
               className="flex w-full justify-center items-center gap-3 rounded-xl border border-border bg-background px-4 py-3.5 text-sm font-bold text-foreground hover:bg-secondary focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 transition-colors shadow-sm"
             >
               <svg className="w-5 h-5" viewBox="0 0 24 24">
@@ -146,5 +163,13 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-background"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>}>
+      <LoginForm />
+    </Suspense>
   );
 }

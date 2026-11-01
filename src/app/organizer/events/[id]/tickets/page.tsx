@@ -7,10 +7,22 @@ import { useParams } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { toast } from 'react-hot-toast';
 
-function getLocalDatetimeString(dateString: string | null | undefined) {
-  if (!dateString) return "";
-  const d = new Date(dateString);
-  if (isNaN(d.getTime())) return "";
+function parseSafeDate(dateString: string | null | undefined): Date | null {
+  if (!dateString) return null;
+  let str = String(dateString).trim();
+  if (/^\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}(:\d{2})?/.test(str)) {
+    str = str.replace(' ', 'T');
+  }
+  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(str)) {
+    str += ':00';
+  }
+  const d = new Date(str);
+  return isNaN(d.getTime()) ? null : d;
+}
+
+function getLocalDatetimeString(dateString: string | null | undefined): string {
+  const d = parseSafeDate(dateString);
+  if (!d) return "";
   const pad = (n: number) => n.toString().padStart(2, '0');
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
@@ -104,9 +116,13 @@ export default function TicketsPage() {
       toast.error('Please fill all required fields correctly (FREE must have 0 price).');
       return;
     }
-    if (saleStart && saleEnd && new Date(saleEnd) <= new Date(saleStart)) {
-      toast.error('Sale End must be after Sale Start.');
-      return;
+    if (saleStart && saleEnd) {
+      const sStart = parseSafeDate(saleStart);
+      const sEnd = parseSafeDate(saleEnd);
+      if (sStart && sEnd && sEnd <= sStart) {
+        toast.error('Sale End must be after Sale Start.');
+        return;
+      }
     }
     
     setUpdating(true);
@@ -116,8 +132,8 @@ export default function TicketsPage() {
         tier,
         price: (Number(price) || 0) * 100,
         quantity: Number(quantity),
-        sale_start: saleStart ? new Date(saleStart).toISOString() : null,
-        sale_end: saleEnd ? new Date(saleEnd).toISOString() : null,
+        sale_start: saleStart ? (parseSafeDate(saleStart)?.toISOString() || null) : null,
+        sale_end: saleEnd ? (parseSafeDate(saleEnd)?.toISOString() || null) : null,
         description: description || "",
         is_active: isActive
       };

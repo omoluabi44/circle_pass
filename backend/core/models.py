@@ -645,7 +645,7 @@ from django.dispatch import receiver
 
 @receiver(post_save, sender=User)
 def create_user_profile(sender, instance, created, **kwargs):
-    if created and getattr(instance, 'role', None) == 'ORGANIZER':
+    if getattr(instance, 'role', None) == 'ORGANIZER':
         OrganizerProfile.objects.get_or_create(
             user=instance, 
             defaults={'company_name': f'{instance.username} Events'}

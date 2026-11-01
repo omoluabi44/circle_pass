@@ -4,6 +4,7 @@
 @config "../../tailwind.config.ts";
 
 :root {
+  color-scheme: light;
   --background: #ffffff;
   --foreground: #171717;
   --primary: #5046E5;
@@ -27,6 +28,7 @@
 }
 
 :root.dark {
+  color-scheme: dark;
   --background: #0f172a;
   --foreground: #f8fafc;
   --primary: #6366f1;

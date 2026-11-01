@@ -12,10 +12,22 @@ import { uploadToS3 } from "@/utils/s3Upload";
 
 
 
-function getLocalDatetimeString(dateString: string | null | undefined) {
-  if (!dateString) return "";
-  const d = new Date(dateString);
-  if (isNaN(d.getTime())) return "";
+function parseSafeDate(dateString: string | null | undefined): Date | null {
+  if (!dateString) return null;
+  let str = String(dateString).trim();
+  if (/^\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}(:\d{2})?/.test(str)) {
+    str = str.replace(' ', 'T');
+  }
+  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(str)) {
+    str += ':00';
+  }
+  const d = new Date(str);
+  return isNaN(d.getTime()) ? null : d;
+}
+
+function getLocalDatetimeString(dateString: string | null | undefined): string {
+  const d = parseSafeDate(dateString);
+  if (!d) return "";
   const pad = (n: number) => n.toString().padStart(2, '0');
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
@@ -239,12 +251,18 @@ export default function EventForm({ initialData, eventId }: { initialData?: any;
       return true;
     }
 
-        if (formData.start_time && formData.end_time) {
-      if (new Date(formData.end_time) <= new Date(formData.start_time)) {
+    if (formData.start_time && formData.end_time) {
+      const start = parseSafeDate(formData.start_time);
+      const end = parseSafeDate(formData.end_time);
+      if (!start || !end) {
+        toast.error("Please enter valid start and end dates.");
+        return false;
+      }
+      if (end <= start) {
         toast.error("End time must be after the start time.");
         return false;
       }
-      if (new Date(formData.start_time) < new Date()) {
+      if (!eventId && start.getTime() < Date.now() - 5 * 60 * 1000) {
         toast.error("Start time cannot be in the past.");
         return false;
       }
@@ -275,10 +293,13 @@ if (!formData.title || !formData.start_time || !formData.end_time || !formData.o
         toast.error(`Ticket '${ticket.name}' must have a price greater than ₦0.`);
         return false;
       }
-      if (ticket.sale_start && ticket.sale_end && new Date(ticket.sale_end) <= new Date(ticket.sale_start)) {
-        toast.error(`Ticket '${ticket.name}' sale end date must be after sale start date.`);
-        return false;
-        return false;
+      if (ticket.sale_start && ticket.sale_end) {
+        const sStart = parseSafeDate(ticket.sale_start);
+        const sEnd = parseSafeDate(ticket.sale_end);
+        if (sStart && sEnd && sEnd <= sStart) {
+          toast.error(`Ticket '${ticket.name}' sale end date must be after sale start date.`);
+          return false;
+        }
       }
     }
     
@@ -299,8 +320,8 @@ if (!formData.title || !formData.start_time || !formData.end_time || !formData.o
         ...t,
         quantity: parseInt(t.quantity as any) || 0,
         price: (parseInt(t.price as any) || 0) * 100,
-        sale_start: t.sale_start ? new Date(t.sale_start).toISOString() : null,
-        sale_end: t.sale_end ? new Date(t.sale_end).toISOString() : null,
+        sale_start: t.sale_start ? (parseSafeDate(t.sale_start)?.toISOString() || null) : null,
+        sale_end: t.sale_end ? (parseSafeDate(t.sale_end)?.toISOString() || null) : null,
         is_active: t.is_active !== false,
       }));
       
@@ -314,8 +335,14 @@ if (!formData.title || !formData.start_time || !formData.end_time || !formData.o
       payload.append('country', formData.country);
       payload.append('state', formData.state);
       payload.append('city', formData.city);
-      if (formData.start_time) payload.append('start_time', new Date(formData.start_time).toISOString());
-      if (formData.end_time) payload.append('end_time', new Date(formData.end_time).toISOString());
+      if (formData.start_time) {
+        const s = parseSafeDate(formData.start_time);
+        if (s) payload.append('start_time', s.toISOString());
+      }
+      if (formData.end_time) {
+        const e = parseSafeDate(formData.end_time);
+        if (e) payload.append('end_time', e.toISOString());
+      }
       payload.append('capacity', String(formData.capacity));
       payload.append('absorb_fees', String(formData.absorb_fees));
       
@@ -529,12 +556,14 @@ if (!formData.title || !formData.start_time || !formData.end_time || !formData.o
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label className="block text-sm font-medium text-muted-foreground mb-1">Start Time *</label>
-              <input type="datetime-local" className="w-full border border-border rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-primary"
+              <input type="datetime-local" className="w-full border border-border bg-background text-foreground rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-primary"
+                min={!eventId ? getLocalDatetimeString(new Date().toISOString()) : undefined}
                 value={formData.start_time} onChange={e => setFormData({...formData, start_time: e.target.value})} />
             </div>
             <div>
               <label className="block text-sm font-medium text-muted-foreground mb-1">End Time *</label>
-              <input type="datetime-local" className="w-full border border-border rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-primary"
+              <input type="datetime-local" className="w-full border border-border bg-background text-foreground rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-primary"
+                min={formData.start_time || (!eventId ? getLocalDatetimeString(new Date().toISOString()) : undefined)}
                 value={formData.end_time} onChange={e => setFormData({...formData, end_time: e.target.value})} />
             </div>
             <div className="md:col-span-2">
@@ -679,7 +708,7 @@ if (!formData.title || !formData.start_time || !formData.end_time || !formData.o
                     <label className="text-xs text-muted-foreground block mb-1">Sale Start</label>
                     <input
                       type="datetime-local"
-                      className="w-full px-3 py-1.5 rounded-lg border border-border bg-card text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+                      className="w-full px-3 py-1.5 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
                       value={ticket.sale_start || ''}
                       onChange={e => handleTicketChange(index, 'sale_start', e.target.value)}
                     />
@@ -688,7 +717,8 @@ if (!formData.title || !formData.start_time || !formData.end_time || !formData.o
                     <label className="text-xs text-muted-foreground block mb-1">Sale End</label>
                     <input
                       type="datetime-local"
-                      className="w-full px-3 py-1.5 rounded-lg border border-border bg-card text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+                      className="w-full px-3 py-1.5 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+                      min={ticket.sale_start || undefined}
                       value={ticket.sale_end || ''}
                       onChange={e => handleTicketChange(index, 'sale_end', e.target.value)}
                     />
