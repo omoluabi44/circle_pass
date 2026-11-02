@@ -243,7 +243,7 @@ The CirclePass Team"""
         return str(e)
 
 @shared_task
-def send_event_announcement_email(announcement_id):
+def send_event_announcement_email(announcement_id, include_attendees=True, extra_recipients=None):
     from core.models import EventAnnouncement, Order
     from django.template.loader import render_to_string
     try:
@@ -253,24 +253,32 @@ def send_event_announcement_email(announcement_id):
         frontend_url = getattr(settings, 'FRONTEND_URL', 'https://thecirclepass.com')
         event_slug = getattr(event, 'slug', event.id)
 
-        # Get all completed orders for this event
-        orders = Order.objects.filter(event=event, status='COMPLETED').select_related(
-            'attendee__user'
-        )
-
         # Build per-recipient entries {email: name}
         recipients = {}
-        for order in orders:
-            if order.guest_email:
-                name = (order.guest_name or 'Guest').split(' ')[0]
-                recipients[order.guest_email] = name
-            elif order.attendee and order.attendee.user.email:
-                user = order.attendee.user
-                name = (user.get_full_name() or user.username or 'Guest').split(' ')[0]
-                recipients[user.email] = name
+
+        if include_attendees:
+            # Get all completed orders for this event
+            orders = Order.objects.filter(event=event, status='COMPLETED').select_related(
+                'attendee__user'
+            )
+            for order in orders:
+                if order.guest_email:
+                    name = (order.guest_name or 'Guest').split(' ')[0]
+                    recipients[order.guest_email] = name
+                elif order.attendee and order.attendee.user.email:
+                    user = order.attendee.user
+                    name = (user.get_full_name() or user.username or 'Guest').split(' ')[0]
+                    recipients[user.email] = name
+
+        # Merge extra (custom) recipients
+        if extra_recipients:
+            for email_addr in extra_recipients:
+                email_addr = email_addr.strip().lower()
+                if email_addr and email_addr not in recipients:
+                    recipients[email_addr] = 'Guest'
 
         if not recipients:
-            return "No attendees to notify."
+            return "No recipients to notify."
 
         subject = f"Announcement: {announcement.title} — {event.title}"
 
@@ -302,7 +310,7 @@ def send_event_announcement_email(announcement_id):
         if messages:
             connection.send_messages(messages)
 
-        return f"Announcement {announcement_id} sent to {len(recipients)} attendees."
+        return f"Announcement {announcement_id} sent to {len(recipients)} recipients."
     except Exception as e:
         import traceback
         return str(traceback.format_exc())

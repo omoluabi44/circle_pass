@@ -28,20 +28,36 @@ class EventAnnouncementListCreateView(APIView):
                 event = Event.objects.get(pk=event_id, organizer__user=request.user)
         except Event.DoesNotExist:
             return Response({'error': 'Event not found'}, status=404)
+
         title = request.data.get('title', '').strip()
         message = request.data.get('message', '').strip()
         if not title or not message:
             return Response({'error': 'Title and message are required'}, status=400)
-            
+
+        # Email marketing fields
+        audience = request.data.get('audience', 'attendees_only')
+        custom_recipients = request.data.get('custom_recipients', [])
+        if not isinstance(custom_recipients, list):
+            custom_recipients = []
+        # Sanitise: strip whitespace, lowercase, remove empty entries
+        custom_recipients = [e.strip().lower() for e in custom_recipients if isinstance(e, str) and e.strip()]
+
         announcement = EventAnnouncement.objects.create(event=event, title=title, message=message)
-        
-        # Trigger async email task
+
+        # Determine dispatch parameters based on audience choice
+        include_attendees = audience in ('attendees_only', 'both')
+        extra = custom_recipients if audience in ('custom_only', 'both') else []
+
         from api.tasks import send_event_announcement_email
-        send_event_announcement_email.delay(announcement.id)
-        
+        send_event_announcement_email.delay(
+            announcement.id,
+            include_attendees=include_attendees,
+            extra_recipients=extra,
+        )
+
         return Response({
-            'id': announcement.id, 
-            'title': announcement.title, 
-            'message': announcement.message, 
-            'created_at': announcement.created_at
+            'id': announcement.id,
+            'title': announcement.title,
+            'message': announcement.message,
+            'created_at': announcement.created_at,
         }, status=201)
