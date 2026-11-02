@@ -45,6 +45,32 @@ function getMammoth() {
   return mammothPromise;
 }
 
+// Pre-load pdfjs eagerly
+let pdfjsPromise: Promise<any> | null = null;
+function getPdfjs() {
+  if (!pdfjsPromise) {
+    pdfjsPromise = import("pdfjs-dist/legacy/build/pdf" as any).then((lib) => {
+      // Use CDN worker so we don't bundle it
+      lib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${lib.version}/pdf.worker.min.js`;
+      return lib;
+    });
+  }
+  return pdfjsPromise;
+}
+
+async function parsePdfEmails(file: File): Promise<string[]> {
+  const pdfjs = await getPdfjs();
+  const buffer = await file.arrayBuffer();
+  const pdf = await pdfjs.getDocument({ data: buffer }).promise;
+  let fullText = "";
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const page = await pdf.getPage(i);
+    const content = await page.getTextContent();
+    fullText += content.items.map((item: any) => item.str).join(" ") + "\n";
+  }
+  return extractEmails(fullText);
+}
+
 async function parseFileEmails(file: File): Promise<string[]> {
   const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
 
@@ -53,6 +79,10 @@ async function parseFileEmails(file: File): Promise<string[]> {
     const buffer = await file.arrayBuffer();
     const result = await mammoth.extractRawText({ arrayBuffer: buffer });
     return extractEmails(result.value);
+  }
+
+  if (ext === "pdf") {
+    return parsePdfEmails(file);
   }
 
   // txt / csv — plain text
@@ -145,8 +175,9 @@ export default function AnnouncementsPage() {
 
   useEffect(() => {
     fetchAnnouncements();
-    // Pre-warm mammoth so it's cached before the user uploads a .docx
+    // Pre-warm parsers so they're cached before the user uploads
     getMammoth().catch(() => {});
+    getPdfjs().catch(() => {});
   }, [fetchAnnouncements]);
 
   // ── Manual email parsing ───────────────────────────────────────────────────
@@ -196,7 +227,7 @@ export default function AnnouncementsPage() {
 
   async function processFile(file: File) {
     const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
-    const allowed = ["docx", "doc", "txt", "csv"];
+    const allowed = ["docx", "doc", "pdf", "txt", "csv"];
     if (!allowed.includes(ext)) {
       toast.error("Please upload a .docx, .doc, .txt, or .csv file.");
       return;
@@ -468,7 +499,7 @@ export default function AnnouncementsPage() {
                 <label className="block text-xs font-medium text-muted-foreground">
                   Or import from a file
                   <span className="ml-1 text-muted-foreground/60 font-normal">
-                    (.docx, .doc, .txt, .csv)
+                    (.docx, .doc, .pdf, .txt, .csv)
                   </span>
                 </label>
 
@@ -496,7 +527,7 @@ export default function AnnouncementsPage() {
                     <input
                       ref={fileInputRef}
                       type="file"
-                      accept=".docx,.doc,.txt,.csv"
+                      accept=".docx,.doc,.pdf,.txt,.csv"
                       className="hidden"
                       onChange={handleFileChange}
                     />
