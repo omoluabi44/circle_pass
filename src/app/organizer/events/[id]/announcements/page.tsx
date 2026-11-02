@@ -38,12 +38,18 @@ function extractEmails(text: string): string[] {
   return [...new Set(matches.map((e) => e.toLowerCase().trim()))];
 }
 
+// Pre-load mammoth eagerly so it's already cached when the user uploads a .docx
+let mammothPromise: Promise<any> | null = null;
+function getMammoth() {
+  if (!mammothPromise) mammothPromise = import("mammoth");
+  return mammothPromise;
+}
+
 async function parseFileEmails(file: File): Promise<string[]> {
   const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
 
   if (ext === "docx" || ext === "doc") {
-    // Use mammoth for Word documents
-    const mammoth = await import("mammoth");
+    const mammoth = await getMammoth();
     const buffer = await file.arrayBuffer();
     const result = await mammoth.extractRawText({ arrayBuffer: buffer });
     return extractEmails(result.value);
@@ -139,6 +145,8 @@ export default function AnnouncementsPage() {
 
   useEffect(() => {
     fetchAnnouncements();
+    // Pre-warm mammoth so it's cached before the user uploads a .docx
+    getMammoth().catch(() => {});
   }, [fetchAnnouncements]);
 
   // ── Manual email parsing ───────────────────────────────────────────────────
@@ -406,7 +414,6 @@ export default function AnnouncementsPage() {
                       setManualInputError("");
                     }}
                     onKeyDown={handleManualKeyDown}
-                    onBlur={commitManualInput}
                     rows={2}
                     placeholder="john@example.com, jane@example.com"
                     className="flex-1 bg-background border border-border rounded-xl px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary transition-colors resize-none"
