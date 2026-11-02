@@ -82,10 +82,10 @@ class AttendeeDashboardView(APIView):
         saved_count = SavedEvent.objects.filter(user=user).count()
         following_count = FollowedOrganizer.objects.filter(user=user).count()
 
-        # Suggested events (3 random upcoming events)
+        # Suggested events (3 upcoming events)
         suggested = Event.objects.filter(status='PUBLISHED', start_time__gte=now).exclude(
             id__in=tickets.values_list('order__event_id', flat=True)
-        ).order_by('?')[:3]
+        ).order_by('start_time')[:3]
 
         suggested_data = []
         for ev in suggested:

@@ -40,8 +40,8 @@ export default function AttendeeDashboard() {
         setLoading(false);
       }
     };
-    if (session) fetchDashboard();
-  }, [session, status]);
+    if (session?.accessToken) fetchDashboard();
+  }, [session?.accessToken, status]);
 
   if (loading) {
     return <div className="p-8 flex justify-center items-center h-full min-h-[50vh]"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;

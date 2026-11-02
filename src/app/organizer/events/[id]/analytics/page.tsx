@@ -30,7 +30,7 @@ export default function AnalyticsPage() {
       }
     }
     fetchAnalytics();
-  }, [id, session, status]);
+  }, [id, session?.accessToken, status]);
 
   if (loading) {
     return (

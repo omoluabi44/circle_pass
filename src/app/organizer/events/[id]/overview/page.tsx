@@ -32,7 +32,7 @@ export default function RealTimeEventDashboard() {
       }
     }
     fetchOverview();
-  }, [id, session, status]);
+  }, [id, session?.accessToken, status]);
 
   if (loading) {
     return <div className="p-8 flex justify-center text-muted-foreground">Loading overview...</div>;

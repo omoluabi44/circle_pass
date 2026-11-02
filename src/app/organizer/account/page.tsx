@@ -58,8 +58,8 @@ function BusinessDetailsForm() {
       }
     };
 
-    if (session) fetchProfile();
-  }, [session]);
+    if (session?.accessToken) fetchProfile();
+  }, [session?.accessToken]);
 
   const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {

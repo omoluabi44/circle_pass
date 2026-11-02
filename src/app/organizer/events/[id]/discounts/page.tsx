@@ -38,7 +38,7 @@ export default function DiscountsPage() {
 
   useEffect(() => {
     fetchDiscounts();
-  }, [id, session, status]);
+  }, [id, session?.accessToken, status]);
 
   const handleCreate = async () => {
     if (!code || !value) {

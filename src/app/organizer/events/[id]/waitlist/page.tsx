@@ -65,7 +65,7 @@ export default function OrganizerWaitlistPage() {
 
   const fetchWaitlistData = async (isManualRefresh = false) => {
     if (!session?.accessToken || !id) return;
-    if (isManualRefresh) setRefreshing(true);
+    if (isManualRefresh || event) setRefreshing(true);
     else setLoading(true);
 
     try {
@@ -104,7 +104,7 @@ export default function OrganizerWaitlistPage() {
     if (session?.accessToken && id) {
       fetchWaitlistData();
     }
-  }, [id, session, authStatus]);
+  }, [id, session?.accessToken, authStatus]);
 
   const handleToggleWaitlist = async () => {
     if (!session?.accessToken || !id || !event) return;

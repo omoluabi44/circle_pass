@@ -38,7 +38,7 @@ export default function OrganizerLayout({
       })
       .catch(() => {});
     }
-  }, [session]);
+  }, [session?.accessToken]);
 
   const mainNav = [
     { name: "Dashboard", href: "/organizer", icon: LayoutDashboard },

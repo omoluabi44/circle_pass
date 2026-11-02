@@ -33,7 +33,7 @@ export default function AttendeeDashboardLayout({
       })
       .catch(() => {});
     }
-  }, [session]);
+  }, [session?.accessToken]);
 
   const navItems = [
     { name: "Discover", href: "/events", icon: Compass },

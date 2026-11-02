@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from "react";
 import Cookies from "js-cookie";
 import { API_URL } from "@/lib/api/config";
 import { User } from "@/types";
@@ -160,19 +160,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
+  const value = useMemo(
+    () => ({
+      user,
+      token,
+      isLoggedIn: !!user && !!token,
+      isLoading,
+      login,
+      logout,
+      setSession,
+      updateUser,
+    }),
+    [user, token, isLoading, login, logout, setSession, updateUser]
+  );
+
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        token,
-        isLoggedIn: !!user && !!token,
-        isLoading,
-        login,
-        logout,
-        setSession,
-        updateUser,
-      }}
-    >
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );
@@ -186,28 +189,37 @@ export function useAuth() {
   return context;
 }
 
-// Global drop-in helper for useSession()
+// Global drop-in helper for useSession() with stable memoized references
 export function useSession() {
   const context = useContext(AuthContext);
-  if (!context) {
-    return { data: null, status: "unauthenticated" as const, update: () => {} };
-  }
-  const { user, token, isLoading, updateUser } = context;
 
-  return {
-    data: user
-      ? {
-          user,
-          accessToken: token || undefined,
-        }
-      : null,
-    status: isLoading
-      ? ("loading" as const)
-      : user
-      ? ("authenticated" as const)
-      : ("unauthenticated" as const),
-    update: updateUser,
-  };
+  const user = context?.user;
+  const token = context?.token;
+  const isLoading = context?.isLoading ?? false;
+  const updateUser = context?.updateUser;
+
+  const data = useMemo(() => {
+    if (!user) return null;
+    return {
+      user,
+      accessToken: token || undefined,
+    };
+  }, [user, token]);
+
+  const status = useMemo(() => {
+    if (!context) return "unauthenticated" as const;
+    if (isLoading) return "loading" as const;
+    return user ? ("authenticated" as const) : ("unauthenticated" as const);
+  }, [context, isLoading, user]);
+
+  return useMemo(
+    () => ({
+      data,
+      status,
+      update: updateUser || (() => {}),
+    }),
+    [data, status, updateUser]
+  );
 }
 
 // Global drop-in helpers for signOut / signIn

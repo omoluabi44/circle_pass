@@ -62,7 +62,7 @@ export default function TicketsPage() {
       }
     }
     fetchEvent();
-  }, [id, session, status]);
+  }, [id, session?.accessToken, status]);
 
   const closeModal = () => {
     setShowModal(false);

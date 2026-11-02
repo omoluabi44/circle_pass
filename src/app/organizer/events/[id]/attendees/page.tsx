@@ -23,7 +23,7 @@ export default function AttendeesPage() {
       try {
         const data = await getEventAttendees(session.accessToken as string, id);
         // data could be paginated ({ results: [...] }) or a flat array
-        const results = data.results || data;
+        const results = Array.isArray(data?.results) ? data.results : Array.isArray(data) ? data : [];
         setAttendees(results);
       } catch (err) {
         toast.error("Failed to fetch attendees");
@@ -32,7 +32,7 @@ export default function AttendeesPage() {
       }
     }
     fetchAttendees();
-  }, [id, session, status]);
+  }, [id, session?.accessToken, status]);
 
   const filteredAttendees = attendees.filter((a) => 
     a.name?.toLowerCase().includes(search.toLowerCase()) ||

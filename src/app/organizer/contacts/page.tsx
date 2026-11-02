@@ -57,7 +57,7 @@ export default function AttendeesDashboard() {
       const delay = setTimeout(fetchContacts, 300);
       return () => clearTimeout(delay);
     }
-  }, [session, search, activeTab]);
+  }, [session?.accessToken, search, activeTab]);
 
   const handleExport = () => {
     // Generate simple CSV

@@ -34,7 +34,7 @@ export default function AnnouncementsPage() {
 
   useEffect(() => {
     fetchAnnouncements();
-  }, [id, session, status]);
+  }, [id, session?.accessToken, status]);
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -40,7 +40,7 @@ export default function OrganizerDashboard() {
     };
 
     fetchDashboard();
-  }, [session]);
+  }, [session?.accessToken]);
 
   if (loading) {
     return <div className="p-8 flex justify-center"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
