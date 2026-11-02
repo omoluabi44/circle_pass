@@ -50,6 +50,7 @@ class OrganizerContactsView(generics.ListAPIView):
                 "ticket_type": t.ticket_type.name,
                 "purchase_date": t.order.created_at,
                 "status": t.status,
+                "custom_field_responses": getattr(t.order, 'custom_field_responses', {}) if t.order else {},
             }
 
         if page is not None:

@@ -252,6 +252,7 @@ class Order(models.Model):
     status = models.CharField(max_length=50, choices=ORDER_STATUS_CHOICES, default='PENDING')
     referral_code = models.CharField(max_length=100, blank=True, help_text='Code of the promoter or affiliate')
     expires_at = models.DateTimeField(null=True, blank=True, help_text='For PENDING paid orders. Null for free orders.')
+    custom_field_responses = models.JSONField(default=dict, blank=True, help_text='Attendee answers: {field_id: value}')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -562,6 +563,25 @@ class EventAnnouncement(models.Model):
 
     def __str__(self):
         return f'{self.title} for {self.event.title}'
+
+class EventCustomField(models.Model):
+    FIELD_TYPE_CHOICES = (
+        ('text', 'Short Text'),
+        ('number', 'Number'),
+        ('select', 'Dropdown'),
+    )
+    event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name='custom_fields')
+    label = models.CharField(max_length=200)
+    field_type = models.CharField(max_length=20, choices=FIELD_TYPE_CHOICES, default='text')
+    options = models.JSONField(default=list, blank=True, help_text='List of choices for select fields')
+    required = models.BooleanField(default=False)
+    position = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ['position', 'id']
+
+    def __str__(self):
+        return f'{self.label} ({self.event.title})'
 
 class WaitlistEntry(models.Model):
     """

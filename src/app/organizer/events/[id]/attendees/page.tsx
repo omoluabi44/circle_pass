@@ -1,63 +1,88 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
-import { Search, Download } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Search, Download, ChevronDown, ChevronUp } from 'lucide-react';
 import { getEventAttendees } from '@/lib/api/events';
 import { useParams } from 'next/navigation';
 import { useSession } from "@/context/AuthContext";
 import { toast } from 'react-hot-toast';
+import { API_URL } from '@/lib/api/config';
 
 export default function AttendeesPage() {
   const params = useParams();
   const id = params?.id as string;
   const { data: session, status } = useSession();
-  
+
   const [attendees, setAttendees] = useState<any[]>([]);
+  const [customFields, setCustomFields] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [expandedRow, setExpandedRow] = useState<number | null>(null);
 
   useEffect(() => {
-    async function fetchAttendees() {
+    async function fetchData() {
       if (status === "loading") return;
       if (!session?.accessToken || !id || id === "undefined") return;
       try {
-        const data = await getEventAttendees(session.accessToken as string, id);
-        // data could be paginated ({ results: [...] }) or a flat array
-        const results = Array.isArray(data?.results) ? data.results : Array.isArray(data) ? data : [];
+        const [attendeeData, fieldsRes] = await Promise.all([
+          getEventAttendees(session.accessToken as string, id),
+          fetch(`${API_URL}/events/${id}/custom-fields/`, {
+            headers: { Authorization: `Bearer ${session.accessToken}` },
+          }),
+        ]);
+        const results = Array.isArray(attendeeData?.results)
+          ? attendeeData.results
+          : Array.isArray(attendeeData)
+          ? attendeeData
+          : [];
         setAttendees(results);
+
+        if (fieldsRes.ok) {
+          const fields = await fieldsRes.json();
+          setCustomFields(Array.isArray(fields) ? fields : []);
+        }
       } catch (err) {
         toast.error("Failed to fetch attendees");
       } finally {
         setLoading(false);
       }
     }
-    fetchAttendees();
+    fetchData();
   }, [id, session?.accessToken, status]);
 
-  const filteredAttendees = attendees.filter((a) => 
+  const filteredAttendees = attendees.filter((a) =>
     a.name?.toLowerCase().includes(search.toLowerCase()) ||
     a.email?.toLowerCase().includes(search.toLowerCase())
   );
 
+  const hasCustomFields = customFields.length > 0;
+
   const exportCSV = () => {
-    if (filteredAttendees.length === 0) {
-      toast.error("No data to export");
-      return;
-    }
-    const headers = ["Name", "Email", "Ticket Type", "Purchase Date", "Status"];
-    const rows = filteredAttendees.map(a => [
-      a.name || "-",
-      a.email || "-",
-      a.ticket_type || "Unknown",
-      a.purchase_date ? new Date(a.purchase_date).toLocaleDateString() : "-",
-      a.status === 'USED' ? 'Checked In' : (a.status || "Unknown")
-    ]);
-    
+    if (filteredAttendees.length === 0) { toast.error("No data to export"); return; }
+    const baseHeaders = ["Name", "Email", "Ticket Type", "Purchase Date", "Status"];
+    const cfHeaders = customFields.map(f => f.label);
+    const headers = [...baseHeaders, ...cfHeaders];
+
+    const rows = filteredAttendees.map(a => {
+      const cfValues = customFields.map(f => {
+        const responses = a.custom_field_responses || {};
+        return responses[f.id] ?? responses[f.label] ?? "-";
+      });
+      return [
+        a.name || "-",
+        a.email || "-",
+        a.ticket_type || "Unknown",
+        a.purchase_date ? new Date(a.purchase_date).toLocaleDateString() : "-",
+        a.status === 'USED' ? 'Checked In' : (a.status || "Unknown"),
+        ...cfValues,
+      ];
+    });
+
     const csvContent = [
       headers.join(","),
       ...rows.map(e => e.map(field => `"${String(field).replace(/"/g, '""')}"`).join(","))
     ].join("\n");
-    
+
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -69,52 +94,33 @@ export default function AttendeesPage() {
   };
 
   const exportPDF = () => {
-    if (filteredAttendees.length === 0) {
-      toast.error("No data to export");
-      return;
-    }
+    if (filteredAttendees.length === 0) { toast.error("No data to export"); return; }
     const printWindow = window.open('', '_blank');
-    if (!printWindow) {
-      toast.error("Please allow popups to generate PDF");
-      return;
-    }
-    
-    const headers = ["Name", "Email", "Ticket Type", "Purchase Date", "Status"];
-    const rows = filteredAttendees.map(a => [
-      a.name || "-",
-      a.email || "-",
-      a.ticket_type || "Unknown",
-      a.purchase_date ? new Date(a.purchase_date).toLocaleDateString() : "-",
-      a.status === 'USED' ? 'Checked In' : (a.status || "Unknown")
-    ]);
-
+    if (!printWindow) { toast.error("Please allow popups to generate PDF"); return; }
+    const baseHeaders = ["Name", "Email", "Ticket Type", "Purchase Date", "Status"];
+    const cfHeaders = customFields.map(f => f.label);
+    const headers = [...baseHeaders, ...cfHeaders];
+    const rows = filteredAttendees.map(a => {
+      const cfValues = customFields.map(f => {
+        const responses = a.custom_field_responses || {};
+        return responses[f.id] ?? responses[f.label] ?? "-";
+      });
+      return [
+        a.name || "-",
+        a.email || "-",
+        a.ticket_type || "Unknown",
+        a.purchase_date ? new Date(a.purchase_date).toLocaleDateString() : "-",
+        a.status === 'USED' ? 'Checked In' : (a.status || "Unknown"),
+        ...cfValues,
+      ];
+    });
     const htmlContent = `
-      <html>
-        <head>
-          <title>Attendees Export</title>
-          <style>
-            body { font-family: sans-serif; padding: 20px; }
-            table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-            th { background-color: #f2f2f2; }
-            h1 { font-size: 24px; color: #333; }
-          </style>
-        </head>
-        <body>
-          <h1>Event Attendees</h1>
-          <table>
-            <thead>
-              <tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr>
-            </thead>
-            <tbody>
-              ${rows.map(row => `<tr>${row.map(cell => `<td>${cell}</td>`).join('')}</tr>`).join('')}
-            </tbody>
-          </table>
-          <script>
-            window.onload = function() { window.print(); window.close(); }
-          </script>
-        </body>
-      </html>
+      <html><head><title>Attendees Export</title>
+      <style>body{font-family:sans-serif;padding:20px}table{width:100%;border-collapse:collapse;margin-top:20px}th,td{border:1px solid #ddd;padding:8px;text-align:left}th{background:#f2f2f2}h1{font-size:24px;color:#333}</style>
+      </head><body><h1>Event Attendees</h1><table>
+      <thead><tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr></thead>
+      <tbody>${rows.map(row => `<tr>${row.map(cell => `<td>${cell}</td>`).join('')}</tr>`).join('')}</tbody>
+      </table><script>window.onload=function(){window.print();window.close()}<\/script></body></html>
     `;
     printWindow.document.write(htmlContent);
     printWindow.document.close();
@@ -124,11 +130,11 @@ export default function AttendeesPage() {
     <div className="p-6">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
         <h1 className="text-2xl font-bold text-foreground">Attendees</h1>
-        
+
         <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
           <div className="relative flex-grow md:w-64">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <input 
+            <input
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -137,12 +143,10 @@ export default function AttendeesPage() {
             />
           </div>
           <button onClick={exportCSV} className="flex items-center px-4 py-2 bg-secondary text-foreground rounded-xl text-sm font-medium hover:bg-secondary/80 transition-colors">
-            <Download className="w-4 h-4 mr-2" />
-            CSV
+            <Download className="w-4 h-4 mr-2" />CSV
           </button>
           <button onClick={exportPDF} className="flex items-center px-4 py-2 bg-secondary text-foreground rounded-xl text-sm font-medium hover:bg-secondary/80 transition-colors">
-            <Download className="w-4 h-4 mr-2" />
-            PDF
+            <Download className="w-4 h-4 mr-2" />PDF
           </button>
         </div>
       </div>
@@ -157,34 +161,79 @@ export default function AttendeesPage() {
                 <th className="p-4 text-sm font-semibold text-muted-foreground">Ticket Type</th>
                 <th className="p-4 text-sm font-semibold text-muted-foreground">Purchase Date</th>
                 <th className="p-4 text-sm font-semibold text-muted-foreground">Status</th>
+                {hasCustomFields && (
+                  <th className="p-4 text-sm font-semibold text-muted-foreground">Details</th>
+                )}
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={5} className="p-8 text-center text-muted-foreground">Loading attendees...</td>
+                  <td colSpan={hasCustomFields ? 6 : 5} className="p-8 text-center text-muted-foreground">Loading attendees...</td>
                 </tr>
               ) : filteredAttendees.length > 0 ? (
-                filteredAttendees.map((attendee) => (
-                  <tr key={attendee.id} className="border-b border-border hover:bg-secondary/30 transition-colors">
-                    <td className="p-4 text-sm font-medium text-foreground">{attendee.name || '-'}</td>
-                    <td className="p-4 text-sm text-muted-foreground">{attendee.email || '-'}</td>
-                    <td className="p-4 text-sm text-foreground">{attendee.ticket_type || 'Unknown'}</td>
-                    <td className="p-4 text-sm text-muted-foreground">
-                      {attendee.purchase_date ? new Date(attendee.purchase_date).toLocaleDateString() : '-'}
-                    </td>
-                    <td className="p-4 text-sm">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        attendee.status === 'USED' ? 'bg-success/10 text-success' : 'bg-warning/10 text-warning'
-                      }`}>
-                        {attendee.status === 'USED' ? 'Checked In' : attendee.status}
-                      </span>
-                    </td>
-                  </tr>
-                ))
+                filteredAttendees.map((attendee, idx) => {
+                  const responses = attendee.custom_field_responses || {};
+                  const hasResponses = hasCustomFields && Object.keys(responses).length > 0;
+                  const isExpanded = expandedRow === idx;
+
+                  return (
+                    <React.Fragment key={attendee.id ?? idx}>
+                      <tr className="border-b border-border hover:bg-secondary/30 transition-colors">
+                        <td className="p-4 text-sm font-medium text-foreground">{attendee.name || '-'}</td>
+                        <td className="p-4 text-sm text-muted-foreground">{attendee.email || '-'}</td>
+                        <td className="p-4 text-sm text-foreground">{attendee.ticket_type || 'Unknown'}</td>
+                        <td className="p-4 text-sm text-muted-foreground">
+                          {attendee.purchase_date ? new Date(attendee.purchase_date).toLocaleDateString() : '-'}
+                        </td>
+                        <td className="p-4 text-sm">
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                            attendee.status === 'USED' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
+                          }`}>
+                            {attendee.status === 'USED' ? 'Checked In' : attendee.status}
+                          </span>
+                        </td>
+                        {hasCustomFields && (
+                          <td className="p-4 text-sm">
+                            {hasResponses ? (
+                              <button
+                                onClick={() => setExpandedRow(isExpanded ? null : idx)}
+                                className="flex items-center gap-1 text-primary text-xs font-medium hover:underline"
+                              >
+                                View {isExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                              </button>
+                            ) : (
+                              <span className="text-muted-foreground text-xs">—</span>
+                            )}
+                          </td>
+                        )}
+                      </tr>
+
+                      {/* Expanded custom field responses */}
+                      {hasCustomFields && isExpanded && hasResponses && (
+                        <tr className="bg-primary/[0.03] border-b border-border">
+                          <td colSpan={6} className="px-6 py-3">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                              {customFields.map(field => {
+                                const value = responses[field.id] ?? responses[field.label] ?? null;
+                                if (!value) return null;
+                                return (
+                                  <div key={field.id} className="bg-card border border-border rounded-lg px-3 py-2">
+                                    <p className="text-xs font-medium text-muted-foreground mb-0.5">{field.label}</p>
+                                    <p className="text-sm text-foreground font-medium">{value}</p>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
+                  );
+                })
               ) : (
                 <tr>
-                  <td colSpan={5} className="p-8 text-center text-muted-foreground">No attendees found.</td>
+                  <td colSpan={hasCustomFields ? 6 : 5} className="p-8 text-center text-muted-foreground">No attendees found.</td>
                 </tr>
               )}
             </tbody>

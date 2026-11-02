@@ -50,6 +50,9 @@ class CheckoutView(APIView):
         guest_name = data.get('guest_name', '')
         guest_email = data.get('guest_email', '')
         guest_phone = data.get('guest_phone', '')
+        custom_field_responses = request.data.get('custom_field_responses', {})
+        if not isinstance(custom_field_responses, dict):
+            custom_field_responses = {}
 
         # Validate event exists and is purchasable
         try:
@@ -229,6 +232,7 @@ class CheckoutView(APIView):
                     total_amount=total_amount,
                     status='PENDING',
                     referral_code=request.data.get('referral_code', ''),
+                    custom_field_responses=custom_field_responses,
                     expires_at=timezone.now() + timezone.timedelta(minutes=30) if total_amount > 0 else None
                 )
 
