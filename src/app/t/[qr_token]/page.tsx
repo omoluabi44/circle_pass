@@ -7,6 +7,7 @@ import Link from "next/link";
 import { format } from "date-fns";
 import { QRCodeSVG } from "qrcode.react";
 import { MapPin, Calendar, Clock, ArrowLeft, Ticket } from "lucide-react";
+import { API_URL } from "@/lib/api/config";
 
 export default function PublicTicketView() {
   const params = useParams();
@@ -18,7 +19,7 @@ export default function PublicTicketView() {
   useEffect(() => {
     const fetchTicket = async () => {
       try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/tickets/public/${params.qr_token}/`);
+        const res = await fetch(`${API_URL}/tickets/public/${params.qr_token}/`);
         if (!res.ok) throw new Error("Ticket not found or invalid.");
         const data = await res.json();
         setTicket(data);
@@ -51,7 +52,17 @@ export default function PublicTicketView() {
     );
   }
 
-  const startDate = new Date(ticket.event_start_time);
+  const startDate = ticket.event_start_time ? new Date(ticket.event_start_time) : null;
+  const hasValidStart = startDate !== null && !Number.isNaN(startDate.getTime());
+
+  const statusStyles: Record<string, string> = {
+    ACTIVE: "bg-green-100 text-green-700",
+    ISSUED: "bg-green-100 text-green-700",
+    USED: "bg-orange-100 text-orange-700",
+    EXPIRED: "bg-gray-200 text-gray-700",
+    INVALIDATED: "bg-red-100 text-red-700",
+  };
+  const statusClass = statusStyles[ticket.status] || "bg-gray-200 text-gray-700";
 
 
   return (
@@ -66,8 +77,8 @@ export default function PublicTicketView() {
 
         <div className="bg-card rounded-2xl shadow-xl border border-border overflow-hidden">
           <div className="relative h-48 sm:h-64 w-full bg-muted">
-            {ticket.event.cover_image ? (
-              <img src={ticket.event.cover_image} alt={ticket.event.title} className="w-full h-full object-cover" />
+            {ticket.event_image ? (
+              <img src={ticket.event_image} alt={ticket.event_title} className="w-full h-full object-cover" />
             ) : (
               <div className="w-full h-full bg-secondary flex items-center justify-center">
                 <Ticket className="w-16 h-16 text-muted-foreground/30" />
@@ -76,10 +87,10 @@ export default function PublicTicketView() {
             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent"></div>
             <div className="absolute bottom-0 left-0 p-6 w-full">
               <span className="inline-block px-3 py-1 bg-primary/20 backdrop-blur-sm text-white text-xs font-bold rounded-full mb-2">
-                {ticket.ticket_type.name}
+                {ticket.ticket_type_name}
               </span>
               <h2 className="text-2xl sm:text-3xl font-bold text-white line-clamp-2">
-                {ticket.event.title}
+                {ticket.event_title}
               </h2>
             </div>
           </div>
@@ -90,8 +101,10 @@ export default function PublicTicketView() {
                 <div className="flex items-start gap-3 text-muted-foreground">
                   <Calendar className="w-5 h-5 mt-0.5 shrink-0 text-primary" />
                   <div>
-                    <p className="font-semibold text-foreground">{format(startDate, "EEEE, MMMM d, yyyy")}</p>
-                    <p>{format(startDate, "h:mm a")}</p>
+                    <p className="font-semibold text-foreground">
+                      {hasValidStart ? format(startDate as Date, "EEEE, MMMM d, yyyy") : "Date to be announced"}
+                    </p>
+                    {hasValidStart && <p>{format(startDate as Date, "h:mm a")}</p>}
                   </div>
                 </div>
                 
@@ -114,7 +127,7 @@ export default function PublicTicketView() {
                     <div className="bg-white p-3 rounded-xl shadow-sm mb-4">
                       <QRCodeSVG value={ticket.qr_token} size={160} />
                     </div>
-                    <span className="px-4 py-1.5 bg-green-100 text-green-700 font-bold rounded-full text-sm">
+                    <span className={`px-4 py-1.5 font-bold rounded-full text-sm ${statusClass}`}>
                       {ticket.status}
                     </span>
                   </>
