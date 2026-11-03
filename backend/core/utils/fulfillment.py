@@ -111,7 +111,7 @@ def fulfill_order(order, payment=None):
         try:
             send_purchase_receipt(order_fresh, tickets)
         except Exception as e:
-            pass
+            _log.error(f"Failed to send purchase receipt for order #{order_fresh.pk}: {e}", exc_info=True)
         try:
             send_organizer_sales_notification(order_fresh, tickets)
         except Exception as e:

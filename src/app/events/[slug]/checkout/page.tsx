@@ -55,7 +55,8 @@ export default function CheckoutPage() {
   const [successData, setSuccessData] = useState<any>(null);
 
   const [guestStep, setGuestStep] = useState(false);
-  const [guestData, setGuestData] = useState({ name: '', email: '', phone: '', password: '' });
+  const [guestData, setGuestData] = useState({ name: '', email: '', phone: '', additional_info: '', password: '' });
+  const [additionalInfo, setAdditionalInfo] = useState('');
 
   // Waitlist Claim State (When user clicks link in acceptance email)
   const [waitlistToken, setWaitlistToken] = useState<string | null>(null);
@@ -305,7 +306,10 @@ export default function CheckoutPage() {
 
       const response = await checkout({
         event_id: event.id, items: tickets, guest_name: name, guest_email: email, guest_phone: phone, referral_code, discount_code: appliedDiscount?.code || "", waitlist_token: waitlistToken || "",
-        custom_field_responses: customFieldValues,
+        custom_field_responses: {
+          ...customFieldValues,
+          ...(guestData.additional_info?.trim() ? { "Additional Information": guestData.additional_info.trim() } : {}),
+        },
       } as any);
 
       if (response.payment_required && (response as any).paystack?.access_code) {
@@ -362,7 +366,10 @@ export default function CheckoutPage() {
 
       const response = await checkout({
         event_id: event.id, items: tickets, referral_code, discount_code: appliedDiscount?.code || "", waitlist_token: waitlistToken || "",
-        custom_field_responses: customFieldValues,
+        custom_field_responses: {
+          ...customFieldValues,
+          ...(additionalInfo?.trim() ? { "Additional Information": additionalInfo.trim() } : {}),
+        },
       } as any, token);
 
       if (response.payment_required && (response as any).paystack?.access_code) {
@@ -733,38 +740,36 @@ export default function CheckoutPage() {
                   className="w-full px-4 py-3 rounded-xl border border-border bg-secondary/50 text-foreground placeholder-muted-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
                 />
 
-                {customFields.length > 0 && (
-                  <div className="space-y-3 pt-2 pb-1 border-t border-border">
-                    <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Additional Information</h4>
-                    {customFields.map((field) => (
-                      <div key={field.id} className="space-y-1">
-                        <label className="block text-xs font-medium text-foreground">
-                          {field.label} {field.required ? <span className="text-destructive">*</span> : <span className="text-muted-foreground font-normal">(optional)</span>}
-                        </label>
-                        {field.field_type === 'select' ? (
-                          <select
-                            value={customFieldValues[field.id] || ""}
-                            onChange={(e) => setCustomFieldValues(prev => ({ ...prev, [field.id]: e.target.value }))}
-                            className="w-full px-4 py-2.5 text-sm rounded-xl border border-border bg-secondary/50 text-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
-                          >
-                            <option value="">Select an option</option>
-                            {(field.options || []).map((opt: string, i: number) => (
-                              <option key={i} value={opt}>{opt}</option>
-                            ))}
-                          </select>
-                        ) : (
-                          <input
-                            type={field.field_type === 'number' ? 'number' : 'text'}
-                            placeholder={`Enter ${field.label.toLowerCase()}`}
-                            value={customFieldValues[field.id] || ""}
-                            onChange={(e) => setCustomFieldValues(prev => ({ ...prev, [field.id]: e.target.value }))}
-                            className="w-full px-4 py-2.5 text-sm rounded-xl border border-border bg-secondary/50 text-foreground placeholder-muted-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
-                          />
-                        )}
-                      </div>
-                    ))}
+                <input type="text" placeholder="Additional Information (Optional)"
+                  value={guestData.additional_info}
+                  onChange={(e) => setGuestData(prev => ({ ...prev, additional_info: e.target.value }))}
+                  className="w-full px-4 py-3 rounded-xl border border-border bg-secondary/50 text-foreground placeholder-muted-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
+                />
+
+                {customFields.map((field) => (
+                  <div key={field.id}>
+                    {field.field_type === 'select' ? (
+                      <select
+                        value={customFieldValues[field.id] || ""}
+                        onChange={(e) => setCustomFieldValues(prev => ({ ...prev, [field.id]: e.target.value }))}
+                        className="w-full px-4 py-3 rounded-xl border border-border bg-secondary/50 text-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
+                      >
+                        <option value="">{field.label} ({field.required ? 'Required' : 'Optional'})</option>
+                        {(field.options || []).map((opt: string, i: number) => (
+                          <option key={i} value={opt}>{opt}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <input
+                        type={field.field_type === 'number' ? 'number' : 'text'}
+                        placeholder={`${field.label} (${field.required ? 'Required' : 'Optional'})`}
+                        value={customFieldValues[field.id] || ""}
+                        onChange={(e) => setCustomFieldValues(prev => ({ ...prev, [field.id]: e.target.value }))}
+                        className="w-full px-4 py-3 rounded-xl border border-border bg-secondary/50 text-foreground placeholder-muted-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
+                      />
+                    )}
                   </div>
-                )}
+                ))}
 
                 <p className="text-xs text-muted-foreground leading-relaxed">
                   You'll receive an email with your ticket details.
@@ -924,38 +929,39 @@ export default function CheckoutPage() {
 
           {!success && !isWaitlistActive && (!allSoldOut || isClaimingWaitlist) && !isSalesPaused && !(guestStep && !session) && (
             <div className="p-4 sm:p-6 border-t border-border bg-card">
-              {customFields.length > 0 && (
-                <div className="mb-6 p-4 rounded-xl border border-border bg-secondary/30 space-y-3">
-                  <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Additional Information</h4>
-                  {customFields.map((field) => (
-                    <div key={field.id} className="space-y-1">
-                      <label className="block text-xs font-medium text-foreground">
-                        {field.label} {field.required ? <span className="text-destructive">*</span> : <span className="text-muted-foreground font-normal">(optional)</span>}
-                      </label>
-                      {field.field_type === 'select' ? (
-                        <select
-                          value={customFieldValues[field.id] || ""}
-                          onChange={(e) => setCustomFieldValues(prev => ({ ...prev, [field.id]: e.target.value }))}
-                          className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-background text-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
-                        >
-                          <option value="">Select an option</option>
-                          {(field.options || []).map((opt: string, i: number) => (
-                            <option key={i} value={opt}>{opt}</option>
-                          ))}
-                        </select>
-                      ) : (
-                        <input
-                          type={field.field_type === 'number' ? 'number' : 'text'}
-                          placeholder={`Enter ${field.label.toLowerCase()}`}
-                          value={customFieldValues[field.id] || ""}
-                          onChange={(e) => setCustomFieldValues(prev => ({ ...prev, [field.id]: e.target.value }))}
-                          className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-background text-foreground placeholder-muted-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
-                        />
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
+              <div className="mb-6 space-y-3">
+                <input
+                  type="text"
+                  placeholder="Additional Information (Optional)"
+                  value={additionalInfo}
+                  onChange={(e) => setAdditionalInfo(e.target.value)}
+                  className="w-full px-4 py-2.5 text-sm rounded-xl border border-border bg-secondary/50 text-foreground placeholder-muted-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
+                />
+                {customFields.map((field) => (
+                  <div key={field.id}>
+                    {field.field_type === 'select' ? (
+                      <select
+                        value={customFieldValues[field.id] || ""}
+                        onChange={(e) => setCustomFieldValues(prev => ({ ...prev, [field.id]: e.target.value }))}
+                        className="w-full px-4 py-2.5 text-sm rounded-xl border border-border bg-secondary/50 text-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
+                      >
+                        <option value="">{field.label} ({field.required ? 'Required' : 'Optional'})</option>
+                        {(field.options || []).map((opt: string, i: number) => (
+                          <option key={i} value={opt}>{opt}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <input
+                        type={field.field_type === 'number' ? 'number' : 'text'}
+                        placeholder={`${field.label} (${field.required ? 'Required' : 'Optional'})`}
+                        value={customFieldValues[field.id] || ""}
+                        onChange={(e) => setCustomFieldValues(prev => ({ ...prev, [field.id]: e.target.value }))}
+                        className="w-full px-4 py-2.5 text-sm rounded-xl border border-border bg-secondary/50 text-foreground placeholder-muted-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
+                      />
+                    )}
+                  </div>
+                ))}
+              </div>
               <div className="mb-6">
                 <div className="flex items-center gap-2">
                   <input

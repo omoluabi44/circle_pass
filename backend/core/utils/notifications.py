@@ -7,7 +7,7 @@ logger = logging.getLogger(__name__)
 
 def _send_and_log_email(subject, message, recipient_list, from_email=None):
     if from_email is None:
-        from_email = getattr(settings, 'DEFAULT_FROM_EMAIL', 'noreply@circlepass.com')
+        from_email = getattr(settings, 'DEFAULT_FROM_EMAIL', 'noreply@thecirclepass.com')
         
     for recipient in recipient_list:
         try:
@@ -24,7 +24,7 @@ def _send_and_log_email(subject, message, recipient_list, from_email=None):
                 status='Sent'
             )
         except Exception as e:
-            logger.error(f"Failed to send email to {recipient}: {e}")
+            logger.error(f"Failed to send email to {recipient}: {e}", exc_info=True)
             EmailLog.objects.create(
                 recipient=recipient,
                 subject=subject,
@@ -126,7 +126,7 @@ The CirclePass Team"""
         send_mail(
             subject,
             message,
-            getattr(settings, 'DEFAULT_FROM_EMAIL', 'noreply@circlepass.com'),
+            getattr(settings, 'DEFAULT_FROM_EMAIL', 'noreply@thecirclepass.com'),
             [recipient],
             html_message=html_message,
             fail_silently=False,
@@ -231,7 +231,7 @@ The CirclePass Team
         send_mail(
             subject,
             message,
-            getattr(settings, 'DEFAULT_FROM_EMAIL', 'noreply@circlepass.com'),
+            getattr(settings, 'DEFAULT_FROM_EMAIL', 'noreply@thecirclepass.com'),
             [recipient],
             html_message=html_message,
             fail_silently=False,
@@ -300,7 +300,7 @@ def send_bank_account_added_email(bank_account):
         send_mail(
             subject,
             message,
-            getattr(settings, 'DEFAULT_FROM_EMAIL', 'noreply@circlepass.com'),
+            getattr(settings, 'DEFAULT_FROM_EMAIL', 'noreply@thecirclepass.com'),
             [recipient],
             html_message=html_message,
             fail_silently=False,
@@ -340,7 +340,7 @@ def send_event_reminder_email(order):
         send_mail(
             subject,
             message,
-            getattr(settings, 'DEFAULT_FROM_EMAIL', 'noreply@circlepass.com'),
+            getattr(settings, 'DEFAULT_FROM_EMAIL', 'noreply@thecirclepass.com'),
             [recipient],
             html_message=html_message,
             fail_silently=False,
@@ -393,7 +393,7 @@ def send_waitlist_organizer_notification(entry):
         send_mail(
             subject,
             message,
-            getattr(settings, 'DEFAULT_FROM_EMAIL', 'noreply@circlepass.com'),
+            getattr(settings, 'DEFAULT_FROM_EMAIL', 'noreply@thecirclepass.com'),
             [recipient],
             html_message=html_message,
             fail_silently=False,
@@ -459,7 +459,7 @@ def send_waitlist_accepted_notification(entry):
         send_mail(
             subject,
             message,
-            getattr(settings, 'DEFAULT_FROM_EMAIL', 'noreply@circlepass.com'),
+            getattr(settings, 'DEFAULT_FROM_EMAIL', 'noreply@thecirclepass.com'),
             [recipient],
             html_message=html_message,
             fail_silently=False,

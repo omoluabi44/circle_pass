@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Search, Download, ChevronDown, ChevronUp } from 'lucide-react';
 import { getEventAttendees } from '@/lib/api/events';
 import { useParams } from 'next/navigation';
@@ -28,7 +28,7 @@ export default function AttendeesPage() {
           getEventAttendees(session.accessToken as string, id),
           fetch(`${API_URL}/events/${id}/custom-fields/`, {
             headers: { Authorization: `Bearer ${session.accessToken}` },
-          }),
+          }).catch(() => null),
         ]);
         const results = Array.isArray(attendeeData?.results)
           ? attendeeData.results
@@ -37,7 +37,7 @@ export default function AttendeesPage() {
           : [];
         setAttendees(results);
 
-        if (fieldsRes.ok) {
+        if (fieldsRes && fieldsRes.ok) {
           const fields = await fieldsRes.json();
           setCustomFields(Array.isArray(fields) ? fields : []);
         }
@@ -55,18 +55,29 @@ export default function AttendeesPage() {
     a.email?.toLowerCase().includes(search.toLowerCase())
   );
 
-  const hasCustomFields = customFields.length > 0;
+  // Check if any attendee has additional info / custom field responses
+  const hasCustomResponses = attendees.some(
+    a => a.custom_field_responses && Object.keys(a.custom_field_responses).length > 0
+  );
+  const showDetailsColumn = customFields.length > 0 || hasCustomResponses;
+
+  // Collect all unique keys for CSV/PDF export
+  const allFieldKeys = Array.from(new Set([
+    ...customFields.map(f => f.label || String(f.id)),
+    ...filteredAttendees.flatMap(a => Object.keys(a.custom_field_responses || {}))
+  ]));
 
   const exportCSV = () => {
     if (filteredAttendees.length === 0) { toast.error("No data to export"); return; }
     const baseHeaders = ["Name", "Email", "Ticket Type", "Purchase Date", "Status"];
-    const cfHeaders = customFields.map(f => f.label);
-    const headers = [...baseHeaders, ...cfHeaders];
+    const headers = [...baseHeaders, ...allFieldKeys];
 
     const rows = filteredAttendees.map(a => {
-      const cfValues = customFields.map(f => {
-        const responses = a.custom_field_responses || {};
-        return responses[f.id] ?? responses[f.label] ?? "-";
+      const resp = a.custom_field_responses || {};
+      const extraValues = allFieldKeys.map(k => {
+        // match by key directly or by field id
+        const matchedField = customFields.find(f => f.label === k);
+        return resp[k] ?? (matchedField ? resp[matchedField.id] : "-") ?? "-";
       });
       return [
         a.name || "-",
@@ -74,7 +85,7 @@ export default function AttendeesPage() {
         a.ticket_type || "Unknown",
         a.purchase_date ? new Date(a.purchase_date).toLocaleDateString() : "-",
         a.status === 'USED' ? 'Checked In' : (a.status || "Unknown"),
-        ...cfValues,
+        ...extraValues,
       ];
     });
 
@@ -98,12 +109,12 @@ export default function AttendeesPage() {
     const printWindow = window.open('', '_blank');
     if (!printWindow) { toast.error("Please allow popups to generate PDF"); return; }
     const baseHeaders = ["Name", "Email", "Ticket Type", "Purchase Date", "Status"];
-    const cfHeaders = customFields.map(f => f.label);
-    const headers = [...baseHeaders, ...cfHeaders];
+    const headers = [...baseHeaders, ...allFieldKeys];
     const rows = filteredAttendees.map(a => {
-      const cfValues = customFields.map(f => {
-        const responses = a.custom_field_responses || {};
-        return responses[f.id] ?? responses[f.label] ?? "-";
+      const resp = a.custom_field_responses || {};
+      const extraValues = allFieldKeys.map(k => {
+        const matchedField = customFields.find(f => f.label === k);
+        return resp[k] ?? (matchedField ? resp[matchedField.id] : "-") ?? "-";
       });
       return [
         a.name || "-",
@@ -111,7 +122,7 @@ export default function AttendeesPage() {
         a.ticket_type || "Unknown",
         a.purchase_date ? new Date(a.purchase_date).toLocaleDateString() : "-",
         a.status === 'USED' ? 'Checked In' : (a.status || "Unknown"),
-        ...cfValues,
+        ...extraValues,
       ];
     });
     const htmlContent = `
@@ -161,7 +172,7 @@ export default function AttendeesPage() {
                 <th className="p-4 text-sm font-semibold text-muted-foreground">Ticket Type</th>
                 <th className="p-4 text-sm font-semibold text-muted-foreground">Purchase Date</th>
                 <th className="p-4 text-sm font-semibold text-muted-foreground">Status</th>
-                {hasCustomFields && (
+                {showDetailsColumn && (
                   <th className="p-4 text-sm font-semibold text-muted-foreground">Details</th>
                 )}
               </tr>
@@ -169,12 +180,12 @@ export default function AttendeesPage() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={hasCustomFields ? 6 : 5} className="p-8 text-center text-muted-foreground">Loading attendees...</td>
+                  <td colSpan={showDetailsColumn ? 6 : 5} className="p-8 text-center text-muted-foreground">Loading attendees...</td>
                 </tr>
               ) : filteredAttendees.length > 0 ? (
                 filteredAttendees.map((attendee, idx) => {
                   const responses = attendee.custom_field_responses || {};
-                  const hasResponses = hasCustomFields && Object.keys(responses).length > 0;
+                  const hasResponses = Object.keys(responses).length > 0;
                   const isExpanded = expandedRow === idx;
 
                   return (
@@ -193,7 +204,7 @@ export default function AttendeesPage() {
                             {attendee.status === 'USED' ? 'Checked In' : attendee.status}
                           </span>
                         </td>
-                        {hasCustomFields && (
+                        {showDetailsColumn && (
                           <td className="p-4 text-sm">
                             {hasResponses ? (
                               <button
@@ -210,17 +221,19 @@ export default function AttendeesPage() {
                       </tr>
 
                       {/* Expanded custom field responses */}
-                      {hasCustomFields && isExpanded && hasResponses && (
+                      {showDetailsColumn && isExpanded && hasResponses && (
                         <tr className="bg-primary/[0.03] border-b border-border">
                           <td colSpan={6} className="px-6 py-3">
                             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-                              {customFields.map(field => {
-                                const value = responses[field.id] ?? responses[field.label] ?? null;
-                                if (!value) return null;
+                              {Object.entries(responses).map(([key, val]) => {
+                                // Find display label if key is an id
+                                const matched = customFields.find(f => String(f.id) === String(key));
+                                const label = matched ? matched.label : key;
+                                if (!val) return null;
                                 return (
-                                  <div key={field.id} className="bg-card border border-border rounded-lg px-3 py-2">
-                                    <p className="text-xs font-medium text-muted-foreground mb-0.5">{field.label}</p>
-                                    <p className="text-sm text-foreground font-medium">{value}</p>
+                                  <div key={key} className="bg-card border border-border rounded-lg px-3 py-2">
+                                    <p className="text-xs font-medium text-muted-foreground mb-0.5">{label}</p>
+                                    <p className="text-sm text-foreground font-medium">{String(val)}</p>
                                   </div>
                                 );
                               })}
@@ -233,7 +246,7 @@ export default function AttendeesPage() {
                 })
               ) : (
                 <tr>
-                  <td colSpan={hasCustomFields ? 6 : 5} className="p-8 text-center text-muted-foreground">No attendees found.</td>
+                  <td colSpan={showDetailsColumn ? 6 : 5} className="p-8 text-center text-muted-foreground">No attendees found.</td>
                 </tr>
               )}
             </tbody>
