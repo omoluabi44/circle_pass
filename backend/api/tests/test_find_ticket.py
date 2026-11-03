@@ -2,10 +2,12 @@
 Tests for Find My Ticket public lookup endpoint.
 Covers: search by reference, search by email, no results, masking, rate limiting.
 """
-from django.test import TestCase
-from django.urls import reverse
+from django.test import SimpleTestCase, TestCase
+from django.urls import resolve, reverse
 from django.utils import timezone
 
+from api.views_find_ticket import FindTicketView
+from api.views_ticket import PublicTicketView, TicketViewSet
 from core.models import (
     User, OrganizerProfile, AttendeeProfile,
     Event, TicketType, Order, OrderItem, Payment, Ticket,
@@ -130,3 +132,24 @@ class FindTicketTests(TestCase):
             content_type='application/json',
         )
         self.assertEqual(response.status_code, 400)
+
+
+class TicketRouteResolutionTests(SimpleTestCase):
+    """
+    Guards against DefaultRouter's `tickets/<pk>/` pattern shadowing the
+    public find-ticket route, which previously routed POST /api/tickets/find/
+    to TicketViewSet.retrieve (IsAuthenticated) and returned
+    "Authentication credentials were not provided."
+    """
+
+    def test_find_ticket_route_resolves_to_public_view(self):
+        match = resolve('/api/tickets/find/')
+        self.assertIs(match.func.cls, FindTicketView)
+
+    def test_public_ticket_route_resolves_to_public_view(self):
+        match = resolve('/api/tickets/public/some-token/')
+        self.assertIs(match.func.cls, PublicTicketView)
+
+    def test_tickets_list_still_resolves_to_viewset(self):
+        match = resolve('/api/tickets/')
+        self.assertIs(match.func.cls, TicketViewSet)

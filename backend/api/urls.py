@@ -67,9 +67,19 @@ router.register(r'tickets', TicketViewSet, basename='tickets')
 router.register(r'support-tickets', SupportTicketViewSet, basename='support-tickets')
 
 urlpatterns = [
+    # ------------------------------------------------------------------
+    # Explicit ticket routes MUST be declared before the router include.
+    # DefaultRouter generates `tickets/<pk>/`, which would otherwise
+    # swallow `tickets/find/` and dispatch it to TicketViewSet.retrieve
+    # (IsAuthenticated) instead of the public FindTicketView — causing
+    # "Authentication credentials were not provided." on /find-ticket.
+    # ------------------------------------------------------------------
+    path('tickets/find/', FindTicketView.as_view(), name='find_ticket'),
+    path('tickets/public/<str:qr_token>/', PublicTicketView.as_view(), name='public_ticket'),
+    path('tickets/', TicketViewSet.as_view({'get': 'list'}), name='tickets'),
+
     path('', include(router.urls)),
 
-    
     # Custom User ViewSet overrides standard djoser /users/
     path('auth/', include(auth_router.urls)),
     
@@ -149,10 +159,7 @@ urlpatterns = [
     # File Upload (Presigned URL)
     path('upload/presigned-url/', PresignedUrlView.as_view(), name='presigned_url'),
     
-    # Find Ticket (public)
-    path('tickets/find/', FindTicketView.as_view(), name='find_ticket'),
-    path('tickets/public/<str:qr_token>/', PublicTicketView.as_view(), name='public_ticket'),
-    path('tickets/', TicketViewSet.as_view({'get': 'list'}), name='tickets'),
+    # Find Ticket (public) — registered above, before the router include.
     
     # Attendee: Profile
     path('attendee/profile/', AttendeeProfileView.as_view(), name='attendee_profile'),
