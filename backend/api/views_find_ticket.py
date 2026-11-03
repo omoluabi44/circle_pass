@@ -178,7 +178,6 @@ class FindTicketView(APIView):
                 'order_reference': payment_ref,
                 'quantity': order.ticket_count,
                 'ticket_count': order.ticket_count,
-                'qr_token': first_ticket.qr_token if first_ticket else None,
             })
 
         from api.serializers import FindTicketResultSerializer

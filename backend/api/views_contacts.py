@@ -2,21 +2,8 @@ from django.db.models import Q
 from rest_framework import generics, permissions
 from rest_framework.response import Response
 
-from api.permissions import IsOrganizerOrAdmin
+from api.permissions import IsOrganizerOrAdmin, is_admin_user
 from core.models import EventCustomField, FollowedOrganizer, Ticket
-
-
-def is_admin_user(user):
-    """Super admins can see every organizer's data."""
-    return bool(
-        user
-        and user.is_authenticated
-        and (
-            getattr(user, 'role', '') == 'ADMIN'
-            or user.is_staff
-            or user.is_superuser
-        )
-    )
 
 
 class OrganizerContactsView(generics.ListAPIView):

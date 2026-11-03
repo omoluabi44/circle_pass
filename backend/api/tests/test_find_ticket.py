@@ -134,6 +134,141 @@ class FindTicketTests(TestCase):
         self.assertEqual(response.status_code, 400)
 
 
+class TicketAccessControlTests(TestCase):
+    """
+    /api/tickets/public/<token>/ is the shareable pass link. Only the buyer
+    (by account or by the order's email), the event's organizer, and admins
+    may read it.
+    """
+
+    def setUp(self):
+        from rest_framework.test import APIClient
+        self.client = APIClient()
+
+        self.org_user = User.objects.create_user(
+            username='accessorg', email='accessorg@example.com',
+            password='password', role='ORGANIZER',
+        )
+        self.organizer = OrganizerProfile.objects.create(
+            user=self.org_user, company_name='Access Test Org',
+        )
+        self.event = Event.objects.create(
+            organizer=self.organizer, title='Access Test Event',
+            capacity=100,
+            start_time=timezone.now() + timezone.timedelta(days=2),
+            end_time=timezone.now() + timezone.timedelta(days=3),
+            status='PUBLISHED',
+        )
+        self.ticket_type = TicketType.objects.create(
+            event=self.event, tier='REGULAR', name='Standard',
+            price=0, quantity=50,
+        )
+
+        # Guest order, no account attached.
+        self.order = Order.objects.create(
+            event=self.event,
+            guest_email='buyer@example.com',
+            guest_name='Guest Buyer',
+            subtotal=0,
+            total_amount=0,
+            status='COMPLETED',
+        )
+        self.payment = Payment.objects.create(
+            order=self.order,
+            reference='PAY-ACCESS-001',
+            amount=0,
+            status='SUCCESS',
+            provider='FREE',
+        )
+        self.ticket = Ticket.objects.create(
+            order=self.order,
+            ticket_type=self.ticket_type,
+            attendee_name='Guest Buyer',
+            attendee_email='buyer@example.com',
+            status='ACTIVE',
+            qr_token=generate_secure_qr_token(),
+        )
+
+        self.buyer = User.objects.create_user(
+            username='buyer', email='buyer@example.com',
+            password='password', role='ATTENDEE',
+        )
+        self.stranger = User.objects.create_user(
+            username='stranger', email='stranger@example.com',
+            password='password', role='ATTENDEE',
+        )
+        self.admin = User.objects.create_user(
+            username='accessadmin', email='admin@example.com',
+            password='password', role='ADMIN',
+        )
+
+    def pass_url(self):
+        return f'/api/tickets/public/{self.ticket.qr_token}/'
+
+    def test_anonymous_cannot_read_pass(self):
+        response = self.client.get(self.pass_url())
+        self.assertIn(response.status_code, (401, 403))
+
+    def test_stranger_cannot_read_pass(self):
+        self.client.force_authenticate(user=self.stranger)
+        response = self.client.get(self.pass_url())
+        self.assertEqual(response.status_code, 403)
+        self.assertNotIn('qr_token', response.data)
+
+    def test_buyer_email_match_can_read_pass(self):
+        self.client.force_authenticate(user=self.buyer)
+        response = self.client.get(self.pass_url())
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['qr_token'], self.ticket.qr_token)
+
+    def test_organizer_can_read_pass(self):
+        self.client.force_authenticate(user=self.org_user)
+        response = self.client.get(self.pass_url())
+        self.assertEqual(response.status_code, 200)
+
+    def test_admin_can_read_pass(self):
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.get(self.pass_url())
+        self.assertEqual(response.status_code, 200)
+
+    def test_account_owner_can_read_pass(self):
+        attendee = AttendeeProfile.objects.create(user=self.buyer)
+        self.order.attendee = attendee
+        self.order.guest_email = ''
+        self.order.save(update_fields=['attendee', 'guest_email'])
+
+        self.client.force_authenticate(user=self.buyer)
+        response = self.client.get(self.pass_url())
+        self.assertEqual(response.status_code, 200)
+
+    def test_access_endpoint_returns_token_to_buyer(self):
+        self.client.force_authenticate(user=self.buyer)
+        response = self.client.post(
+            '/api/tickets/access/',
+            {'email': 'buyer@example.com'},
+            format='json',
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['tickets'][0]['qr_token'], self.ticket.qr_token)
+
+    def test_access_endpoint_denies_stranger(self):
+        self.client.force_authenticate(user=self.stranger)
+        response = self.client.post(
+            '/api/tickets/access/',
+            {'email': 'buyer@example.com'},
+            format='json',
+        )
+        self.assertEqual(response.status_code, 403)
+
+    def test_access_endpoint_requires_authentication(self):
+        response = self.client.post(
+            '/api/tickets/access/',
+            {'email': 'buyer@example.com'},
+            format='json',
+        )
+        self.assertIn(response.status_code, (401, 403))
+
+
 class TicketRouteResolutionTests(SimpleTestCase):
     """
     Guards against DefaultRouter's `tickets/<pk>/` pattern shadowing the
@@ -153,3 +288,9 @@ class TicketRouteResolutionTests(SimpleTestCase):
     def test_tickets_list_still_resolves_to_viewset(self):
         match = resolve('/api/tickets/')
         self.assertIs(match.func.cls, TicketViewSet)
+
+    def test_ticket_access_route_resolves_to_access_view(self):
+        from api.views_ticket import TicketAccessView
+
+        match = resolve('/api/tickets/access/')
+        self.assertIs(match.func.cls, TicketAccessView)

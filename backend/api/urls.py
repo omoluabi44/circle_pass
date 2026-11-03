@@ -54,7 +54,7 @@ admin_router.register(r'organizer-verifications', AdminOrganizerVerificationView
 admin_router.register(r'events', AdminEventViewSet, basename='admin-events')
 admin_router.register(r'payouts', AdminPayoutViewSet, basename='admin-payouts')
 
-from .views_ticket import TicketViewSet, PublicTicketView
+from .views_ticket import TicketViewSet, PublicTicketView, TicketAccessView
 from .views_checkin import CheckInScanView, CheckInManualSearchView, CheckInStatsView
 from .views_team import TeamMemberManagementView, TeamMemberDetailView, AcceptTeamInviteView, UserTeamRolesView
 from .views import SupportTicketViewSet
@@ -76,6 +76,7 @@ urlpatterns = [
     # ------------------------------------------------------------------
     path('tickets/find/', FindTicketView.as_view(), name='find_ticket'),
     path('tickets/public/<str:qr_token>/', PublicTicketView.as_view(), name='public_ticket'),
+    path('tickets/access/', TicketAccessView.as_view(), name='ticket_access'),
     path('tickets/', TicketViewSet.as_view({'get': 'list'}), name='tickets'),
 
     path('', include(router.urls)),

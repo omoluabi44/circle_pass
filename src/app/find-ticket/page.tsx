@@ -1,15 +1,31 @@
 "use client";
 
 import { useState } from "react";
-import { Search, Ticket, Mail, Phone, Hash, AlertCircle, RefreshCw } from "lucide-react";
-import { findTicket } from "@/lib/api/find-ticket";
+import { useRouter } from "next/navigation";
+import { Search, Ticket, Mail, Phone, Hash, AlertCircle, RefreshCw, Lock } from "lucide-react";
+import { findTicket, requestTicketAccess } from "@/lib/api/find-ticket";
+import { useSession } from "@/context/AuthContext";
 
 export default function FindTicketPage() {
+  const router = useRouter();
+  const { data: session, status } = useSession();
   const [activeTab, setActiveTab] = useState<"reference" | "email" | "phone">("reference");
   const [inputValue, setInputValue] = useState("");
   const [loading, setLoading] = useState(false);
+  const [openingPass, setOpeningPass] = useState(false);
   const [error, setError] = useState("");
   const [results, setResults] = useState<any[] | null>(null);
+
+  const accessToken = session?.accessToken;
+  const isLoggedIn = status === "authenticated" && !!accessToken;
+
+  const buildPayload = () => {
+    const payload: any = {};
+    if (activeTab === "reference") payload.order_reference = inputValue;
+    else if (activeTab === "email") payload.email = inputValue;
+    else if (activeTab === "phone") payload.phone_number = inputValue;
+    return payload;
+  };
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -20,12 +36,7 @@ export default function FindTicketPage() {
       setError("");
       setResults(null);
       
-      const payload: any = {};
-      if (activeTab === "reference") payload.order_reference = inputValue;
-      else if (activeTab === "email") payload.email = inputValue;
-      else if (activeTab === "phone") payload.phone_number = inputValue;
-
-      const data = await findTicket(payload);
+      const data = await findTicket(buildPayload());
       setResults(data);
     } catch (err: any) {
       if (err.message && err.message.includes("429")) {
@@ -36,6 +47,33 @@ export default function FindTicketPage() {
       setResults([]);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleViewPass = async (result: any) => {
+    if (!isLoggedIn) {
+      router.push(`/login?redirect=${encodeURIComponent("/find-ticket")}`);
+      return;
+    }
+
+    try {
+      setOpeningPass(true);
+      setError("");
+      const data = await requestTicketAccess(accessToken as string, buildPayload());
+      const tickets: any[] = data?.tickets || [];
+      const match =
+        tickets.find((t) => t.order_reference && t.order_reference === result.order_reference) ||
+        tickets[0];
+
+      if (!match?.qr_token) {
+        setError("We could not open this pass. Please sign in with the email used to buy it.");
+        return;
+      }
+      router.push(`/t/${match.qr_token}`);
+    } catch (err: any) {
+      setError(err.message || "You do not have access to this ticket.");
+    } finally {
+      setOpeningPass(false);
     }
   };
 
@@ -152,15 +190,25 @@ export default function FindTicketPage() {
                       }`}>
                         {ticket.status || "VALID"}
                       </span>
-                      {ticket.qr_token && (
-                        <a 
-                          href={`/t/${ticket.qr_token}`} 
-                          target="_blank" 
+                      {ticket.qr_token ? (
+                        <a
+                          href={`/t/${ticket.qr_token}`}
+                          target="_blank"
                           rel="noopener noreferrer"
                           className="bg-primary text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors"
                         >
                           View Pass
                         </a>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => handleViewPass(ticket)}
+                          disabled={openingPass}
+                          className="inline-flex items-center gap-2 bg-primary text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-70"
+                        >
+                          {openingPass ? <RefreshCw className="w-4 h-4 animate-spin" /> : !isLoggedIn && <Lock className="w-3.5 h-3.5" />}
+                          {isLoggedIn ? "View Pass" : "Sign in to view pass"}
+                        </button>
                       )}
                     </div>
                   </div>

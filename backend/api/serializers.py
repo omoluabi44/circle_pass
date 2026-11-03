@@ -579,7 +579,11 @@ class FindTicketResultSerializer(serializers.Serializer):
     ticket_type = serializers.CharField(required=False)
     attendee_name = serializers.CharField(required=False)
     quantity = serializers.IntegerField(required=False)
-    qr_token = serializers.CharField(required=False, allow_null=True)
+    # NOTE: the QR token is deliberately NOT exposed here. This endpoint is
+    # public, so including it let anyone who knew a buyer's email fetch a
+    # live, scannable pass. Pass links are resolved through the
+    # authenticated /api/tickets/access/ and /api/tickets/public/<token>/
+    # endpoints instead, which check the caller's permissions.
 
 
 # ==========================================
