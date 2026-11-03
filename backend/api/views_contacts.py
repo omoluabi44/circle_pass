@@ -1,56 +1,127 @@
+from django.db.models import Q
 from rest_framework import generics, permissions
 from rest_framework.response import Response
+
 from api.permissions import IsOrganizerOrAdmin
-from core.models import Ticket
+from core.models import EventCustomField, FollowedOrganizer, Ticket
+
+
+def is_admin_user(user):
+    """Super admins can see every organizer's data."""
+    return bool(
+        user
+        and user.is_authenticated
+        and (
+            getattr(user, 'role', '') == 'ADMIN'
+            or user.is_staff
+            or user.is_superuser
+        )
+    )
+
 
 class OrganizerContactsView(generics.ListAPIView):
     """
     GET /api/organizer/contacts/
     Returns a paginated list of all tickets sold across the organizer's events.
+
+    Admins are not limited to events they own — they can browse any event by
+    passing ?event_id=<id>, or every event at once.
     """
     permission_classes = [permissions.IsAuthenticated, IsOrganizerOrAdmin]
 
     def get_queryset(self):
         user = self.request.user
-        qs = Ticket.objects.filter(
-            order__event__organizer__user=user,
-            order__status='COMPLETED'
-        )
-        qs = qs.select_related('order__event', 'ticket_type').order_by('-order__created_at')
+        qs = Ticket.objects.filter(order__status='COMPLETED')
+
+        # Organizers only ever see their own events; admins see everything.
+        if not is_admin_user(user):
+            qs = qs.filter(order__event__organizer__user=user)
 
         # Optional filtering by event_id
         event_id = self.request.query_params.get('event_id')
         if event_id:
             qs = qs.filter(order__event_id=event_id)
 
-        # Optional search
-        search = self.request.query_params.get('search')
+        # Optional search across the details captured at checkout
+        search = (self.request.query_params.get('search') or '').strip()
         if search:
             qs = qs.filter(
-                attendee_name__icontains=search
-            ) | qs.filter(
-                attendee_email__icontains=search
-            ) | qs.filter(
-                qr_token__icontains=search
+                Q(attendee_name__icontains=search)
+                | Q(attendee_email__icontains=search)
+                | Q(qr_token__icontains=search)
+                | Q(order__guest_name__icontains=search)
+                | Q(order__guest_email__icontains=search)
+                | Q(order__guest_phone__icontains=search)
+                | Q(order__attendee__user__email__icontains=search)
+                | Q(order__attendee__phone_number__icontains=search)
             )
-            
-        return qs
+
+        return qs.select_related(
+            'order__event', 'order__attendee__user', 'ticket_type'
+        ).order_by('-order__created_at')
 
     def list(self, request, *args, **kwargs):
         queryset = self.filter_queryset(self.get_queryset())
         page = self.paginate_queryset(queryset)
-        
-        # Serialize the tickets to match the frontend expectations
+
+        # Cache custom-field label maps per event: {"<field id>": label, "label": label}
+        label_cache = {}
+
+        def labels_for(event_id):
+            if event_id not in label_cache:
+                mapping = {}
+                for field in EventCustomField.objects.filter(event_id=event_id):
+                    mapping[str(field.id)] = field.label
+                    mapping[field.label] = field.label
+                label_cache[event_id] = mapping
+            return label_cache[event_id]
+
+        def resolve_custom_fields(order):
+            """Turn {field_id: value} into {label: value} for display/export."""
+            raw = order.custom_field_responses or {}
+            if not isinstance(raw, dict):
+                return {}
+            mapping = labels_for(order.event_id)
+            resolved = {}
+            for key, value in raw.items():
+                if value is None or value == '':
+                    continue
+                resolved[mapping.get(str(key), str(key))] = value
+            return resolved
+
         def serialize_ticket(t):
+            order = t.order
+            attendee = order.attendee
+            attendee_user = attendee.user if attendee and attendee.user_id else None
+
+            name = (
+                t.attendee_name
+                or order.guest_name
+                or (attendee_user.get_full_name() if attendee_user else '')
+                or ''
+            ).strip()
+            email = (
+                t.attendee_email
+                or order.guest_email
+                or (attendee_user.email if attendee_user else '')
+                or ''
+            ).strip()
+            phone = (
+                order.guest_phone
+                or (attendee.phone_number if attendee else '')
+                or ''
+            ).strip()
+
             return {
                 "id": t.id,
-                "name": t.attendee_name,
-                "email": t.attendee_email,
-                "event_title": t.order.event.title,
+                "name": name,
+                "email": email,
+                "phone": phone,
+                "event_title": order.event.title,
                 "ticket_type": t.ticket_type.name,
-                "purchase_date": t.order.created_at,
+                "purchase_date": order.created_at,
                 "status": t.status,
-                "custom_field_responses": getattr(t.order, 'custom_field_responses', {}) if t.order else {},
+                "custom_field_responses": resolve_custom_fields(order),
             }
 
         if page is not None:
@@ -60,7 +131,6 @@ class OrganizerContactsView(generics.ListAPIView):
         data = [serialize_ticket(t) for t in queryset]
         return Response(data)
 
-from core.models import FollowedOrganizer
 
 class OrganizerFollowersView(generics.ListAPIView):
     """
