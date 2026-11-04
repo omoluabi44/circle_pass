@@ -87,6 +87,9 @@ export default function AttendeesPage() {
         if (!ordered.includes(key)) ordered.push(key);
       });
     });
+    // The checkout always offers a free-text "Additional Information" box, so
+    // keep its column visible even before anyone has filled it in.
+    if (!ordered.includes("Additional Information")) ordered.push("Additional Information");
     return ordered;
   }, [customFields, filteredAttendees]);
 
