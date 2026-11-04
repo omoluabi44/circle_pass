@@ -192,7 +192,7 @@ export async function createEventDiscount(token: string, eventId: string | numbe
   });
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({}));
-    throw new Error(errorData.detail || 'Failed to create discount');
+    throw new Error(errorData.error || errorData.detail || 'Failed to create discount');
   }
   return res.json();
 }

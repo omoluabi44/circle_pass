@@ -49,9 +49,9 @@ export default function DiscountsPage() {
     try {
       await createEventDiscount(session?.accessToken as string, id, {
         code,
-        discount_type: type,
+        type,
         value: type === "FIXED" ? Math.round(Number(value) * 100) : Number(value),
-        usage_limit: usageLimit ? Number(usageLimit) : null
+        usage_limit: usageLimit ? Number(usageLimit) : 0
       });
       toast.success("Discount created successfully");
       setShowModal(false);
@@ -106,8 +106,8 @@ export default function DiscountsPage() {
               <div>
                 <h3 className="text-lg font-bold text-foreground">{discount.code}</h3>
                 <p className="text-sm text-muted-foreground">
-                  {discount.discount_type === 'REFERRAL' ? 'Referral Tracker' :
-                   discount.discount_type === 'PERCENTAGE' ? `${discount.value}% Off` : `₦${discount.value / 100} Off`}
+                  {(discount.type || discount.discount_type) === 'REFERRAL' ? 'Referral Tracker' :
+                   (discount.type || discount.discount_type) === 'PERCENTAGE' ? `${discount.value}% Off` : `₦${(discount.value / 100).toLocaleString()} Off`}
                 </p>
               </div>
               <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${discount.is_active !== false ? 'bg-success/10 text-success' : 'bg-secondary text-muted-foreground'}`}>
@@ -119,12 +119,12 @@ export default function DiscountsPage() {
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Usage</span>
                 <span className="font-medium text-foreground">
-                  {discount.times_used || 0} / {discount.usage_limit ? discount.usage_limit : '∞'}
+                  {discount.usage_count ?? discount.times_used ?? 0} / {discount.usage_limit ? discount.usage_limit : '∞'}
                 </span>
               </div>
               {discount.usage_limit > 0 && (
                 <div className="w-full bg-secondary rounded-full h-2">
-                  <div className="bg-primary h-2 rounded-full" style={{ width: `${Math.min(100, ((discount.times_used || 0) / discount.usage_limit) * 100)}%` }}></div>
+                  <div className="bg-primary h-2 rounded-full" style={{ width: `${Math.min(100, (((discount.usage_count ?? discount.times_used ?? 0)) / discount.usage_limit) * 100)}%` }}></div>
                 </div>
               )}
             </div>
