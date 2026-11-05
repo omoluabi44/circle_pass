@@ -553,9 +553,24 @@ class DiscountRedemption(models.Model):
 
 
 class EventAnnouncement(models.Model):
+    DELIVERY_STATUS_CHOICES = (
+        ('QUEUED', 'Queued'),
+        ('SENDING', 'Sending'),
+        ('SENT', 'Sent'),
+        ('PARTIAL', 'Sent with errors'),
+        ('FAILED', 'Failed'),
+        ('NO_RECIPIENTS', 'No recipients'),
+    )
+
     event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name='announcements')
     title = models.CharField(max_length=255)
     message = models.TextField()
+    audience = models.CharField(max_length=20, default='attendees_only')
+    recipients_count = models.PositiveIntegerField(default=0)
+    delivered_count = models.PositiveIntegerField(default=0)
+    delivery_status = models.CharField(max_length=20, choices=DELIVERY_STATUS_CHOICES, default='QUEUED')
+    delivery_error = models.TextField(blank=True, default='')
+    sent_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

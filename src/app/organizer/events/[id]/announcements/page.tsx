@@ -180,6 +180,19 @@ export default function AnnouncementsPage() {
     getPdfjs().catch(() => {});
   }, [fetchAnnouncements]);
 
+  // While the worker is still delivering an announcement, refresh the list so
+  // the status badge (queued -> sent/failed) updates without a manual reload.
+  useEffect(() => {
+    const pending = announcements.some(
+      (a) => a.delivery_status === "QUEUED" || a.delivery_status === "SENDING"
+    );
+    if (!pending) return;
+    const timer = setInterval(() => {
+      fetchAnnouncements();
+    }, 8000);
+    return () => clearInterval(timer);
+  }, [announcements, fetchAnnouncements]);
+
   // ── Manual email parsing ───────────────────────────────────────────────────
 
   function commitManualInput() {
@@ -291,7 +304,7 @@ export default function AnnouncementsPage() {
 
     setSubmitting(true);
     try {
-      await createEventAnnouncement(session?.accessToken as string, id, {
+      const created = await createEventAnnouncement(session?.accessToken as string, id, {
         title,
         message,
         audience,
@@ -305,7 +318,24 @@ export default function AnnouncementsPage() {
           ? `${allCustomEmails.length} custom recipient${allCustomEmails.length !== 1 ? "s" : ""}`
           : `all attendees + ${allCustomEmails.length} custom recipient${allCustomEmails.length !== 1 ? "s" : ""}`;
 
-      toast.success(`Announcement sent to ${recipientText}!`);
+      const count = (created as any)?.recipients_count;
+      if ((created as any)?.delivery_status === "FAILED") {
+        toast.error(
+          `Announcement saved, but delivery failed: ${
+            (created as any)?.delivery_error || "unknown error"
+          }`
+        );
+      } else if ((created as any)?.dispatch === "sent") {
+        toast.success(
+          `Announcement sent to ${count ?? recipientText} recipient${count === 1 ? "" : "s"}!`
+        );
+      } else {
+        toast.success(
+          `Announcement queued for ${count ?? recipientText} recipient${
+            count === 1 ? "" : "s"
+          }! Delivery usually completes within a minute.`
+        );
+      }
       setTitle("");
       setMessage("");
       setAudience("attendees_only");
@@ -643,20 +673,51 @@ export default function AnnouncementsPage() {
           </div>
         )}
 
-        {announcements.map((ann) => (
-          <div key={ann.id} className="bg-card border border-border rounded-2xl p-5 shadow-sm">
-            <div className="flex justify-between items-start mb-2">
-              <h4 className="font-semibold text-foreground">{ann.title}</h4>
-              <div className="flex items-center text-xs text-muted-foreground">
-                <Clock className="w-3 h-3 mr-1" />
-                {new Date(ann.created_at).toLocaleString()}
+        {announcements.map((ann) => {
+          const status = (ann.delivery_status || '') as string;
+          const statusMeta: Record<string, { label: string; className: string }> = {
+            QUEUED: { label: 'Queued', className: 'bg-secondary text-muted-foreground' },
+            SENDING: { label: 'Sending…', className: 'bg-amber-500/10 text-amber-600' },
+            SENT: { label: 'Delivered', className: 'bg-emerald-500/10 text-emerald-600' },
+            PARTIAL: { label: 'Partly delivered', className: 'bg-amber-500/10 text-amber-600' },
+            FAILED: { label: 'Failed', className: 'bg-red-500/10 text-red-600' },
+            NO_RECIPIENTS: { label: 'No recipients', className: 'bg-red-500/10 text-red-600' },
+          };
+          const meta = statusMeta[status];
+          return (
+            <div key={ann.id} className="bg-card border border-border rounded-2xl p-5 shadow-sm">
+              <div className="flex justify-between items-start mb-2 gap-3">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h4 className="font-semibold text-foreground">{ann.title}</h4>
+                  {meta && (
+                    <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${meta.className}`}>
+                      {meta.label}
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center text-xs text-muted-foreground whitespace-nowrap">
+                  <Clock className="w-3 h-3 mr-1" />
+                  {new Date(ann.created_at).toLocaleString()}
+                </div>
               </div>
+              <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">
+                {ann.message}
+              </p>
+              {typeof ann.recipients_count === 'number' && ann.recipients_count > 0 && (
+                <p className="mt-3 text-xs text-muted-foreground">
+                  {typeof ann.delivered_count === 'number' && ann.delivered_count > 0
+                    ? `Delivered to ${ann.delivered_count} of ${ann.recipients_count} recipients`
+                    : `Sent to ${ann.recipients_count} recipient${ann.recipients_count === 1 ? '' : 's'}`}
+                </p>
+              )}
+              {ann.delivery_error && (
+                <p className="mt-2 text-xs text-red-500 break-words whitespace-pre-wrap">
+                  {ann.delivery_error}
+                </p>
+              )}
             </div>
-            <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">
-              {ann.message}
-            </p>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

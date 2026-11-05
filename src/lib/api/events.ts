@@ -229,7 +229,7 @@ export async function createEventAnnouncement(token: string, eventId: string | n
   });
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({}));
-    throw new Error(errorData.detail || 'Failed to send announcement');
+    throw new Error(errorData.error || errorData.detail || 'Failed to send announcement');
   }
   return res.json();
 }

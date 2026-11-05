@@ -242,48 +242,81 @@ The CirclePass Team"""
     except Exception as e:
         return str(e)
 
-@shared_task
-def send_event_announcement_email(announcement_id, include_attendees=True, extra_recipients=None):
-    from core.models import EventAnnouncement, Order
+def resolve_announcement_recipients(event, include_attendees=True, extra_recipients=None):
+    """Return an ordered ``{email: first_name}`` map for an event announcement.
+
+    Used both by the API (so the organizer immediately learns how many people
+    will be emailed) and by the Celery task that performs the send.
+    """
+    from core.models import Order
+
+    recipients = {}
+
+    if include_attendees:
+        orders = (
+            Order.objects.filter(event=event, status='COMPLETED')
+            .select_related('attendee__user')
+            .order_by('created_at')
+        )
+        for order in orders:
+            email_addr = (order.guest_email or '').strip().lower()
+            name = order.guest_name or ''
+            if not email_addr and order.attendee and order.attendee.user:
+                user = order.attendee.user
+                email_addr = (user.email or '').strip().lower()
+                name = user.get_full_name() or user.username or ''
+            if not email_addr or email_addr in recipients:
+                continue
+            first_name = name.strip().split(' ')[0] if name and name.strip() else 'there'
+            recipients[email_addr] = first_name or 'there'
+
+    for email_addr in extra_recipients or []:
+        if not isinstance(email_addr, str):
+            continue
+        email_addr = email_addr.strip().lower()
+        if email_addr and email_addr not in recipients:
+            recipients[email_addr] = 'there'
+
+    return recipients
+
+
+@shared_task(bind=True, max_retries=3, default_retry_delay=120)
+def send_event_announcement_email(self, announcement_id, include_attendees=True, extra_recipients=None):
+    from core.models import EventAnnouncement, EmailLog
     from django.template.loader import render_to_string
+    from django.utils import timezone
+
     try:
-        announcement = EventAnnouncement.objects.get(id=announcement_id)
-        event = announcement.event
-        organizer_name = event.organizer.company_name or 'The Organizer'
-        frontend_url = getattr(settings, 'FRONTEND_URL', 'https://thecirclepass.com')
-        event_slug = getattr(event, 'slug', event.id)
+        announcement = EventAnnouncement.objects.select_related(
+            'event', 'event__organizer'
+        ).get(id=announcement_id)
+    except EventAnnouncement.DoesNotExist:
+        return f"Announcement {announcement_id} not found."
 
-        # Build per-recipient entries {email: name}
-        recipients = {}
+    event = announcement.event
+    organizer_name = event.organizer.company_name or 'The Organizer'
+    frontend_url = getattr(settings, 'FRONTEND_URL', 'https://thecirclepass.com')
+    event_slug = getattr(event, 'slug', event.id)
+    subject = f"Announcement: {announcement.title} | {event.title}"
 
-        if include_attendees:
-            # Get all completed orders for this event
-            orders = Order.objects.filter(event=event, status='COMPLETED').select_related(
-                'attendee__user'
-            )
-            for order in orders:
-                if order.guest_email:
-                    name = (order.guest_name or 'Guest').split(' ')[0]
-                    recipients[order.guest_email] = name
-                elif order.attendee and order.attendee.user.email:
-                    user = order.attendee.user
-                    name = (user.get_full_name() or user.username or 'Guest').split(' ')[0]
-                    recipients[user.email] = name
-
-        # Merge extra (custom) recipients
-        if extra_recipients:
-            for email_addr in extra_recipients:
-                email_addr = email_addr.strip().lower()
-                if email_addr and email_addr not in recipients:
-                    recipients[email_addr] = 'Guest'
+    sent = 0
+    try:
+        recipients = resolve_announcement_recipients(
+            event, include_attendees=include_attendees, extra_recipients=extra_recipients
+        )
+        announcement.recipients_count = len(recipients)
+        announcement.delivery_status = 'SENDING'
+        announcement.delivery_error = ''
+        announcement.save(update_fields=['recipients_count', 'delivery_status', 'delivery_error'])
 
         if not recipients:
+            announcement.delivery_status = 'NO_RECIPIENTS'
+            announcement.save(update_fields=['delivery_status'])
             return "No recipients to notify."
 
-        subject = f"Announcement: {announcement.title} — {event.title}"
-
         connection = get_connection()
-        messages = []
+        failed = []
+        errors = []
 
         for email_addr, first_name in recipients.items():
             context = {
@@ -305,15 +338,52 @@ def send_event_announcement_email(announcement_id, include_attendees=True, extra
                 connection=connection
             )
             msg.attach_alternative(html_content, "text/html")
-            messages.append(msg)
+            try:
+                msg.send(fail_silently=False)
+                sent += 1
+            except Exception as exc:  # one bad address must not kill the whole send
+                failed.append(email_addr)
+                errors.append(f"{email_addr}: {exc}")
+                try:
+                    connection.close()
+                except Exception:
+                    pass
+                connection = get_connection()
 
-        if messages:
-            connection.send_messages(messages)
+        EmailLog.objects.bulk_create([
+            EmailLog(
+                recipient=email_addr,
+                subject=subject[:255],
+                status='Failed' if email_addr in failed else 'Sent',
+            )
+            for email_addr in recipients
+        ])
 
-        return f"Announcement {announcement_id} sent to {len(recipients)} recipients."
-    except Exception as e:
-        import traceback
-        return str(traceback.format_exc())
+        announcement.delivered_count = sent
+        announcement.sent_at = timezone.now()
+        if failed and sent:
+            announcement.delivery_status = 'PARTIAL'
+        elif failed:
+            announcement.delivery_status = 'FAILED'
+        else:
+            announcement.delivery_status = 'SENT'
+        announcement.delivery_error = '\n'.join(errors)[:5000]
+        announcement.save(update_fields=[
+            'delivered_count', 'sent_at', 'delivery_status', 'delivery_error',
+        ])
+
+        if not sent:
+            raise RuntimeError(f"All {len(recipients)} announcement emails failed: {errors[0] if errors else ''}")
+
+        return f"Announcement {announcement_id} sent to {sent}/{len(recipients)} recipients."
+    except Exception as exc:
+        announcement.delivery_status = 'FAILED'
+        announcement.delivered_count = sent
+        announcement.delivery_error = f"{exc}"[:5000]
+        announcement.save(update_fields=['delivery_status', 'delivered_count', 'delivery_error'])
+        if sent == 0 and self.request.retries < self.max_retries:
+            raise self.retry(exc=exc)
+        return f"Announcement {announcement_id} failed: {exc}"
 
 
 @shared_task
