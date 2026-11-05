@@ -110,7 +110,7 @@ class AttendeeCheckoutFlowTests(TestCase):
         by_to = {m.to[0]: m for m in mail.outbox}
         self.assertEqual(
             set(by_to),
-            {'ada@example.com', 'bola@example.com', 'buyer@example.com', 'floworg@example.com'},
+            {'ada@example.com', 'bola@example.com', 'floworg@example.com'},
         )
 
         ada_html = by_to['ada@example.com'].alternatives[0][0]
@@ -186,7 +186,7 @@ class AttendeeCheckoutFlowTests(TestCase):
         )
         self.assertEqual(
             set(m.to[0] for m in mail.outbox),
-            {'ada@example.com', 'bola@example.com', 'buyer@example.com', 'floworg@example.com'},
+            {'ada@example.com', 'bola@example.com', 'floworg@example.com'},
         )
 
     def test_attendee_can_open_their_own_pass(self):

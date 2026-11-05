@@ -150,10 +150,12 @@ The CirclePass Team"""
 
 def send_purchase_receipt(order, tickets):
     """
-    Sends each digital ticket to the email address provided for its attendee.
+    Sends each digital ticket only to the email address it was issued to.
 
     When no per-attendee emails were supplied (toggle off), every ticket is
-    issued to the buyer and they receive a single email, exactly as before.
+    issued to the buyer and they receive a single email. When tickets were
+    bought for other people, those people are the only recipients — the buyer
+    does not get a copy.
     """
     if not tickets:
         return
@@ -175,14 +177,6 @@ def send_purchase_receipt(order, tickets):
             order.attendee.user.get_full_name() if order.attendee else ''
         ) or 'Guest'
         _send_ticket_email(order, group, recipient, name)
-
-    # If the buyer forwarded tickets to other people, still send the purchaser
-    # their own receipt for the whole order.
-    if buyer_email not in groups:
-        name = order.guest_name or (
-            order.attendee.user.get_full_name() if order.attendee else ''
-        ) or 'Guest'
-        _send_ticket_email(order, tickets, buyer_email, name)
 
 def send_organizer_sales_notification(order, tickets):
     """

@@ -410,7 +410,7 @@ export default function CheckoutPage() {
         } else if (data?.isGuest) {
           router.push('/find-ticket');
         } else {
-          router.push('/dashboard/tickets');
+          router.push('/dashboard/orders');
         }
       } else {
         router.back();
@@ -661,7 +661,9 @@ export default function CheckoutPage() {
                         ? "Redirecting you to complete your payment..."
                         : successData?.message
                           ? "We'll notify you if tickets become available."
-                          : "Your ticket is confirmed and has been sent to your email. You can also access it anytime from My Circle on your attendee dashboard. See you at the experience!"}
+                          : sendToAttendees
+                            ? "Your tickets are confirmed. Each attendee has been emailed their own pass."
+                            : "Your ticket is confirmed and has been sent to your email. You can also access it anytime from My Circle on your attendee dashboard. See you at the experience!"}
                     </p>
                   </>
                 )}
@@ -671,7 +673,7 @@ export default function CheckoutPage() {
                       onClick={handleClose}
                       className="px-6 py-2.5 bg-primary text-primary-foreground font-medium rounded-lg hover:bg-primary/90 transition-colors shadow-md"
                     >
-                      View My Ticket
+                      {sendToAttendees ? "View My Orders" : "View My Ticket"}
                     </button>
                   )}
                   <button

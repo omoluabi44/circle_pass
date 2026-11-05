@@ -138,7 +138,7 @@ class TicketEmailRoutingTests(SimpleTestCase):
         sent = self._send(order, tickets)
 
         by_recipient = {item['to']: item['html'] for item in sent}
-        self.assertEqual(set(by_recipient), {'ada@example.com', 'bola@example.com', 'buyer@example.com'})
+        self.assertEqual(set(by_recipient), {'ada@example.com', 'bola@example.com'})
 
         # Second person's QR must never leak into the first person's email.
         self.assertIn('TOKEN-ADA', by_recipient['ada@example.com'])
@@ -146,9 +146,13 @@ class TicketEmailRoutingTests(SimpleTestCase):
         self.assertIn('TOKEN-BOLA', by_recipient['bola@example.com'])
         self.assertNotIn('TOKEN-ADA', by_recipient['bola@example.com'])
 
-        # The buyer still gets a receipt for the whole order.
-        self.assertIn('TOKEN-ADA', by_recipient['buyer@example.com'])
-        self.assertIn('TOKEN-BOLA', by_recipient['buyer@example.com'])
+    def test_buyer_does_not_get_a_copy_when_tickets_go_to_others(self):
+        order = make_order()
+        tickets = [make_ticket('TOKEN-ADA', 'ada@example.com', 'Ada Obi')]
+
+        sent = self._send(order, tickets)
+
+        self.assertEqual([item['to'] for item in sent], ['ada@example.com'])
 
     def test_toggle_off_sends_every_ticket_to_the_buyer(self):
         order = make_order()
@@ -170,11 +174,8 @@ class TicketEmailRoutingTests(SimpleTestCase):
 
         sent = self._send(order, tickets)
 
-        # One email to the shared address (both tickets), plus the buyer's
-        # own order receipt since their email was not among the attendees.
-        self.assertEqual(
-            [item['to'] for item in sent],
-            ['same@example.com', 'buyer@example.com'],
-        )
+        # One email to the shared address containing both tickets; the buyer
+        # does not receive a copy.
+        self.assertEqual([item['to'] for item in sent], ['same@example.com'])
         self.assertIn('TOKEN-A', sent[0]['html'])
         self.assertIn('TOKEN-B', sent[0]['html'])
