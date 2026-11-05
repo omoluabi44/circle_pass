@@ -1,15 +1,66 @@
-from django.db.models import Q
-from rest_framework import generics, permissions
+from django.db.models import Count, Max, Q
+from rest_framework import generics, permissions, status
 from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from api.permissions import IsOrganizerOrAdmin, is_admin_user
-from core.models import EventCustomField, FollowedOrganizer, Ticket
+from core.models import Event, EventCustomField, FollowedOrganizer, Ticket
+
+
+def organizer_events_for(user):
+    """Events the user can see on the contacts screen (own, or all for admins)."""
+    if is_admin_user(user):
+        return Event.objects.all()
+    return Event.objects.filter(organizer__user=user)
+
+
+class OrganizerContactEventsView(APIView):
+    """
+    GET /api/organizer/contacts/events/
+
+    Every event this organizer has ever created, with ticket totals, so the
+    Audience screen can offer an event picker even for events with no sales.
+    """
+
+    permission_classes = [permissions.IsAuthenticated, IsOrganizerOrAdmin]
+
+    def get(self, request):
+        events = organizer_events_for(request.user).annotate(
+            tickets_sold=Count(
+                'orders__tickets',
+                filter=Q(orders__status='COMPLETED'),
+                distinct=True,
+            ),
+            checked_in=Count(
+                'orders__tickets',
+                filter=Q(orders__status='COMPLETED', orders__tickets__status='USED'),
+                distinct=True,
+            ),
+        ).order_by('-start_time', '-id')
+
+        return Response([
+            {
+                'id': event.id,
+                'title': event.title,
+                'slug': event.slug,
+                'status': event.status,
+                'start_time': event.start_time,
+                'tickets_sold': event.tickets_sold,
+                'checked_in': event.checked_in,
+            }
+            for event in events
+        ])
 
 
 class OrganizerContactsView(generics.ListAPIView):
     """
     GET /api/organizer/contacts/
-    Returns a paginated list of all tickets sold across the organizer's events.
+    Returns every ticket sold across the organizer's events.
+
+    Optional query params:
+      event_id  — restrict to one event (used by the per-event Attendees page)
+      status    — USED for checked in, NOT_USED for everyone else
+      search    — name, email, phone, order id/reference, QR token or event title
 
     Admins are not limited to events they own — they can browse any event by
     passing ?event_id=<id>, or every event at once.
@@ -29,10 +80,19 @@ class OrganizerContactsView(generics.ListAPIView):
         if event_id:
             qs = qs.filter(order__event_id=event_id)
 
+        # Optional check-in status filter
+        ticket_status = (self.request.query_params.get('status') or '').strip().upper()
+        if ticket_status == 'USED':
+            qs = qs.filter(status='USED')
+        elif ticket_status in ('NOT_USED', 'UNUSED'):
+            qs = qs.exclude(status='USED')
+        elif ticket_status:
+            qs = qs.filter(status=ticket_status)
+
         # Optional search across the details captured at checkout
         search = (self.request.query_params.get('search') or '').strip()
         if search:
-            qs = qs.filter(
+            search_filter = (
                 Q(attendee_name__icontains=search)
                 | Q(attendee_email__icontains=search)
                 | Q(qr_token__icontains=search)
@@ -41,10 +101,17 @@ class OrganizerContactsView(generics.ListAPIView):
                 | Q(order__guest_phone__icontains=search)
                 | Q(order__attendee__user__email__icontains=search)
                 | Q(order__attendee__phone_number__icontains=search)
+                | Q(order__event__title__icontains=search)
+                | Q(order__payment__reference__icontains=search)
             )
+            if search.isdigit():
+                search_filter |= Q(order_id=int(search))
+            qs = qs.filter(search_filter)
 
         return qs.select_related(
-            'order__event', 'order__attendee__user', 'ticket_type'
+            'order__event', 'order__attendee__user', 'order__payment', 'ticket_type'
+        ).annotate(
+            checked_in_at=Max('checkins__scanned_at')
         ).order_by('-order__created_at')
 
     def list(self, request, *args, **kwargs):
@@ -99,15 +166,23 @@ class OrganizerContactsView(generics.ListAPIView):
                 or ''
             ).strip()
 
+            payment = getattr(order, 'payment', None)
+
             return {
                 "id": t.id,
                 "name": name,
                 "email": email,
                 "phone": phone,
+                "event_id": order.event_id,
                 "event_title": order.event.title,
+                "event_slug": order.event.slug,
+                "event_status": order.event.status,
+                "order_id": order.id,
+                "order_reference": payment.reference if payment else "",
                 "ticket_type": t.ticket_type.name,
                 "purchase_date": order.created_at,
                 "status": t.status,
+                "checked_in_at": getattr(t, 'checked_in_at', None),
                 "custom_field_responses": resolve_custom_fields(order),
             }
 

@@ -22,7 +22,7 @@ from .views_bank_account import (
 )
 from .views_find_ticket import FindTicketView
 from .views_dashboard import OrganizerDashboardView
-from .views_contacts import OrganizerContactsView, OrganizerFollowersView
+from .views_contacts import OrganizerContactsView, OrganizerContactEventsView, OrganizerFollowersView
 from .views_analytics import OrganizerAnalyticsView
 from .views_inbox import OrganizerInboxView, SendMessageToOrganizerView
 from .views_engagement import (
@@ -135,6 +135,7 @@ urlpatterns = [
     # Organizer: Dashboard Overview
     path('organizer/dashboard/', OrganizerDashboardView.as_view(), name='organizer_dashboard'),
     path('organizer/contacts/', OrganizerContactsView.as_view(), name='organizer_contacts'),
+    path('organizer/contacts/events/', OrganizerContactEventsView.as_view(), name='organizer_contact_events'),
     path('organizer/followers/', OrganizerFollowersView.as_view(), name='organizer_followers'),
     path('organizer/analytics/', OrganizerAnalyticsView.as_view(), name='organizer_analytics'),
     path('organizer/inbox/', OrganizerInboxView.as_view(), name='organizer_inbox'),
