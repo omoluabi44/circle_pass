@@ -54,6 +54,39 @@ class CheckoutView(APIView):
         if not isinstance(custom_field_responses, dict):
             custom_field_responses = {}
 
+        # Per-ticket holder details (optional). When provided, there must be
+        # exactly one entry per ticket, matching the quantities per tier.
+        attendees = []
+        for raw in data.get('attendees') or []:
+            attendees.append({
+                'ticket_type_id': raw['ticket_type_id'],
+                'first_name': (raw.get('first_name') or '').strip(),
+                'last_name': (raw.get('last_name') or '').strip(),
+                'email': (raw.get('email') or '').strip().lower(),
+            })
+
+        if attendees:
+            expected_by_type = {}
+            for item in items:
+                expected_by_type[item['ticket_type_id']] = (
+                    expected_by_type.get(item['ticket_type_id'], 0) + item['quantity']
+                )
+            actual_by_type = {}
+            for a in attendees:
+                actual_by_type[a['ticket_type_id']] = (
+                    actual_by_type.get(a['ticket_type_id'], 0) + 1
+                )
+            if actual_by_type != expected_by_type:
+                return Response(
+                    {'detail': 'Attendee details must match exactly one entry per selected ticket.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            if any(not a['first_name'] or not a['email'] for a in attendees):
+                return Response(
+                    {'detail': 'Each attendee needs a first name and a valid email address.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
         # Validate event exists and is purchasable
         try:
             event = Event.objects.get(pk=event_id, status__in=['PUBLISHED', 'LIVE'])
@@ -233,6 +266,7 @@ class CheckoutView(APIView):
                     status='PENDING',
                     referral_code=request.data.get('referral_code', ''),
                     custom_field_responses=custom_field_responses,
+                    attendees=attendees,
                     expires_at=timezone.now() + timezone.timedelta(minutes=30) if total_amount > 0 else None
                 )
 

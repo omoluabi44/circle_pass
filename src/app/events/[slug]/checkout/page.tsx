@@ -2,13 +2,29 @@
 
 import React, { useState, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Ticket, Minus, Plus, AlertCircle, CheckCircle2, ArrowLeft } from "lucide-react";
+import { X, Ticket, Minus, Plus, AlertCircle, CheckCircle2, ArrowLeft, Users } from "lucide-react";
 import { useSession, signOut } from "@/context/AuthContext";
 import { useParams, useRouter } from "next/navigation";
 import { checkout } from "@/lib/api/checkout";
 import { API_URL } from "@/lib/api/config";
 import { usePaystack } from "@/hooks/usePaystack";
 import { useCart } from "@/context/CartContext";
+
+type AttendeeFormState = {
+  first_name: string;
+  last_name: string;
+  email: string;
+  use_default_name: boolean;
+};
+
+const EMPTY_ATTENDEE: AttendeeFormState = {
+  first_name: '',
+  last_name: '',
+  email: '',
+  use_default_name: false,
+};
+
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
 export default function CheckoutPage() {
   const params = useParams();
@@ -55,8 +71,12 @@ export default function CheckoutPage() {
   const [successData, setSuccessData] = useState<any>(null);
 
   const [guestStep, setGuestStep] = useState(false);
-  const [guestData, setGuestData] = useState({ name: '', email: '', phone: '', additional_info: '', password: '' });
-  const [additionalInfo, setAdditionalInfo] = useState('');
+  const [guestData, setGuestData] = useState({ name: '', email: '', phone: '', password: '' });
+
+  // Per-ticket attendee details ("Send Tickets to different email addresses?")
+  const [sendToAttendees, setSendToAttendees] = useState(false);
+  const [attendeeForms, setAttendeeForms] = useState<Record<string, AttendeeFormState>>({});
+  const [attendeeErrors, setAttendeeErrors] = useState<Record<string, string>>({});
 
   // Waitlist Claim State (When user clicks link in acceptance email)
   const [waitlistToken, setWaitlistToken] = useState<string | null>(null);
@@ -215,6 +235,105 @@ export default function CheckoutPage() {
   const fee = event?.absorb_fees ? 0 : Math.floor(discountedSubtotal * 0.05);
   const total = discountedSubtotal + fee;
 
+  // ── Per-ticket attendees ("Send Tickets to different email addresses?") ──
+  const buyerName = (session?.user?.name || guestData.name || '').trim();
+
+  // One slot per ticket, in ticket-tier order, so the forms track quantities.
+  const ticketSlots = useMemo(() => {
+    const slots: { key: string; ticketTypeId: number; ticketName: string }[] = [];
+    (event?.ticket_types || []).forEach((ticket: any) => {
+      const qty = selections[ticket.id] || 0;
+      for (let i = 0; i < qty; i++) {
+        slots.push({
+          key: `${ticket.id}-${i}`,
+          ticketTypeId: ticket.id,
+          ticketName: ticket.name,
+        });
+      }
+    });
+    return slots;
+  }, [selections, event?.ticket_types]);
+
+  // Turning the toggle off when nothing is selected avoids stale forms.
+  useEffect(() => {
+    if (totalQuantity === 0 && sendToAttendees) setSendToAttendees(false);
+  }, [totalQuantity, sendToAttendees]);
+
+  const getAttendeeForm = (key: string): AttendeeFormState =>
+    attendeeForms[key] || EMPTY_ATTENDEE;
+
+  const updateAttendeeForm = (key: string, patch: Partial<AttendeeFormState>) => {
+    setAttendeeForms((prev) => {
+      const current = prev[key] || EMPTY_ATTENDEE;
+      const next = { ...current, ...patch };
+      // Checking "use default name" mirrors the buyer's name into the form.
+      if (patch.use_default_name && buyerName) {
+        const parts = buyerName.split(/\s+/);
+        next.first_name = parts[0] || '';
+        next.last_name = parts.slice(1).join(' ');
+      }
+      return { ...prev, [key]: next };
+    });
+    setAttendeeErrors((prev) => {
+      if (!Object.keys(prev).length) return prev;
+      const next = { ...prev };
+      Object.keys(next).forEach((errKey) => {
+        if (errKey.startsWith(`${key}:`)) delete next[errKey];
+      });
+      return next;
+    });
+  };
+
+  const validateAttendees = (): boolean => {
+    if (!sendToAttendees) return true;
+
+    const errors: Record<string, string> = {};
+    ticketSlots.forEach((slot) => {
+      const form = getAttendeeForm(slot.key);
+      // A checked "use default name" is always valid: logged-in buyers already
+      // have a name, and guests supply theirs on the payment step.
+      const usesDefaultName = form.use_default_name;
+
+      if (!usesDefaultName && !form.first_name.trim()) {
+        errors[`${slot.key}:first_name`] = 'First name is required';
+      }
+
+      const email = form.email.trim();
+      if (!email) {
+        errors[`${slot.key}:email`] = 'Email is required';
+      } else if (!EMAIL_PATTERN.test(email)) {
+        errors[`${slot.key}:email`] = 'Enter a valid email address';
+      }
+    });
+
+    setAttendeeErrors(errors);
+    if (Object.keys(errors).length > 0) {
+      setError('Please complete the attendee details for every ticket.');
+      return false;
+    }
+    return true;
+  };
+
+  const buildAttendees = () => {
+    if (!sendToAttendees) return [];
+    const fallbackName = (buyerName || guestData.name || '').trim();
+    return ticketSlots.map((slot) => {
+      const form = getAttendeeForm(slot.key);
+      const useDefault = form.use_default_name && !!fallbackName;
+      const parts = fallbackName.split(/\s+/);
+      const first_name = useDefault ? (parts[0] || '') : form.first_name.trim();
+      const last_name = useDefault
+        ? parts.slice(1).join(' ')
+        : form.last_name.trim();
+      return {
+        ticket_type_id: slot.ticketTypeId,
+        first_name,
+        last_name,
+        email: form.email.trim(),
+      };
+    });
+  };
+
   const handleJoinWaitlist = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!waitlistEmail || !waitlistName || !event) return;
@@ -268,13 +387,30 @@ export default function CheckoutPage() {
       setSuccessData(null);
       setGuestStep(false);
       setGuestData({ name: '', email: '', phone: '', password: '' });
+      setSendToAttendees(false);
+      setAttendeeForms({});
+      setAttendeeErrors({});
       if (wasSuccess) {
-        if (data?.isGuest && data?.tickets && data.tickets.length > 0) {
-          router.push(`/t/${data.tickets[0].qr_token}`);
-        } else if (data?.tickets && data.tickets.length > 0) {
-          router.push(`/dashboard/tickets/${data.tickets[0].qr_token}`);
+        const buyerAccountEmail = (
+          session?.user?.email || data?.guestEmail || ''
+        ).toLowerCase();
+        const tickets = data?.tickets || [];
+        const ownTicket = tickets.find(
+          (t: any) => (t.attendee_email || '').toLowerCase() === buyerAccountEmail
+        );
+
+        // When tickets were issued to other people, the buyer may own none of
+        // them and would be blocked by pass access control.
+        if (ownTicket) {
+          router.push(
+            data?.isGuest
+              ? `/t/${ownTicket.qr_token}`
+              : `/dashboard/tickets/${ownTicket.qr_token}`
+          );
+        } else if (data?.isGuest) {
+          router.push('/find-ticket');
         } else {
-          router.push(`/dashboard/tickets`);
+          router.push('/dashboard/tickets');
         }
       } else {
         router.back();
@@ -296,6 +432,7 @@ export default function CheckoutPage() {
         return;
       }
     }
+    if (!validateAttendees()) return;
     setError(null);
     setIsLoading(true);
     try {
@@ -306,9 +443,9 @@ export default function CheckoutPage() {
 
       const response = await checkout({
         event_id: event.id, items: tickets, guest_name: name, guest_email: email, guest_phone: phone, referral_code, discount_code: appliedDiscount?.code || "", waitlist_token: waitlistToken || "",
+        attendees: buildAttendees(),
         custom_field_responses: {
           ...customFieldValues,
-          ...(guestData.additional_info?.trim() ? { "Additional Information": guestData.additional_info.trim() } : {}),
         },
       } as any);
 
@@ -347,6 +484,7 @@ export default function CheckoutPage() {
     if (totalQuantity === 0) return;
     setError(null);
     if (!session) {
+      if (!validateAttendees()) return;
       setGuestStep(true);
       return;
     }
@@ -356,6 +494,7 @@ export default function CheckoutPage() {
         return;
       }
     }
+    if (!validateAttendees()) return;
     setIsLoading(true);
     try {
       const token = (session as any)?.accessToken;
@@ -366,9 +505,9 @@ export default function CheckoutPage() {
 
       const response = await checkout({
         event_id: event.id, items: tickets, referral_code, discount_code: appliedDiscount?.code || "", waitlist_token: waitlistToken || "",
+        attendees: buildAttendees(),
         custom_field_responses: {
           ...customFieldValues,
-          ...(additionalInfo?.trim() ? { "Additional Information": additionalInfo.trim() } : {}),
         },
       } as any, token);
 
@@ -504,7 +643,9 @@ export default function CheckoutPage() {
                       You're in the Circle! 🎉
                     </h3>
                     <p className="text-muted-foreground mb-2">
-                      Your ticket is confirmed and has been sent to your email.
+                      {sendToAttendees
+                        ? "Your tickets are confirmed. Each attendee has been emailed their own pass."
+                        : "Your ticket is confirmed and has been sent to your email."}
                     </p>
                     <p className="text-muted-foreground mb-8">
                       See you at the experience!
@@ -740,12 +881,6 @@ export default function CheckoutPage() {
                   className="w-full px-4 py-3 rounded-xl border border-border bg-secondary/50 text-foreground placeholder-muted-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
                 />
 
-                <input type="text" placeholder="Additional Information (Optional)"
-                  value={guestData.additional_info}
-                  onChange={(e) => setGuestData(prev => ({ ...prev, additional_info: e.target.value }))}
-                  className="w-full px-4 py-3 rounded-xl border border-border bg-secondary/50 text-foreground placeholder-muted-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
-                />
-
                 {customFields.map((field) => (
                   <div key={field.id}>
                     {field.field_type === 'select' ? (
@@ -925,18 +1060,153 @@ export default function CheckoutPage() {
                 })}
               </div>
             )}
+
+            {/* Per-ticket attendee details */}
+            {!success && !isWaitlistActive && (!allSoldOut || isClaimingWaitlist) && !isSalesPaused && !(guestStep && !session) && totalQuantity > 0 && (
+              <div className="mt-4 rounded-xl border border-border p-4 sm:p-5">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <h4 className="font-semibold text-foreground text-sm">
+                      Send Tickets to different email addresses?
+                    </h4>
+                    <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                      If left blank all tickets will be sent to the email used for payment.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={sendToAttendees}
+                    aria-label="Send tickets to different email addresses"
+                    onClick={() => {
+                      setSendToAttendees((v) => !v);
+                      setAttendeeErrors({});
+                      setError(null);
+                    }}
+                    disabled={isLoading}
+                    className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors disabled:opacity-50 ${
+                      sendToAttendees ? "bg-primary" : "bg-muted border border-border"
+                    }`}
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 rounded-full bg-white shadow transition-transform ${
+                        sendToAttendees ? "translate-x-6" : "translate-x-1"
+                      }`}
+                    />
+                  </button>
+                </div>
+
+                {sendToAttendees && (
+                  <div className="mt-5 space-y-5">
+                    {ticketSlots.map((slot, index) => {
+                      const form = getAttendeeForm(slot.key);
+                      const usesDefaultName = form.use_default_name;
+                      const firstNameError = attendeeErrors[`${slot.key}:first_name`];
+                      const emailError = attendeeErrors[`${slot.key}:email`];
+
+                      return (
+                        <div
+                          key={slot.key}
+                          className="pt-5 first:pt-0 border-t first:border-t-0 border-border/60"
+                        >
+                          <div className="flex items-center gap-2 mb-3">
+                            <Users className="w-4 h-4 text-primary shrink-0" />
+                            <h5 className="font-semibold text-foreground text-sm">
+                              Attendee {index + 1} - {slot.ticketName}
+                            </h5>
+                          </div>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                              <label className="block text-xs font-medium text-muted-foreground mb-1">
+                                First Name
+                              </label>
+                              <input
+                                type="text"
+                                value={form.first_name}
+                                onChange={(e) =>
+                                  updateAttendeeForm(slot.key, { first_name: e.target.value })
+                                }
+                                placeholder="Your name..."
+                                disabled={usesDefaultName || isLoading}
+                                className={`w-full px-4 py-2.5 text-sm rounded-xl border bg-secondary/50 text-foreground placeholder-muted-foreground outline-none focus:ring-1 focus:ring-primary transition-all disabled:opacity-60 ${
+                                  firstNameError ? "border-destructive focus:border-destructive" : "border-border focus:border-primary"
+                                }`}
+                              />
+                              {firstNameError && (
+                                <p className="text-destructive text-xs mt-1">{firstNameError}</p>
+                              )}
+                            </div>
+                            <div>
+                              <label className="block text-xs font-medium text-muted-foreground mb-1">
+                                Last Name
+                              </label>
+                              <input
+                                type="text"
+                                value={form.last_name}
+                                onChange={(e) =>
+                                  updateAttendeeForm(slot.key, { last_name: e.target.value })
+                                }
+                                placeholder="Last name"
+                                disabled={usesDefaultName || isLoading}
+                                className="w-full px-4 py-2.5 text-sm rounded-xl border border-border bg-secondary/50 text-foreground placeholder-muted-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all disabled:opacity-60"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="mt-3">
+                            <label className="block text-xs font-medium text-muted-foreground mb-1">
+                              Email
+                            </label>
+                            <input
+                              type="email"
+                              value={form.email}
+                              onChange={(e) =>
+                                updateAttendeeForm(slot.key, { email: e.target.value })
+                              }
+                              placeholder="attendee@example.com"
+                              autoComplete="email"
+                              disabled={isLoading}
+                              className={`w-full px-4 py-2.5 text-sm rounded-xl border bg-secondary/50 text-foreground placeholder-muted-foreground outline-none focus:ring-1 focus:ring-primary transition-all ${
+                                emailError ? "border-destructive focus:border-destructive" : "border-border focus:border-primary"
+                              }`}
+                            />
+                            {emailError && (
+                              <p className="text-destructive text-xs mt-1">{emailError}</p>
+                            )}
+                          </div>
+
+                          <label className="mt-3 flex items-start gap-2 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={form.use_default_name}
+                              onChange={(e) =>
+                                updateAttendeeForm(slot.key, {
+                                  use_default_name: e.target.checked,
+                                })
+                              }
+                              disabled={isLoading}
+                              className="mt-0.5 h-4 w-4 rounded border-border text-primary focus:ring-primary"
+                            />
+                            <span className="text-xs text-muted-foreground leading-relaxed">
+                              Use the default name provided above for payment for this ticket
+                              {form.use_default_name && !buyerName
+                                ? " — we'll use the name you enter on the payment step."
+                                : ""}
+                            </span>
+                          </label>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {!success && !isWaitlistActive && (!allSoldOut || isClaimingWaitlist) && !isSalesPaused && !(guestStep && !session) && (
             <div className="p-4 sm:p-6 border-t border-border bg-card">
               <div className="mb-6 space-y-3">
-                <input
-                  type="text"
-                  placeholder="Additional Information (Optional)"
-                  value={additionalInfo}
-                  onChange={(e) => setAdditionalInfo(e.target.value)}
-                  className="w-full px-4 py-2.5 text-sm rounded-xl border border-border bg-secondary/50 text-foreground placeholder-muted-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
-                />
                 {customFields.map((field) => (
                   <div key={field.id}>
                     {field.field_type === 'select' ? (

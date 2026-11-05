@@ -49,6 +49,7 @@ def user_can_view_ticket(user, ticket):
       - the organizer who owns the event
       - the buyer: the account behind the order's attendee, or the account
         whose email matches the guest email the order was placed with
+      - the attendee the ticket was issued to (its own attendee email)
 
     Everyone else, including anyone who merely has the shareable link, is
     denied.
@@ -82,6 +83,11 @@ def user_can_view_ticket(user, ticket):
         attendee_user = getattr(attendee, 'user', None) if attendee is not None else None
         attendee_email = (getattr(attendee_user, 'email', '') or '').strip().lower()
         if attendee_email and attendee_email == user_email:
+            return True
+
+        # The person the ticket was issued to (buying for someone else).
+        ticket_email = (getattr(ticket, 'attendee_email', '') or '').strip().lower()
+        if ticket_email and ticket_email == user_email:
             return True
 
     return False

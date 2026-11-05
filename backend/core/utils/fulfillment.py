@@ -27,14 +27,38 @@ def fulfill_order(order, payment=None):
             return order_fresh.tickets.all()
 
         tickets = []
+        buyer_name = order_fresh.guest_name or (
+            order_fresh.attendee.user.get_full_name() if order_fresh.attendee else ''
+        )
+        buyer_email = order_fresh.guest_email or (
+            order_fresh.attendee.user.email if order_fresh.attendee else ''
+        )
+
+        # One attendee entry per ticket, grouped by ticket type. Anything not
+        # supplied falls back to the buyer (toggle-off behaviour).
+        attendees_by_type = {}
+        for holder in order_fresh.attendees or []:
+            if isinstance(holder, dict):
+                attendees_by_type.setdefault(holder.get('ticket_type_id'), []).append(holder)
+
         # select_related to avoid N+1 queries during loop
         for item in order_fresh.items.select_related('ticket_type').all():
-            for _ in range(item.quantity):
+            holders = attendees_by_type.pop(item.ticket_type_id, [])
+            for index in range(item.quantity):
+                holder = holders[index] if index < len(holders) else None
+                if holder:
+                    holder_name = (
+                        f"{holder.get('first_name', '').strip()} {holder.get('last_name', '').strip()}"
+                    ).strip()
+                    holder_email = (holder.get('email') or '').strip()
+                else:
+                    holder_name, holder_email = buyer_name, buyer_email
+
                 ticket = Ticket.objects.create(
                     order=order_fresh,
                     ticket_type=item.ticket_type,
-                    attendee_name=order_fresh.guest_name or (order_fresh.attendee.user.get_full_name() if order_fresh.attendee else ''),
-                    attendee_email=order_fresh.guest_email or (order_fresh.attendee.user.email if order_fresh.attendee else ''),
+                    attendee_name=holder_name or buyer_name,
+                    attendee_email=holder_email or buyer_email,
                     status='ACTIVE',
                     qr_token=generate_secure_qr_token(),
                     issued_at=timezone.now(),

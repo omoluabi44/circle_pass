@@ -372,6 +372,16 @@ class CheckoutItemSerializer(serializers.Serializer):
     quantity = serializers.IntegerField(min_value=1, max_value=10)
 
 
+class CheckoutAttendeeSerializer(serializers.Serializer):
+    """A single ticket holder supplied at checkout (one per ticket)."""
+    ticket_type_id = serializers.IntegerField()
+    first_name = serializers.CharField(max_length=100)
+    last_name = serializers.CharField(
+        max_length=100, required=False, allow_blank=True, default=''
+    )
+    email = serializers.EmailField()
+
+
 class CheckoutRequestSerializer(serializers.Serializer):
     """Payload for the checkout endpoint."""
     event_id = serializers.IntegerField()
@@ -380,7 +390,11 @@ class CheckoutRequestSerializer(serializers.Serializer):
     guest_name = serializers.CharField(required=False, allow_blank=True, default='')
     guest_email = serializers.EmailField(required=False, allow_blank=True, default='')
     guest_phone = serializers.CharField(required=False, allow_blank=True, default='')
-    
+
+    # Optional per-ticket holders. When omitted, every ticket is issued to the
+    # buyer (the payment email).
+    attendees = CheckoutAttendeeSerializer(many=True, required=False, default=list)
+
     # Discounts & Referrals
     discount_code = serializers.CharField(required=False, allow_blank=True, default='')
     waitlist_token = serializers.CharField(required=False, allow_blank=True, default='')

@@ -92,6 +92,17 @@ export interface CheckoutRequest {
   items: CheckoutItem[];
   guest_name?: string;
   guest_email?: string;
+  guest_phone?: string;
+  discount_code?: string;
+  waitlist_token?: string;
+  attendees?: CheckoutAttendee[];
+}
+
+export interface CheckoutAttendee {
+  ticket_type_id: number;
+  first_name: string;
+  last_name?: string;
+  email: string;
 }
 
 export interface CheckoutResponse {

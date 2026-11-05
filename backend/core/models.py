@@ -253,6 +253,10 @@ class Order(models.Model):
     referral_code = models.CharField(max_length=100, blank=True, help_text='Code of the promoter or affiliate')
     expires_at = models.DateTimeField(null=True, blank=True, help_text='For PENDING paid orders. Null for free orders.')
     custom_field_responses = models.JSONField(default=dict, blank=True, help_text='Attendee answers: {field_id: value}')
+    attendees = models.JSONField(
+        default=list, blank=True,
+        help_text='Per-ticket holders: [{ticket_type_id, first_name, last_name, email}]',
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

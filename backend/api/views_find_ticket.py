@@ -78,9 +78,11 @@ class FindTicketView(APIView):
             order_filter |= Q(payment__reference__iexact=reference)
 
         if email:
-            # Search by guest email or attendee email
+            # Search by guest email, attendee account email, or the email the
+            # ticket itself was issued to (buying for someone else).
             order_filter |= Q(guest_email__iexact=email)
             order_filter |= Q(attendee__user__email__iexact=email)
+            order_filter |= Q(tickets__attendee_email__iexact=email)
 
         if phone:
             # Phone search
@@ -145,8 +147,8 @@ class FindTicketView(APIView):
         ).select_related(
             'event', 'payment'
         ).annotate(
-            ticket_count=Count('tickets')
-        ).order_by('-created_at')[:10]
+            ticket_count=Count('tickets', distinct=True)
+        ).order_by('-created_at').distinct()[:10]
 
         results = []
         for order in orders:

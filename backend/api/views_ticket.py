@@ -29,6 +29,7 @@ class TicketViewSet(viewsets.ReadOnlyModelViewSet):
         email = (user.email or '').strip()
         if email:
             conditions |= Q(order__guest_email__iexact=email)
+            conditions |= Q(attendee_email__iexact=email)
         qs = Ticket.objects.filter(conditions)
 
         # 7-day Pre-Event Activation Logic (Lazy Evaluation)
@@ -123,19 +124,24 @@ class TicketAccessView(APIView):
         if email:
             criteria |= Q(guest_email__iexact=email)
             criteria |= Q(attendee__user__email__iexact=email)
+            criteria |= Q(tickets__attendee_email__iexact=email)
         if phone:
             criteria |= Q(guest_phone__icontains=phone)
             criteria |= Q(attendee__phone_number__icontains=phone)
 
         matched_orders = list(
-            orders.filter(criteria).select_related('event')[:20]
+            orders.filter(criteria).select_related('event').distinct()[:20]
         )
 
         if not matched_orders:
             return Response({'detail': 'No tickets found for those details.'}, status=404)
 
+        ticket_filter = Q(order__in=matched_orders)
+        if email:
+            ticket_filter |= Q(attendee_email__iexact=email)
+
         tickets = Ticket.objects.filter(
-            order__in=matched_orders
+            ticket_filter
         ).select_related(
             'order__event__organizer__user',
             'order__attendee__user',

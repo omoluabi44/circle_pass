@@ -31,36 +31,47 @@ def _send_and_log_email(subject, message, recipient_list, from_email=None):
                 status='Failed'
             )
 
-def send_purchase_receipt(order, tickets):
-    """
-    Sends a purchase receipt and digital tickets to the attendee.
-    """
-    if not tickets:
-        return
+def group_tickets_by_recipient(tickets, buyer_email=''):
+    """Group tickets by the email address each one should be delivered to.
 
-    recipient = order.guest_email or (order.attendee.user.email if order.attendee else None)
-    if not recipient:
+    Tickets issued to a named attendee go to that attendee's email; anything
+    without one falls back to the buyer (toggle-off / legacy orders).
+    """
+    buyer_email = (buyer_email or '').strip().lower()
+    groups = {}
+    for ticket in tickets:
+        email = (getattr(ticket, 'attendee_email', '') or '').strip().lower() or buyer_email
+        if not email:
+            continue
+        groups.setdefault(email, []).append(ticket)
+    return groups
+
+
+def _send_ticket_email(order, tickets, recipient, name):
+    """Render and send the digital-ticket email to a single recipient."""
+    from django.template.loader import render_to_string
+
+    recipient = (recipient or '').strip().lower()
+    if not recipient or not tickets:
         return
 
     subject = f"Your Tickets for {order.event.title}"
-    
-    name = order.guest_name or (order.attendee.user.get_full_name() if order.attendee else 'Guest')
-    first_name = name.split(' ')[0] if name else 'There'
+    first_name = (name or 'there').split(' ')[0] or 'there'
     order_number = f"CP-{str(order.id).zfill(8)}"
-    
-    from django.template.loader import render_to_string
-    
-    frontend_url = settings.FRONTEND_URL if hasattr(settings, 'FRONTEND_URL') else 'https://thecirclepass.com'
-    
-    # Give guests the public link to their first ticket; registered users get dashboard link
-    is_guest = not order.attendee
-    if is_guest and tickets:
-        ticket_link = f"{frontend_url}/t/{tickets[0].qr_token}"
-    else:
-        ticket_link = f"{frontend_url}/dashboard/tickets"
-        
-    signup_link = f"{frontend_url}/register?email={recipient}"
 
+    frontend_url = getattr(settings, 'FRONTEND_URL', 'https://thecirclepass.com')
+    buyer_email = (
+        order.guest_email or (order.attendee.user.email if order.attendee else '')
+    )
+    is_buyer = (buyer_email or '').strip().lower() == recipient
+    is_guest = not order.attendee or not is_buyer
+
+    if is_buyer and not is_guest:
+        ticket_link = f"{frontend_url}/dashboard/tickets"
+    else:
+        ticket_link = f"{frontend_url}/t/{tickets[0].qr_token}"
+
+    signup_link = f"{frontend_url}/register?email={recipient}"
     event = order.event
 
     # Format location string
@@ -106,7 +117,7 @@ def send_purchase_receipt(order, tickets):
         'tickets': tickets,
         'frontend_url': frontend_url,
     }
-    
+
     message = f"""Hello {first_name},
 
 Thank you for purchasing your ticket with CirclePass. Your ticket has been successfully confirmed.
@@ -120,7 +131,7 @@ You can view and download your digital ticket QR code anytime by clicking the li
 {ticket_link}
 
 The CirclePass Team"""
-    
+
     try:
         html_message = render_to_string('email/order_receipt.html', context)
         send_mail(
@@ -135,6 +146,43 @@ The CirclePass Team"""
     except Exception as e:
         logger.error(f"Failed to send email to {recipient}: {e}")
         EmailLog.objects.create(recipient=recipient, subject=subject, status='Failed')
+
+
+def send_purchase_receipt(order, tickets):
+    """
+    Sends each digital ticket to the email address provided for its attendee.
+
+    When no per-attendee emails were supplied (toggle off), every ticket is
+    issued to the buyer and they receive a single email, exactly as before.
+    """
+    if not tickets:
+        return
+
+    buyer_email = (
+        order.guest_email or (order.attendee.user.email if order.attendee else '')
+    )
+    buyer_email = (buyer_email or '').strip().lower()
+    if not buyer_email:
+        return
+
+    groups = group_tickets_by_recipient(tickets, buyer_email)
+
+    for recipient, group in groups.items():
+        holder_name = next(
+            (t.attendee_name for t in group if getattr(t, 'attendee_name', '')), ''
+        )
+        name = holder_name or order.guest_name or (
+            order.attendee.user.get_full_name() if order.attendee else ''
+        ) or 'Guest'
+        _send_ticket_email(order, group, recipient, name)
+
+    # If the buyer forwarded tickets to other people, still send the purchaser
+    # their own receipt for the whole order.
+    if buyer_email not in groups:
+        name = order.guest_name or (
+            order.attendee.user.get_full_name() if order.attendee else ''
+        ) or 'Guest'
+        _send_ticket_email(order, tickets, buyer_email, name)
 
 def send_organizer_sales_notification(order, tickets):
     """
