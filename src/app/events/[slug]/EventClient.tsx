@@ -130,6 +130,16 @@ export default function EventDetailsPage({ initialSlug }: { initialSlug?: string
   const [isMessageModalOpen, setIsMessageModalOpen] = useState(false);
   const [messageText, setMessageText] = useState("");
   const [isSendingMessage, setIsSendingMessage] = useState(false);
+  const [checkoutQuery, setCheckoutQuery] = useState("");
+
+  // Carry promoter/affiliate `?ref=` codes through to checkout so sales are
+  // attributed to the right discount/referral code.
+  useEffect(() => {
+    const ref = new URLSearchParams(window.location.search).get("ref");
+    if (ref) setCheckoutQuery(`?ref=${encodeURIComponent(ref)}`);
+  }, []);
+
+  const checkoutHref = `/events/${slug}/checkout${checkoutQuery}`;
 
   const downloadQRCode = () => {
     const canvas = document.getElementById("event-qr-code") as HTMLCanvasElement;
@@ -646,7 +656,7 @@ export default function EventDetailsPage({ initialSlug }: { initialSlug?: string
                             </button>
                           ) : (isPast || isSoldOut) && waitlistEnabled ? (
                             <Link 
-                              href={`/events/${slug}/checkout`}
+                              href={checkoutHref}
                               className="w-full py-4 bg-orange-500 text-white rounded-xl font-bold text-lg hover:bg-orange-600 transition shadow-[0_4px_14px_0_rgba(249,115,22,0.39)] flex items-center justify-center gap-2 relative overflow-hidden group"
                             >
                               <Ticket className="w-5 h-5 relative z-10" />
@@ -675,7 +685,7 @@ export default function EventDetailsPage({ initialSlug }: { initialSlug?: string
                             </button>
                           ) : (
                             <Link 
-                              href={`/events/${slug}/checkout`}
+                              href={checkoutHref}
                               className="w-full py-4 bg-primary text-primary-foreground rounded-xl font-bold text-lg hover:bg-primary/90 transition shadow-[0_4px_14px_0_rgba(99,102,241,0.39)] flex items-center justify-center gap-2 relative overflow-hidden group"
                             >
                               <div className="absolute inset-0 w-full h-full bg-white/20 scale-x-0 group-hover:scale-x-100 origin-left transition-transform duration-300" />
