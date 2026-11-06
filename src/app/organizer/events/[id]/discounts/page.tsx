@@ -1,11 +1,22 @@
 "use client";
 
 import React, { useState, useEffect, use } from 'react';
-import { Plus, Trash2, Power } from 'lucide-react';
+import { Plus, Trash2, FileDown } from 'lucide-react';
 import { useParams } from 'next/navigation';
 import { useSession } from "@/context/AuthContext";
 import { toast } from "react-hot-toast";
 import { getEventDiscounts, createEventDiscount, deleteEventDiscount } from "@/lib/api/events";
+import { API_URL } from "@/lib/api/config";
+
+const BASE_PDF_HEADERS = ["Name", "Email", "Phone", "Ticket Type", "Purchase Date", "Status"];
+const LEGACY_ADDITIONAL_INFO = "Additional Information";
+
+const escapeHtml = (value: unknown) =>
+  String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
 
 export default function DiscountsPage() {
   const params = useParams();
@@ -16,6 +27,7 @@ export default function DiscountsPage() {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [downloadingId, setDownloadingId] = useState<string | number | null>(null);
 
   // Form state
   const [code, setCode] = useState("");
@@ -77,6 +89,98 @@ export default function DiscountsPage() {
     }
   };
 
+  /**
+   * Downloads the attendees who bought with this exact code as a PDF.
+   * Opens the browser print dialog, where "Save as PDF" produces the file.
+   */
+  const downloadAttendeesPDF = async (discount: any) => {
+    if (!session?.accessToken) {
+      toast.error("Please sign in again to download attendees.");
+      return;
+    }
+    setDownloadingId(discount.id);
+    try {
+      const res = await fetch(
+        `${API_URL}/organizer/contacts/?event_id=${encodeURIComponent(id)}&code=${encodeURIComponent(discount.code)}`,
+        {
+          headers: { Authorization: `Bearer ${session.accessToken}` },
+          cache: 'no-store',
+        }
+      );
+      if (!res.ok) throw new Error("Failed to load attendees");
+      const payload = await res.json();
+      const results: any[] = Array.isArray(payload?.results)
+        ? payload.results
+        : Array.isArray(payload)
+          ? payload
+          : [];
+
+      if (results.length === 0) {
+        toast.error(`Nobody has bought with ${discount.code} yet.`);
+        return;
+      }
+
+      const customColumns: string[] = [];
+      results.forEach((row) => {
+        Object.keys(row.custom_field_responses || {}).forEach((key) => {
+          if (key !== LEGACY_ADDITIONAL_INFO && !customColumns.includes(key)) {
+            customColumns.push(key);
+          }
+        });
+      });
+
+      const headers = [...BASE_PDF_HEADERS, ...customColumns];
+      const rows = results.map((row) => [
+        row.name || "-",
+        row.email || "-",
+        row.phone || "-",
+        row.ticket_type || "Unknown",
+        row.purchase_date ? new Date(row.purchase_date).toLocaleDateString() : "-",
+        row.status === "USED" ? "Checked In" : (row.status || "Unknown"),
+        ...customColumns.map((column) => {
+          const value = row.custom_field_responses?.[column];
+          if (value === undefined || value === null || value === "") return "-";
+          return Array.isArray(value) ? value.join(", ") : String(value);
+        }),
+      ]);
+
+      const eventTitle = results[0]?.event_title || "Event";
+      const printWindow = window.open("", "_blank");
+      if (!printWindow) {
+        toast.error("Please allow popups to download the PDF");
+        return;
+      }
+
+      const htmlContent = `
+        <html><head><title>${escapeHtml(discount.code)} Attendees</title>
+        <style>
+          body{font-family:sans-serif;padding:24px;color:#111}
+          h1{font-size:22px;margin:0 0 4px}
+          p.sub{color:#555;font-size:13px;margin:0 0 18px}
+          table{width:100%;border-collapse:collapse;margin-top:8px}
+          th,td{border:1px solid #ddd;padding:8px;text-align:left;font-size:12px}
+          th{background:#f2f2f2}
+          @media print{body{padding:0}}
+        </style>
+        </head><body>
+        <h1>${escapeHtml(discount.code)} — Attendees</h1>
+        <p class="sub">${escapeHtml(eventTitle)} · ${results.length} ticket${results.length === 1 ? '' : 's'}</p>
+        <table>
+        <thead><tr>${headers.map((h) => `<th>${escapeHtml(h)}</th>`).join('')}</tr></thead>
+        <tbody>${rows.map((row) => `<tr>${row.map((cell) => `<td>${escapeHtml(cell)}</td>`).join('')}</tr>`).join('')}</tbody>
+        </table>
+        <script>window.onload=function(){window.print();window.close()}<\/script>
+        </body></html>
+      `;
+      printWindow.document.write(htmlContent);
+      printWindow.document.close();
+    } catch (err: any) {
+      toast.error(err.message || "Could not download attendees");
+    } finally {
+      setDownloadingId(null);
+    }
+  };
+
   if (loading) {
     return <div className="p-6 text-muted-foreground">Loading discounts...</div>;
   }
@@ -129,7 +233,16 @@ export default function DiscountsPage() {
               )}
             </div>
             
-            <div className="flex items-center justify-end space-x-2 pt-4 border-t border-border">
+            <div className="flex items-center justify-between gap-2 pt-4 border-t border-border">
+              <button
+                onClick={() => downloadAttendeesPDF(discount)}
+                disabled={downloadingId === discount.id}
+                className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-primary bg-primary/10 hover:bg-primary/20 rounded-xl transition-colors disabled:opacity-50"
+                title={`Download the attendees who used ${discount.code} as a PDF`}
+              >
+                <FileDown className="w-4 h-4" />
+                {downloadingId === discount.id ? "Preparing..." : "Attendees PDF"}
+              </button>
               <button 
                 onClick={() => handleDelete(discount.id)}
                 className="p-2 text-destructive hover:bg-destructive/10 rounded-xl transition-colors"

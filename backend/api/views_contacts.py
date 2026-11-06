@@ -60,6 +60,7 @@ class OrganizerContactsView(generics.ListAPIView):
     Optional query params:
       event_id  — restrict to one event (used by the per-event Attendees page)
       status    — USED for checked in, NOT_USED for everyone else
+      code      — only tickets from orders that used this discount/referral code
       search    — name, email, phone, order id/reference, QR token or event title
 
     Admins are not limited to events they own — they can browse any event by
@@ -79,6 +80,14 @@ class OrganizerContactsView(generics.ListAPIView):
         event_id = self.request.query_params.get('event_id')
         if event_id:
             qs = qs.filter(order__event_id=event_id)
+
+        # Optional filter: only orders that used a discount/referral code
+        code = (self.request.query_params.get('code') or '').strip()
+        if code:
+            qs = qs.filter(
+                Q(order__discount_redemptions__discount__code__iexact=code)
+                | Q(order__referral_code__iexact=code)
+            ).distinct()
 
         # Optional check-in status filter
         ticket_status = (self.request.query_params.get('status') or '').strip().upper()

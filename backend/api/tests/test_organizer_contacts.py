@@ -4,8 +4,8 @@ from django.utils import timezone
 from rest_framework.test import APIClient
 
 from core.models import (
-    AttendeeProfile, Event, Order, OrderItem, OrganizerProfile, Ticket,
-    TicketType, User,
+    AttendeeProfile, Discount, DiscountRedemption, Event, Order, OrderItem,
+    OrganizerProfile, Ticket, TicketType, User,
 )
 
 
@@ -137,3 +137,78 @@ class OrganizerContactsAggregationTests(TestCase):
         by_order = self.client.get(f'/api/organizer/contacts/?search={self.ticket_used.order_id}')
         self.assertEqual(by_order.status_code, 200, by_order.data)
         self.assertIn(self.ticket_used.id, [row['id'] for row in by_order.data])
+
+
+class OrganizerContactsCodeFilterTests(TestCase):
+    """Downloading the attendee list for one discount/referral code."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username='codeorg', email='codeorg@example.com',
+            password='password', role='ORGANIZER',
+        )
+        self.organizer, _ = OrganizerProfile.objects.get_or_create(
+            user=self.user, defaults={'company_name': 'Code Org'},
+        )
+        self.event = Event.objects.create(
+            organizer=self.organizer, title='Code Event', slug='code-event',
+            capacity=100, start_time=timezone.now(), end_time=timezone.now(),
+            status='PUBLISHED',
+        )
+        self.tier = TicketType.objects.create(
+            event=self.event, tier='REGULAR', name='Regular', price=0, quantity=50,
+        )
+        self.discount = Discount.objects.create(
+            event=self.event, code='U20', type='REFERRAL', value=0, usage_limit=30,
+        )
+        self.client = APIClient()
+        self.client.force_authenticate(user=self.user)
+
+    def _sell(self, email, referral_code=''):
+        order = Order.objects.create(
+            event=self.event, guest_email=email, guest_name=email.split('@')[0],
+            subtotal=0, total_amount=0, status='COMPLETED',
+            referral_code=referral_code,
+        )
+        from core.utils.qr import generate_secure_qr_token
+        ticket = Ticket.objects.create(
+            order=order, ticket_type=self.tier, attendee_name=email.split('@')[0],
+            attendee_email=email, status='ISSUED',
+            qr_token=generate_secure_qr_token(),
+        )
+        return order, ticket
+
+    def test_filters_by_referral_code(self):
+        _, mine = self._sell('mine@example.com', referral_code='U20')
+        self._sell('other@example.com', referral_code='DIFFERENT')
+
+        res = self.client.get(f'/api/organizer/contacts/?event_id={self.event.id}&code=U20')
+
+        self.assertEqual(res.status_code, 200, res.data)
+        self.assertEqual([row['id'] for row in res.data], [mine.id])
+
+    def test_filters_by_discount_redemption(self):
+        order, mine = self._sell('redeemed@example.com')
+        DiscountRedemption.objects.create(discount=self.discount, order=order)
+        self._sell('plain@example.com')
+
+        res = self.client.get(f'/api/organizer/contacts/?event_id={self.event.id}&code=u20')
+
+        self.assertEqual(res.status_code, 200, res.data)
+        self.assertEqual([row['id'] for row in res.data], [mine.id])
+
+    def test_order_counted_once_when_both_paths_match(self):
+        order, mine = self._sell('both@example.com', referral_code='U20')
+        DiscountRedemption.objects.create(discount=self.discount, order=order)
+        self._sell('plain@example.com')
+
+        res = self.client.get(f'/api/organizer/contacts/?event_id={self.event.id}&code=U20')
+
+        self.assertEqual(res.status_code, 200, res.data)
+        self.assertEqual([row['id'] for row in res.data], [mine.id])
+
+    def test_unknown_code_returns_nothing(self):
+        self._sell('plain@example.com')
+        res = self.client.get(f'/api/organizer/contacts/?event_id={self.event.id}&code=NOPE')
+        self.assertEqual(res.status_code, 200, res.data)
+        self.assertEqual(res.data, [])
