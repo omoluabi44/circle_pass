@@ -21,6 +21,9 @@ interface Attendee {
 
 const BASE_HEADERS = ["Name", "Email", "Phone", "Ticket Type", "Purchase Date", "Status"];
 
+// Removed checkout box; filtered out so legacy answers never resurface.
+const LEGACY_ADDITIONAL_INFO = "Additional Information";
+
 export default function AttendeesPage() {
   const params = useParams();
   const id = params?.id as string;
@@ -72,24 +75,22 @@ export default function AttendeesPage() {
   );
 
   /**
-   * Custom columns: every question configured for the event (in order), then any
-   * extra keys that were captured at checkout but no longer exist as a field
-   * (e.g. the free-text "Additional Information" box).
+   * Custom columns: every question configured for the event (in order), then
+   * any extra keys captured at checkout for a field that has since been
+   * deleted. The old free-text "Additional Information" box is gone for good,
+   * so its column is never shown even if an older order still carries a value.
    */
   const customColumns = useMemo(() => {
     const ordered: string[] = [];
     customFields.forEach((f) => {
       const label = f.label || String(f.id);
-      if (!ordered.includes(label)) ordered.push(label);
+      if (label !== LEGACY_ADDITIONAL_INFO && !ordered.includes(label)) ordered.push(label);
     });
     filteredAttendees.forEach((a) => {
       Object.keys(a.custom_field_responses || {}).forEach((key) => {
-        if (!ordered.includes(key)) ordered.push(key);
+        if (key !== LEGACY_ADDITIONAL_INFO && !ordered.includes(key)) ordered.push(key);
       });
     });
-    // The checkout always offers a free-text "Additional Information" box, so
-    // keep its column visible even before anyone has filled it in.
-    if (!ordered.includes("Additional Information")) ordered.push("Additional Information");
     return ordered;
   }, [customFields, filteredAttendees]);
 
