@@ -304,9 +304,13 @@ class EventViewSet(viewsets.ModelViewSet):
         else:
             if user.is_authenticated and user.role in ['ORGANIZER', 'ADMIN']:
                 # If public request but authenticated as organizer/admin, let them see public events PLUS their own drafts
-                qs = Event.objects.filter(Q(status__in=['PUBLISHED', 'LIVE']) | Q(organizer__user=user)).order_by('-id')
+                qs = Event.objects.filter(
+                    Q(status__in=['PUBLISHED', 'LIVE']) | Q(organizer__user=user)
+                ).order_by(F('start_time').asc(nulls_last=True), 'id')
             else:
-                qs = Event.objects.filter(status__in=['PUBLISHED', 'LIVE']).order_by('-id')
+                qs = Event.objects.filter(status__in=['PUBLISHED', 'LIVE']).order_by(
+                    F('start_time').asc(nulls_last=True), 'id'
+                )
 
         # Simple Filtering & Searching
         q = self.request.query_params.get('q', None)

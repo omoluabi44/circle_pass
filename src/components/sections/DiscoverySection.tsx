@@ -75,6 +75,7 @@ export function DiscoverySection({ limit, searchParams }: DiscoverySectionProps)
             id: e.id,
             slug: e.slug || e.id?.toString() || '',
             title: e.title,
+            startTime: startDate.getTime(),
             date: `${dateStr} \u2022 ${time}`,
             location: e.venue?.name || (e.is_online ? 'Online' : 'TBA'),
             price: priceStr,
@@ -94,11 +95,18 @@ export function DiscoverySection({ limit, searchParams }: DiscoverySectionProps)
     fetchData();
   }, []);
 
-  const filteredEvents = events.filter(e => {
-    if (e.status !== activeTab) return false;
-    if (activeCategory !== "ALL" && e.category !== activeCategory) return false;
-    return true;
-  }).slice(0, limit || undefined);
+  // Soonest first for Upcoming (October → November → December), most recent
+  // first for Past. Sorting here guarantees the order even if the API changes.
+  const filteredEvents = events
+    .filter(e => {
+      if (e.status !== activeTab) return false;
+      if (activeCategory !== "ALL" && e.category !== activeCategory) return false;
+      return true;
+    })
+    .sort((a, b) =>
+      activeTab === "past" ? b.startTime - a.startTime : a.startTime - b.startTime
+    )
+    .slice(0, limit || undefined);
 
   return (
     <section className="py-24 px-4 bg-muted/30" id="discover">
