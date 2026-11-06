@@ -546,8 +546,23 @@ class Discount(models.Model):
         unique_together = ('event', 'code')
         ordering = ['-created_at']
 
+    def completed_usage_count(self):
+        """Completed orders that used this code, as a discount or a referral.
+
+        `usage_count` is incremented when a checkout starts (so concurrent
+        buyers cannot exceed the limit), but it misses referral-link orders
+        and includes abandoned checkouts. This is the number organizers should
+        see and the number limits should be measured against.
+        """
+        from django.db.models import Q
+
+        return self.event.orders.filter(status='COMPLETED').filter(
+            Q(discount_redemptions__discount=self)
+            | Q(referral_code__iexact=self.code)
+        ).distinct().count()
+
     def __str__(self):
-        return f'{self.code} — {self.event.title}'
+        return f'{self.code} - {self.event.title}'
 
 
 class DiscountRedemption(models.Model):

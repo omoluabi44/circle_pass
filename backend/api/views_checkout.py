@@ -227,7 +227,10 @@ class CheckoutView(APIView):
                     try:
                         discount = Discount.objects.get(event=event, code=discount_code, is_active=True)
                         now_dt = timezone.now()
-                        if (discount.usage_limit == 0 or discount.usage_count < discount.usage_limit) and \
+                        used_count = max(
+                            discount.usage_count, discount.completed_usage_count()
+                        )
+                        if (discount.usage_limit == 0 or used_count < discount.usage_limit) and \
                            (not discount.valid_from or now_dt >= discount.valid_from) and \
                            (not discount.valid_until or now_dt <= discount.valid_until):
                             

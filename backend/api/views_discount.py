@@ -18,15 +18,19 @@ class EventDiscountListCreateView(APIView):
         except Event.DoesNotExist:
             return Response({'error': 'Event not found'}, status=404)
         discounts = Discount.objects.filter(event=event)
-        data = [{
-            'id': d.id, 'code': d.code,
-            'type': d.type, 'discount_type': d.type,
-            'value': d.value,
-            'usage_limit': d.usage_limit,
-            'usage_count': d.usage_count, 'times_used': d.usage_count,
-            'valid_from': d.valid_from, 'valid_until': d.valid_until,
-            'is_active': d.is_active, 'created_at': d.created_at,
-        } for d in discounts]
+        data = []
+        for d in discounts:
+            usage = d.completed_usage_count()
+            data.append({
+                'id': d.id, 'code': d.code,
+                'type': d.type, 'discount_type': d.type,
+                'value': d.value,
+                'usage_limit': d.usage_limit,
+                'usage_count': usage, 'times_used': usage,
+                'discount_usage_count': d.usage_count,
+                'valid_from': d.valid_from, 'valid_until': d.valid_until,
+                'is_active': d.is_active, 'created_at': d.created_at,
+            })
         return Response(data)
 
     def post(self, request, event_id):
@@ -95,7 +99,9 @@ class EventDiscountValidateView(APIView):
         if not discount.is_active:
             return Response({'error': 'This discount code is inactive'}, status=400)
             
-        if discount.usage_limit > 0 and discount.usage_count >= discount.usage_limit:
+        if discount.usage_limit > 0 and max(
+            discount.usage_count, discount.completed_usage_count()
+        ) >= discount.usage_limit:
             return Response({'error': 'This discount code has reached its usage limit'}, status=400)
             
         now = timezone.now()
