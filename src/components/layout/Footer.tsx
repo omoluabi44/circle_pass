@@ -89,8 +89,8 @@ export function Footer() {
         <div className="container mx-auto px-4 mt-12 pt-8 border-t border-black/10 text-sm text-white/80 text-center flex flex-col md:flex-row justify-between items-center gap-4">
           <p>&copy; {new Date().getFullYear()} CirclePass. All rights reserved.</p>
           <div className="flex gap-6">
-            <Link href="#" className="hover:text-primary transition-colors">Legal Terms</Link>
-            <Link href="#" className="hover:text-primary transition-colors">Privacy</Link>
+            <Link href="/terms" className="hover:text-primary transition-colors">Legal Terms</Link>
+            <Link href="/terms#privacy" className="hover:text-primary transition-colors">Privacy</Link>
           </div>
         </div>
       </div>
