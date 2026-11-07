@@ -90,7 +90,7 @@ export function Footer() {
           <p>&copy; {new Date().getFullYear()} CirclePass. All rights reserved.</p>
           <div className="flex gap-6">
             <Link href="/terms" className="hover:text-primary transition-colors">Legal Terms</Link>
-            <Link href="/terms#privacy" className="hover:text-primary transition-colors">Privacy</Link>
+            <Link href="/privacy" className="hover:text-primary transition-colors">Privacy Policy</Link>
           </div>
         </div>
       </div>
