@@ -100,7 +100,29 @@ REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
+    'DEFAULT_THROTTLE_RATES': {
+        # Per IP. Shared cache keeps this consistent across gunicorn workers.
+        'registration': os.environ.get('REGISTRATION_THROTTLE_RATE', '5/hour'),
+    },
 }
+
+# Shared Redis cache so throttling is enforced across all backend workers
+# instead of per process. Falls back to in-memory cache when REDIS_URL is not
+# configured (local development).
+REDIS_URL = os.environ.get('REDIS_URL', '')
+if REDIS_URL:
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+            'LOCATION': REDIS_URL,
+        }
+    }
+else:
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        }
+    }
 
 SIMPLE_JWT = {
     'AUTH_HEADER_TYPES': ('Bearer',),

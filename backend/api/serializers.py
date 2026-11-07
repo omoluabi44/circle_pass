@@ -20,6 +20,12 @@ class UserCreateSerializer(BaseUserCreateSerializer):
     def validate(self, attrs):
         phone_number = attrs.pop('phone_number', None)
         attrs = super().validate(attrs)
+
+        from api.spam_guard import registration_problem
+        blocker = registration_problem(attrs.get('email'), attrs.get('username'))
+        if blocker:
+            raise serializers.ValidationError({'email': blocker})
+
         if phone_number is not None:
             attrs['phone_number'] = phone_number
         return attrs

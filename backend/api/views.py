@@ -66,8 +66,23 @@ def google_auth(request):
 from rest_framework.decorators import action
 import random
 from core.models import EmailVerificationCode
+from rest_framework.throttling import ScopedRateThrottle
+
+
+class RegistrationRateThrottle(ScopedRateThrottle):
+    """Caps signups per IP; keeps bots from mass-creating accounts."""
+
+    def allow_request(self, request, view):
+        view.throttle_scope = 'registration'
+        return super().allow_request(request, view)
+
 
 class CustomUserViewSet(UserViewSet):
+    def get_throttles(self):
+        if self.action in ('create', 'resend_activation'):
+            return [RegistrationRateThrottle()]
+        return super().get_throttles()
+
     def _generate_code(self, user):
         code = str(random.randint(1000, 9999))
         EmailVerificationCode.objects.update_or_create(
@@ -77,6 +92,11 @@ class CustomUserViewSet(UserViewSet):
         return code
 
     def create(self, request, *args, **kwargs):
+        # Keep the user table free of accounts that never verified. Runs on the
+        # signup path so no scheduler is required.
+        from api.spam_guard import purge_stale_unverified_users
+        purge_stale_unverified_users()
+
         email = request.data.get('email')
         if email:
             try:
