@@ -115,10 +115,11 @@ export default function TermsOfServicePage() {
           <Section title="Cancellations and Refunds">
             <p>
               Cancellations, postponements, rescheduling, and refund requests
-              are governed by the applicable event policy and relevant laws.
-              Organisers are responsible for communicating event changes and
-              fulfilling their obligations to ticket holders. Refunds are
-              subject to the applicable policy and legal requirements.
+              are governed by our Refund Policy, the applicable event policy, and
+              relevant laws. Organisers are responsible for communicating event
+              changes and fulfilling their obligations to ticket holders.
+              Refunds are subject to the applicable policy and legal
+              requirements.
             </p>
           </Section>
 
@@ -142,9 +143,9 @@ export default function TermsOfServicePage() {
               We collect and share personal information as necessary to provide
               ticketing and event services, support organisers, process
               payments, and meet legal obligations. Relevant attendee
-              information may be shared with event organisers. Our data
-              practices and applicable user rights under relevant data
-              protection laws apply to how we handle personal information.
+              information may be shared with event organisers. Our Privacy
+              Policy explains our data practices and applicable user rights
+              under relevant data protection laws.
             </p>
           </Section>
 
