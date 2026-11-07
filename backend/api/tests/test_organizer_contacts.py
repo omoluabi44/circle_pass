@@ -139,6 +139,32 @@ class OrganizerContactsAggregationTests(TestCase):
         self.assertIn(self.ticket_used.id, [row['id'] for row in by_order.data])
 
 
+    def test_admin_defaults_to_own_events_unless_all_events_flag_passed(self):
+        # Admin organizers must still see only their own events by default in the organizer portal
+        self.user.role = 'ADMIN'
+        self.user.save()
+
+        # By default, only own events' tickets
+        res = self.client.get('/api/organizer/contacts/')
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(len(res.data), 3)
+        self.assertNotIn('Stranger', [row['name'] for row in res.data])
+
+        # Events dropdown also shows only own events by default
+        res_events = self.client.get('/api/organizer/contacts/events/')
+        self.assertEqual(res_events.status_code, 200)
+        self.assertEqual(len(res_events.data), 3)
+        self.assertNotIn('Someone Else', [row['title'] for row in res_events.data])
+
+        # If explicitly requesting all_events=true as admin, show everything
+        res_all = self.client.get('/api/organizer/contacts/?all_events=true')
+        self.assertEqual(res_all.status_code, 200)
+        self.assertEqual(len(res_all.data), 4)
+
+        res_events_all = self.client.get('/api/organizer/contacts/events/?all_events=true')
+        self.assertEqual(res_events_all.status_code, 200)
+        self.assertEqual(len(res_events_all.data), 4)
+
 class OrganizerContactsCodeFilterTests(TestCase):
     """Downloading the attendee list for one discount/referral code."""
 

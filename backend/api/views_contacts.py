@@ -7,9 +7,9 @@ from api.permissions import IsOrganizerOrAdmin, is_admin_user
 from core.models import Event, EventCustomField, FollowedOrganizer, Ticket
 
 
-def organizer_events_for(user):
-    """Events the user can see on the contacts screen (own, or all for admins)."""
-    if is_admin_user(user):
+def organizer_events_for(user, all_events=False):
+    """Events the user can see on the contacts screen (own events; all only if explicitly requested by admin)."""
+    if all_events and is_admin_user(user):
         return Event.objects.all()
     return Event.objects.filter(organizer__user=user)
 
@@ -25,7 +25,8 @@ class OrganizerContactEventsView(APIView):
     permission_classes = [permissions.IsAuthenticated, IsOrganizerOrAdmin]
 
     def get(self, request):
-        events = organizer_events_for(request.user).annotate(
+        all_events = request.query_params.get("all_events") == "true" and is_admin_user(request.user)
+        events = organizer_events_for(request.user, all_events=all_events).annotate(
             tickets_sold=Count(
                 'orders__tickets',
                 filter=Q(orders__status='COMPLETED'),
@@ -72,8 +73,10 @@ class OrganizerContactsView(generics.ListAPIView):
         user = self.request.user
         qs = Ticket.objects.filter(order__status='COMPLETED')
 
-        # Organizers only ever see their own events; admins see everything.
-        if not is_admin_user(user):
+        # Organizers only see tickets for events they created.
+        # An admin only sees all platform events if explicitly requesting all_events=true.
+        all_events = (self.request.query_params.get("all_events") == "true") and is_admin_user(user)
+        if not all_events:
             qs = qs.filter(order__event__organizer__user=user)
 
         # Optional filtering by event_id
