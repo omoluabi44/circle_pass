@@ -45,13 +45,16 @@ function getMammoth() {
   return mammothPromise;
 }
 
-// Pre-load pdfjs eagerly
+// Pre-load pdfjs eagerly. The worker is bundled with the app (no CDN) so the
+// version always matches and there is nothing extra to block or 404.
 let pdfjsPromise: Promise<any> | null = null;
 function getPdfjs() {
   if (!pdfjsPromise) {
-    pdfjsPromise = import("pdfjs-dist/legacy/build/pdf" as any).then((lib) => {
-      // Use CDN worker so we don't bundle it
-      lib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${lib.version}/pdf.worker.min.js`;
+    pdfjsPromise = import("pdfjs-dist/legacy/build/pdf.mjs" as any).then((lib) => {
+      lib.GlobalWorkerOptions.workerSrc = new URL(
+        "pdfjs-dist/legacy/build/pdf.worker.min.mjs",
+        import.meta.url
+      ).toString();
       return lib;
     });
   }
@@ -61,7 +64,10 @@ function getPdfjs() {
 async function parsePdfEmails(file: File): Promise<string[]> {
   const pdfjs = await getPdfjs();
   const buffer = await file.arrayBuffer();
-  const pdf = await pdfjs.getDocument({ data: buffer }).promise;
+  const pdf = await pdfjs.getDocument({
+    data: new Uint8Array(buffer),
+    isEvalSupported: false,
+  }).promise;
   let fullText = "";
   for (let i = 1; i <= pdf.numPages; i++) {
     const page = await pdf.getPage(i);
@@ -263,8 +269,13 @@ export default function AnnouncementsPage() {
         toast.success(`${emails.length} email${emails.length !== 1 ? "s" : ""} found in file`);
       }
     } catch (err) {
+      console.error("Could not parse recipient file:", err);
       setParseFailed(true);
-      toast.error("Could not read the file. Try saving as .txt and uploading again.");
+      toast.error(
+        ext === "pdf"
+          ? "Could not read that PDF. If it is a scanned image, export the list as .csv or .txt and upload again."
+          : "Could not read the file. Try saving as .txt and uploading again."
+      );
     } finally {
       setParsingFile(false);
     }
@@ -588,7 +599,7 @@ export default function AnnouncementsPage() {
                     ) : parseFailed ? (
                       <p className="text-xs text-red-500 flex items-center gap-1">
                         <AlertCircle className="w-3 h-3" />
-                        Failed to read file. Try saving it as .txt and re-uploading.
+                        Failed to read file. If it is a scanned PDF, upload a .csv or .txt instead.
                       </p>
                     ) : (
                       <div className="space-y-2">
