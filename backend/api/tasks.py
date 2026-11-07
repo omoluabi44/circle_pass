@@ -245,8 +245,8 @@ The CirclePass Team"""
 def resolve_announcement_recipients(event, include_attendees=True, extra_recipients=None):
     """Return an ordered ``{email: first_name}`` map for an event announcement.
 
-    Used both by the API (so the organizer immediately learns how many people
-    will be emailed) and by the Celery task that performs the send.
+    - Ticket holders (completed orders): first name extracted (e.g. "Jubril")
+    - Waitlist / manually added contacts: empty string (will produce "Hello there,")
     """
     from core.models import Order
 
@@ -264,18 +264,22 @@ def resolve_announcement_recipients(event, include_attendees=True, extra_recipie
             if not email_addr and order.attendee and order.attendee.user:
                 user = order.attendee.user
                 email_addr = (user.email or '').strip().lower()
-                name = user.get_full_name() or user.username or ''
+                name = user.get_full_name() or getattr(user, 'first_name', '') or user.username or ''
             if not email_addr or email_addr in recipients:
                 continue
-            first_name = name.strip().split(' ')[0] if name and name.strip() else 'there'
-            recipients[email_addr] = first_name or 'there'
+            first_name = name.strip().split(' ')[0] if name and name.strip() else ''
+            if first_name and first_name.lower() != 'there':
+                recipients[email_addr] = first_name.capitalize()
+            else:
+                recipients[email_addr] = ''
 
     for email_addr in extra_recipients or []:
         if not isinstance(email_addr, str):
             continue
         email_addr = email_addr.strip().lower()
         if email_addr and email_addr not in recipients:
-            recipients[email_addr] = 'there'
+            # Waitlist / manually added contacts use generic greeting
+            recipients[email_addr] = ''
 
     return recipients
 
@@ -294,10 +298,22 @@ def send_event_announcement_email(self, announcement_id, include_attendees=True,
         return f"Announcement {announcement_id} not found."
 
     event = announcement.event
-    organizer_name = event.organizer.company_name or 'The Organizer'
-    frontend_url = getattr(settings, 'FRONTEND_URL', 'https://thecirclepass.com')
-    event_slug = getattr(event, 'slug', event.id)
-    subject = f"Announcement: {announcement.title} | {event.title}"
+    organizer = getattr(event, 'organizer', None)
+    organizer_name = ''
+    if organizer:
+        organizer_name = (
+            organizer.company_name
+            or (organizer.user.get_full_name() if organizer.user else '')
+            or (organizer.user.username if organizer.user else '')
+        )
+    if not organizer_name:
+        organizer_name = 'The Organizer'
+
+    frontend_url = getattr(settings, 'FRONTEND_URL', 'https://thecirclepass.com').rstrip('/')
+    event_slug = getattr(event, 'slug', None) or event.id
+    event_url = f"{frontend_url}/events/{event_slug}"
+    event_banner_url = getattr(event, 'cover_image', '') or ''
+    subject = f"{announcement.title} | {event.title}"
 
     sent = 0
     try:
@@ -319,19 +335,32 @@ def send_event_announcement_email(self, announcement_id, include_attendees=True,
         errors = []
 
         for email_addr, first_name in recipients.items():
+            if first_name and first_name.strip() and first_name.strip().lower() != 'there':
+                greeting = f"Hello {first_name.strip()},"
+            else:
+                greeting = "Hello there,"
+
             context = {
-                'attendee_name': first_name,
-                'organizer_name': organizer_name,
+                'greeting': greeting,
+                'attendee_name': first_name or 'there',
+                'announcement_title': announcement.title,
                 'announcement_message': announcement.message,
+                'event_title': event.title,
+                'event_banner_url': event_banner_url,
+                'organizer_name': organizer_name,
+                'event_url': event_url,
                 'event_slug': event_slug,
                 'frontend_url': frontend_url,
             }
             html_content = render_to_string('email/event_announcement.html', context)
             plain_text = (
-                f"Hi {first_name},\n\n"
-                f"An announcement from {organizer_name}:\n\n"
+                f"{greeting}\n\n"
+                f"{announcement.title}\n\n"
                 f"{announcement.message}\n\n"
-                f"Best regards,\nThe {organizer_name} Team"
+                f"---\n"
+                f"{organizer_name}\n\n"
+                f"View Event: {event_url}\n\n"
+                f"Sent via CirclePass on behalf of {organizer_name}"
             )
             msg = EmailMultiAlternatives(
                 subject, plain_text, settings.DEFAULT_FROM_EMAIL, [email_addr],

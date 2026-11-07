@@ -1,83 +1,103 @@
-﻿<div style="font-family: 'Roboto', Arial, sans-serif; background-color: #ffffff; max-width: 600px; margin: 0 auto; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden;">
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ announcement_title }}</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #f3f4f6; font-family: 'Roboto', Arial, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; -webkit-font-smoothing: antialiased;">
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f3f4f6; padding: 32px 12px;">
+    <tr>
+      <td align="center">
+        <!-- Main Card Container -->
+        <table width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width: 560px; width: 100%; background-color: #ffffff; border-radius: 20px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.05); border: 1px solid #e5e7eb;">
+          
+          <!-- CirclePass Top Header -->
+          <tr>
+            <td align="center" style="padding: 24px 24px 16px 24px; background-color: #ffffff;">
+              <table cellpadding="0" cellspacing="0" border="0" align="center">
+                <tr>
+                  <td valign="middle" style="padding-right: 8px;">
+                    <img src="{{ frontend_url }}/logo.png" alt="CirclePass Logo" width="28" height="28" style="display: block; width: 28px; height: 28px; border: 0;" />
+                  </td>
+                  <td valign="middle">
+                    <span style="font-family: 'Fredoka', -apple-system, sans-serif; font-size: 22px; font-weight: 700; color: #1e1b4b; letter-spacing: -0.5px;">CirclePass</span>
+                  </td>
+                </tr>
+              </table>
+              <div style="font-size: 10px; font-weight: 700; letter-spacing: 2px; color: #6b7280; text-transform: uppercase; margin-top: 6px;">
+                YOUR PASS TO THE NEXT EXPERIENCE
+              </div>
+            </td>
+          </tr>
 
-  <!-- Header -->
-  <div style="padding: 20px 28px; border-bottom: 1px solid #e5e7eb;">
-    <table width="100%" cellpadding="0" cellspacing="0" border="0">
-      <tr>
-        <!-- Logo (Left) -->
-        <td valign="middle">
-          <table cellpadding="0" cellspacing="0" border="0">
-            <tr>
-              <td style="padding-right: 8px;">
-                <img src="{{ frontend_url }}/logo.png" alt="CirclePass Logo" style="height: 32px; display: block;">
-              </td>
-              <td>
-                <span style="font-family: 'Fredoka', sans-serif; font-size: 22px; font-weight: 700; color: #1f2937;">CirclePass</span>
-              </td>
-            </tr>
-          </table>
-        </td>
-        <!-- Official Badge (Right) -->
-        <td valign="middle" align="right">
-          <div style="display: inline-block; border: 1px solid #e5e7eb; border-radius: 20px; padding: 6px 14px; font-size: 13px; color: #374151; font-weight: 500;">
-            &#128737; Official announcement
-          </div>
-        </td>
-      </tr>
-    </table>
-  </div>
+          <!-- Event Banner Image (if available) -->
+          {% if event_banner_url %}
+          <tr>
+            <td style="padding: 0 20px;">
+              <img src="{{ event_banner_url }}" alt="{{ event_title }}" style="width: 100%; max-height: 260px; object-fit: cover; border-radius: 14px; display: block;" />
+            </td>
+          </tr>
+          {% endif %}
 
-  <!-- Body -->
-  <div style="padding: 32px 28px;">
+          <!-- Event Title -->
+          <tr>
+            <td align="center" style="padding: 20px 24px 12px 24px;">
+              <h1 style="margin: 0; font-size: 22px; font-weight: 700; color: #1e1b4b; line-height: 1.3; text-align: center;">
+                {{ event_title }}
+              </h1>
+            </td>
+          </tr>
 
-    <!-- Greeting -->
-    <h1 style="font-size: 26px; font-weight: 700; color: #111827; margin: 0 0 8px 0; line-height: 1.3;">
-      Hi {{ attendee_name }},
-    </h1>
-    <p style="font-size: 15px; color: #6b7280; margin: 0 0 24px 0;">
-      An announcement from {{ organizer_name }}
-    </p>
+          <!-- Message Card -->
+          <tr>
+            <td style="padding: 8px 20px 20px 20px;">
+              <div style="background-color: #ffffff; border: 1px solid #e5e7eb; border-radius: 16px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
+                <!-- Greeting -->
+                <div style="font-size: 16px; font-weight: 700; color: #111827; margin-bottom: 16px;">
+                  {{ greeting }}
+                </div>
 
-    <!-- Message Box -->
-    <div style="background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 10px; padding: 24px; margin-bottom: 32px;">
-      <p style="font-size: 15px; color: #374151; line-height: 1.7; margin: 0; white-space: pre-line;">{{ announcement_message }}</p>
-      <p style="font-size: 15px; color: #374151; line-height: 1.7; margin: 24px 0 0 0;">
-        Best regards,<br>
-        The {{ organizer_name }} Team
-      </p>
-    </div>
+                <!-- Announcement Title -->
+                <h2 style="margin: 0 0 14px 0; font-size: 19px; font-weight: 700; color: #111827; line-height: 1.35;">
+                  {{ announcement_title }}
+                </h2>
 
-    <!-- View Event Button -->
-    <div style="text-align: center; margin-bottom: 8px;">
-      <a href="{{ frontend_url }}/events/{{ event_slug }}" style="display: inline-block; background-color: #2563eb; color: #ffffff; font-weight: 600; font-size: 16px; text-decoration: none; padding: 16px 56px; border-radius: 8px;">
-        View Event
-      </a>
-    </div>
+                <!-- Announcement Message -->
+                <div style="font-size: 15px; color: #374151; line-height: 1.7; white-space: pre-line; margin-bottom: 24px;">{{ announcement_message }}</div>
 
-  </div>
+                <!-- Divider -->
+                <div style="height: 1px; background-color: #e5e7eb; margin: 20px 0 16px 0;"></div>
 
-  <!-- Footer -->
-  <div style="border-top: 1px solid #e5e7eb; padding: 24px 28px; text-align: center;">
-    <p style="color: #9ca3af; font-size: 12px; margin: 0 0 12px 0; line-height: 1.6;">
-      Sent via CirclePass on behalf of {{ organizer_name }}.<br>
-      This is an official email from CirclePass.
-    </p>
+                <!-- Organizer Name -->
+                <div style="font-size: 15px; font-weight: 600; color: #111827;">
+                  {{ organizer_name }}
+                </div>
+              </div>
+            </td>
+          </tr>
 
-    <table cellpadding="0" cellspacing="0" border="0" align="center" style="margin-bottom: 12px;">
-      <tr>
-        <td style="padding-right: 6px;">
-          <img src="{{ frontend_url }}/logo.png" alt="CirclePass Logo" style="height: 24px; display: block;">
-        </td>
-        <td>
-          <span style="font-family: 'Fredoka', sans-serif; font-size: 18px; font-weight: 700; color: #1f2937;">CirclePass</span>
-        </td>
-      </tr>
-    </table>
+          <!-- View Event Button -->
+          <tr>
+            <td style="padding: 0 20px 24px 20px;">
+              <a href="{{ event_url }}" style="display: block; width: 100%; box-sizing: border-box; background-color: #5046e5; color: #ffffff; text-align: center; font-size: 16px; font-weight: 600; padding: 15px 24px; border-radius: 12px; text-decoration: none;">
+                View Event &rarr;
+              </a>
+            </td>
+          </tr>
 
-    <p style="color: #9ca3af; font-size: 12px; margin: 0; line-height: 1.6;">
-      You received this email because you&apos;re registered for an event.<br>
-      <a href="{{ frontend_url }}/settings/notifications" style="color: #2563eb; text-decoration: none;">Unsubscribe</a> if you no longer wish to receive these emails.
-    </p>
-  </div>
+          <!-- Footer -->
+          <tr>
+            <td align="center" style="padding: 0 24px 24px 24px; border-top: 1px solid #f3f4f6;">
+              <p style="margin: 16px 0 0 0; font-size: 12px; color: #6b7280; line-height: 1.5; text-align: center;">
+                Sent via CirclePass on behalf of {{ organizer_name }}
+              </p>
+            </td>
+          </tr>
 
-</div>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

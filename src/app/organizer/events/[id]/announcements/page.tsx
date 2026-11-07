@@ -10,6 +10,7 @@ import React, {
 } from "react";
 import {
   Send,
+  Eye,
   Clock,
   Users,
   Mail,
@@ -23,7 +24,7 @@ import {
 import { useParams } from "next/navigation";
 import { useSession } from "@/context/AuthContext";
 import { toast } from "react-hot-toast";
-import { getEventAnnouncements, createEventAnnouncement } from "@/lib/api/events";
+import { getEventAnnouncements, createEventAnnouncement, getEventById } from "@/lib/api/events";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -129,6 +130,9 @@ export default function AnnouncementsPage() {
   const [announcements, setAnnouncements] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [event, setEvent] = useState<any | null>(null);
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
+  const [previewRecipientType, setPreviewRecipientType] = useState<"ticket_holder" | "generic">("ticket_holder");
 
   // Form fields
   const [title, setTitle] = useState("");
@@ -170,8 +174,12 @@ export default function AnnouncementsPage() {
     if (status === "loading") return;
     if (!session?.accessToken || !id || id === "undefined") return;
     try {
-      const data = await getEventAnnouncements(session.accessToken as string, id);
+      const [data, eventData] = await Promise.all([
+        getEventAnnouncements(session.accessToken as string, id),
+        getEventById(session.accessToken as string, id).catch(() => null),
+      ]);
       setAnnouncements(data);
+      if (eventData) setEvent(eventData);
     } catch (err: any) {
       toast.error(err.message || "Failed to fetch announcements");
     } finally {
@@ -302,10 +310,24 @@ export default function AnnouncementsPage() {
     setParseFailed(false);
   }
 
-  // ── Submit ─────────────────────────────────────────────────────────────────
+  // ── Preview and Submit ─────────────────────────────────────────────────────
 
-  async function handleSend(e: React.FormEvent) {
-    e.preventDefault();
+  function handleOpenPreview(e?: React.FormEvent) {
+    if (e) e.preventDefault();
+    if (!title.trim() || !message.trim()) {
+      toast.error("Please enter both an announcement title and message.");
+      return;
+    }
+
+    if (audience !== "attendees_only" && allCustomEmails.length === 0) {
+      toast.error("Add at least one custom recipient email.");
+      return;
+    }
+
+    setShowPreviewModal(true);
+  }
+
+  async function handleSendConfirmed() {
     if (!title || !message) return;
 
     if (audience !== "attendees_only" && allCustomEmails.length === 0) {
@@ -353,6 +375,7 @@ export default function AnnouncementsPage() {
       setCustomEmails([]);
       setManualInput("");
       clearFile();
+      setShowPreviewModal(false);
       fetchAnnouncements();
     } catch (err: any) {
       toast.error(err.message || "Failed to send announcement");
@@ -380,7 +403,7 @@ export default function AnnouncementsPage() {
       <div className="bg-card border border-border rounded-2xl p-6 shadow-sm mb-8">
         <h2 className="text-lg font-semibold text-foreground mb-5">Send New Announcement</h2>
 
-        <form onSubmit={handleSend} className="space-y-5">
+        <form onSubmit={handleOpenPreview} className="space-y-5">
           {/* Title */}
           <div>
             <label className="block text-sm font-medium text-muted-foreground mb-1">Title</label>
@@ -651,24 +674,15 @@ export default function AnnouncementsPage() {
             </div>
           )}
 
-          {/* Submit */}
+          {/* Preview and Send Button */}
           <div className="flex justify-end">
             <button
               type="submit"
               disabled={submitting}
-              className="flex items-center px-6 py-2.5 bg-primary text-primary-foreground rounded-xl font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 gap-2"
+              className="flex items-center px-6 py-2.5 bg-primary text-primary-foreground rounded-xl font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 gap-2 shadow-sm"
             >
-              {submitting ? (
-                <>
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  Sending…
-                </>
-              ) : (
-                <>
-                  <Send className="w-4 h-4" />
-                  {sendLabel}
-                </>
-              )}
+              <Eye className="w-4 h-4" />
+              Preview and Send
             </button>
           </div>
         </form>
@@ -730,6 +744,177 @@ export default function AnnouncementsPage() {
           );
         })}
       </div>
+
+      {/* ── Preview and Send Modal ── */}
+      {showPreviewModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200">
+          <div className="bg-card border border-border rounded-2xl w-full max-w-2xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden my-auto">
+            {/* Modal Header */}
+            <div className="p-5 border-b border-border flex items-center justify-between bg-card shrink-0">
+              <div>
+                <h3 className="text-lg font-bold text-foreground">Announcement Email Preview</h3>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Review the layout and greeting before sending to your recipients.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowPreviewModal(false)}
+                disabled={submitting}
+                className="text-muted-foreground hover:text-foreground transition-colors p-1.5 rounded-lg hover:bg-secondary"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Recipient Greeting Switcher */}
+            <div className="px-5 py-3 bg-secondary/40 border-b border-border flex flex-wrap items-center justify-between gap-3 shrink-0">
+              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                Preview Greeting As:
+              </span>
+              <div className="inline-flex rounded-lg p-1 bg-secondary border border-border text-xs">
+                <button
+                  type="button"
+                  onClick={() => setPreviewRecipientType("ticket_holder")}
+                  className={`px-3 py-1.5 rounded-md font-medium transition-all ${
+                    previewRecipientType === "ticket_holder"
+                      ? "bg-primary text-primary-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  Ticket Holder (&ldquo;Hello Jubril,&rdquo;)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPreviewRecipientType("generic")}
+                  className={`px-3 py-1.5 rounded-md font-medium transition-all ${
+                    previewRecipientType === "generic"
+                      ? "bg-primary text-primary-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  Waitlist / Custom (&ldquo;Hello there,&rdquo;)
+                </button>
+              </div>
+            </div>
+
+            {/* Email Canvas (Light Mode styled email frame matching reference) */}
+            <div className="p-4 sm:p-6 overflow-y-auto bg-gray-100 flex justify-center">
+              <div className="w-full max-w-[500px] bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden text-gray-900 font-sans">
+                {/* Header with CirclePass Logo */}
+                <div className="pt-6 pb-4 px-6 text-center">
+                  <div className="inline-flex items-center justify-center gap-2">
+                    <img src="/logo.png" alt="CirclePass Logo" className="w-7 h-7 object-contain" />
+                    <span className="font-['Fredoka',sans-serif] text-2xl font-bold text-gray-900 tracking-tight">
+                      CirclePass
+                    </span>
+                  </div>
+                  <div className="text-[10px] font-bold tracking-[2px] text-gray-500 uppercase mt-1">
+                    YOUR PASS TO THE NEXT EXPERIENCE
+                  </div>
+                </div>
+
+                {/* Event Banner */}
+                {event?.cover_image ? (
+                  <div className="px-5">
+                    <img
+                      src={event.cover_image}
+                      alt={event.title || "Event Banner"}
+                      className="w-full max-h-[240px] object-cover rounded-2xl block border border-gray-100"
+                    />
+                  </div>
+                ) : (
+                  <div className="px-5">
+                    <div className="w-full h-36 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl flex items-center justify-center text-white/90 p-4 text-center font-bold text-base">
+                      {event?.title || "Event Banner"}
+                    </div>
+                  </div>
+                )}
+
+                {/* Event Name */}
+                <div className="px-6 pt-5 pb-3 text-center">
+                  <h1 className="text-xl sm:text-2xl font-bold text-indigo-950 leading-tight">
+                    {event?.title || "Event Name"}
+                  </h1>
+                </div>
+
+                {/* Content Card */}
+                <div className="p-5 mx-5 mb-5 rounded-2xl border border-gray-200 bg-white shadow-sm">
+                  {/* Greeting */}
+                  <div className="text-base font-bold text-gray-900 mb-4">
+                    {previewRecipientType === "ticket_holder" ? "Hello Jubril," : "Hello there,"}
+                  </div>
+
+                  {/* Title */}
+                  <h2 className="text-lg sm:text-xl font-bold text-gray-900 leading-snug mb-3">
+                    {title}
+                  </h2>
+
+                  {/* Message */}
+                  <p className="text-[14px] sm:text-[15px] leading-relaxed text-gray-700 whitespace-pre-line mb-5">
+                    {message}
+                  </p>
+
+                  {/* Divider */}
+                  <div className="h-px bg-gray-200 my-4" />
+
+                  {/* Organizer Name */}
+                  <div className="text-[14px] font-semibold text-gray-900">
+                    {event?.organizer_name || "The Event Team"}
+                  </div>
+                </div>
+
+                {/* Action Button */}
+                <div className="px-5 pb-6">
+                  <div className="w-full py-3.5 px-4 bg-[#5046e5] hover:bg-[#4338ca] text-white font-semibold text-center rounded-xl shadow-sm text-sm sm:text-base flex items-center justify-center gap-2 cursor-default">
+                    <span>View Event</span>
+                    <span>&rarr;</span>
+                  </div>
+                </div>
+
+                {/* Footer */}
+                <div className="px-6 pb-6 pt-2 border-t border-gray-100 text-center">
+                  <p className="text-xs text-gray-500">
+                    Sent via CirclePass on behalf of {event?.organizer_name || "The Organizer"}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Bottom Actions */}
+            <div className="p-4 sm:p-5 border-t border-border bg-card flex flex-col-reverse sm:flex-row items-center justify-between gap-3 shrink-0">
+              <button
+                type="button"
+                onClick={() => setShowPreviewModal(false)}
+                disabled={submitting}
+                className="w-full sm:w-auto px-5 py-2.5 rounded-xl border border-border text-foreground font-medium hover:bg-secondary transition-colors"
+              >
+                Back to Edit
+              </button>
+
+              <button
+                type="button"
+                onClick={handleSendConfirmed}
+                disabled={submitting}
+                className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-2.5 bg-primary text-primary-foreground rounded-xl font-semibold hover:bg-primary/90 transition-colors shadow-sm disabled:opacity-50"
+              >
+                {submitting ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    Sending Announcement…
+                  </>
+                ) : (
+                  <>
+                    <Send className="w-4 h-4" />
+                    {sendLabel.replace("Send to", "Send Announcement to")}
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
