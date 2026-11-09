@@ -13,7 +13,7 @@ from datetime import timedelta
 import logging
 
 from core.models import Order, Payment
-from core.utils.paystack import verify_transaction
+from core.utils.gateway import verify_payment
 from core.utils.fulfillment import fulfill_order
 
 logger = logging.getLogger(__name__)
@@ -58,14 +58,14 @@ def run_reconciliation(hours=168, stdout=None, style=None):
             stdout.write(f"Checking payment reference {ref} for Order #{payment.order_id}...")
 
         try:
-            res = verify_transaction(ref)
-            v_status = res.get('data', {}).get('status')
+            res = verify_payment(payment)
+            v_status = res.get('status')
 
-            if v_status == 'success':
+            if res.get('success'):
                 payment.status = 'SUCCESS'
                 payment.paid_at = timezone.now()
-                payment.channel = res['data'].get('channel', '')
-                payment.provider_data = res['data']
+                payment.channel = res.get('channel', '')
+                payment.provider_data = res.get('data') or {}
                 payment.save(update_fields=['status', 'paid_at', 'channel', 'provider_data', 'updated_at'])
 
                 tickets = fulfill_order(payment.order, payment=payment)
@@ -102,7 +102,7 @@ def run_reconciliation(hours=168, stdout=None, style=None):
                     'created_at': str(payment.created_at)
                 })
                 if stdout:
-                    stdout.write(f"Reference {ref} is {v_status} on Paystack.")
+                    stdout.write(f"Reference {ref} is {v_status} on {payment.provider}.")
         except Exception as e:
             checked_statuses.append({
                 'order_id': payment.order_id,

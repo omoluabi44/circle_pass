@@ -373,3 +373,49 @@ export async function adminTransferEvent(
   }
   return res.json();
 }
+
+// ==========================================
+// PLATFORM SETTINGS
+// ==========================================
+
+export interface PaymentGatewayOption {
+  id: 'PAYSTACK' | 'NOMBA';
+  name: string;
+  configured: boolean;
+  active: boolean;
+  sandbox?: boolean;
+}
+
+export async function getPaymentGatewaySetting(token: string): Promise<{
+  gateway: 'PAYSTACK' | 'NOMBA';
+  gateways: PaymentGatewayOption[];
+  updated_at: string;
+}> {
+  const res = await fetch(`${API_URL}/admin/settings/payment-gateway/`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(`Failed to load payment settings: ${res.status} ${text}`);
+  }
+  return res.json();
+}
+
+export async function updatePaymentGateway(
+  token: string,
+  gateway: 'PAYSTACK' | 'NOMBA'
+) {
+  const res = await fetch(`${API_URL}/admin/settings/payment-gateway/`, {
+    method: 'PATCH',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ gateway }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data.detail || `Failed to switch gateway: ${res.status}`);
+  }
+  return data;
+}

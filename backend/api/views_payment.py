@@ -1,4 +1,5 @@
 import json
+from django.conf import settings
 from django.db import transaction
 from django.db.models import F
 from django.utils import timezone
@@ -7,9 +8,12 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from core.models import Payment, PaymentEvent, Payout, OrganizerWallet, WalletTransaction, PayoutWebhookEvent
+from core.models import Payment, PaymentEvent, Payout, OrganizerWallet, WalletTransaction, PayoutWebhookEvent, PlatformSetting
+from core.utils import nomba
+from core.utils.gateway import verify_payment
 from core.utils.paystack import validate_webhook_signature, verify_transaction
 from core.utils.fulfillment import fulfill_order, fail_order
+from api.permissions import IsAdmin
 from api.serializers import OrderSerializer, TicketSerializer
 
 
@@ -194,6 +198,127 @@ class PaystackWebhookView(APIView):
         return Response(status=status.HTTP_200_OK)
 
 
+class NombaWebhookView(APIView):
+    """
+    POST /api/payments/nomba/webhook/
+    Nomba sends signed events here (payment_success, payment_failed, ...).
+    Signatures are verified and every delivery is idempotent.
+    """
+    permission_classes = [AllowAny]
+    authentication_classes = []  # Authenticated via HMAC signature
+
+    def post(self, request):
+        signature = (
+            request.headers.get('nomba-signature')
+            or request.META.get('HTTP_NOMBA_SIGNATURE')
+        )
+        timestamp = (
+            request.headers.get('nomba-timestamp')
+            or request.META.get('HTTP_NOMBA_TIMESTAMP')
+        )
+
+        try:
+            payload = json.loads(request.body)
+        except (json.JSONDecodeError, UnicodeDecodeError):
+            return Response({'detail': 'Invalid JSON'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if not nomba.validate_webhook_signature(payload, signature, timestamp):
+            return Response({'detail': 'Invalid signature'}, status=status.HTTP_400_BAD_REQUEST)
+
+        event_type = payload.get('event_type')
+        data = payload.get('data') or {}
+        order = data.get('order') or {}
+        txn = data.get('transaction') or {}
+
+        reference = (
+            order.get('orderReference')
+            or data.get('orderReference')
+            or txn.get('merchantTxRef')
+            or ''
+        )
+        if not reference:
+            # Not a checkout event (virtual account transfer, payout, etc.)
+            return Response(status=status.HTTP_200_OK)
+
+        payment = Payment.objects.select_related('order').filter(reference=reference).first()
+        if not payment:
+            # Nomba sometimes reports its own generated order ID rather than the
+            # reference we supplied; match that against the stored checkout data.
+            nomba_order_id = order.get('orderId') or data.get('orderId') or ''
+            if nomba_order_id:
+                payment = (
+                    Payment.objects.select_related('order')
+                    .filter(provider='NOMBA', provider_data__orderReference=nomba_order_id)
+                    .first()
+                )
+        if not payment:
+            return Response(status=status.HTTP_200_OK)
+
+        if payment.provider != 'NOMBA':
+            # A Nomba event for an order paid through Paystack — ignore.
+            return Response(status=status.HTTP_200_OK)
+
+        event_key = (
+            f"nomba-{payload.get('requestId')}"
+            if payload.get('requestId')
+            else f"nomba-{event_type}-{txn.get('transactionId') or reference}"
+        )
+
+        payment_event, created = PaymentEvent.objects.get_or_create(
+            payment=payment,
+            event_id=event_key,
+            defaults={'event_type': event_type or '', 'raw_body': payload},
+        )
+        if not created and payment_event.processed:
+            return Response(status=status.HTTP_200_OK)
+
+        if event_type == 'payment_success':
+            if payment.status == 'SUCCESS':
+                payment_event.processed = True
+                payment_event.save(update_fields=['processed'])
+                return Response(status=status.HTTP_200_OK)
+
+            # Never fulfil from the webhook alone: confirm with Nomba first.
+            try:
+                verification = verify_payment(payment)
+            except Exception:
+                return Response(status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+            if not verification['success']:
+                # Ask Nomba to retry (the transaction may still be settling).
+                return Response(status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+            with transaction.atomic():
+                payment = Payment.objects.select_for_update().get(pk=payment.pk)
+                if payment.status != 'SUCCESS':
+                    payment.status = 'SUCCESS'
+                    payment.paid_at = timezone.now()
+                    payment.channel = verification.get('channel', '')
+                    payment.provider_data = verification.get('data') or payload
+                    payment.save(update_fields=['status', 'paid_at', 'channel', 'provider_data', 'updated_at'])
+                    fulfill_order(payment.order, payment=payment)
+
+                payment_event.processed = True
+                payment_event.save(update_fields=['processed'])
+
+            return Response(status=status.HTTP_200_OK)
+
+        if event_type == 'payment_failed':
+            with transaction.atomic():
+                payment = Payment.objects.select_for_update().get(pk=payment.pk)
+                if payment.status == 'PENDING':
+                    payment.status = 'FAILED'
+                    payment.provider_data = payload
+                    payment.save(update_fields=['status', 'provider_data', 'updated_at'])
+                    fail_order(payment.order)
+            payment_event.processed = True
+            payment_event.save(update_fields=['processed'])
+            return Response(status=status.HTTP_200_OK)
+
+        # Unhandled event type — acknowledge so Nomba stops retrying.
+        return Response(status=status.HTTP_200_OK)
+
+
 class PaymentVerifyView(APIView):
     """
     GET /api/payments/verify/?reference=...
@@ -217,69 +342,54 @@ class PaymentVerifyView(APIView):
                 'order': OrderSerializer(payment.order).data,
                 'tickets': TicketSerializer(payment.order.tickets.all(), many=True, context={'request': request}).data,
             })
-        
-        if payment.status == 'FAILED':
-            # DO NOT return early — re-check Paystack in case money arrived after we marked it failed
-            try:
-                verification = verify_transaction(reference)
-                v_status = verification.get('data', {}).get('status')
-                if v_status == 'success':
-                    with transaction.atomic():
-                        payment = Payment.objects.select_for_update().get(pk=payment.pk)
-                        payment.status = 'SUCCESS'
-                        payment.paid_at = timezone.now()
-                        payment.channel = verification['data'].get('channel', '')
-                        payment.provider_data = verification['data']
-                        payment.save(update_fields=['status', 'paid_at', 'channel', 'provider_data', 'updated_at'])
-                        tickets = fulfill_order(payment.order, payment=payment)
-                    payment.order.refresh_from_db()
-                    return Response({
-                        'status': 'SUCCESS',
-                        'order': OrderSerializer(payment.order).data,
-                        'tickets': TicketSerializer(payment.order.tickets.all(), many=True, context={'request': request}).data,
-                    })
-            except Exception:
-                pass
-            # If still not success on Paystack, return FAILED
-            return Response({
-                'status': 'FAILED',
-                'order': OrderSerializer(payment.order).data,
-            })
 
-        # Payment is still PENDING, verify with Paystack
+        # Re-check with whichever gateway processed this payment. This also
+        # revives payments previously marked FAILED when money later arrives.
         try:
-            verification = verify_transaction(reference)
+            verification = verify_payment(payment)
         except Exception as e:
+            if payment.status == 'FAILED':
+                return Response({
+                    'status': 'FAILED',
+                    'order': OrderSerializer(payment.order).data,
+                })
             return Response({'detail': f'Error verifying with provider: {str(e)}'}, status=status.HTTP_502_BAD_GATEWAY)
 
-        v_status = verification.get('data', {}).get('status')
-        if v_status == 'success':
+        if verification['success']:
             with transaction.atomic():
                 payment = Payment.objects.select_for_update().get(pk=payment.pk)
                 if payment.status != 'SUCCESS':
                     payment.status = 'SUCCESS'
                     payment.paid_at = timezone.now()
-                    payment.channel = verification['data'].get('channel', '')
-                    payment.provider_data = verification['data']
+                    payment.channel = verification.get('channel', '')
+                    payment.provider_data = verification.get('data') or {}
                     payment.save(update_fields=['status', 'paid_at', 'channel', 'provider_data', 'updated_at'])
                     fulfill_order(payment.order, payment=payment)
-            
+
             payment.order.refresh_from_db()
             return Response({
                 'status': 'SUCCESS',
                 'order': OrderSerializer(payment.order).data,
                 'tickets': TicketSerializer(payment.order.tickets.all(), many=True, context={'request': request}).data,
             })
-            
-        elif v_status in ['failed', 'abandoned']:
+
+        if verification['failed']:
             with transaction.atomic():
                 payment = Payment.objects.select_for_update().get(pk=payment.pk)
                 if payment.status == 'PENDING':
                     payment.status = 'FAILED'
-                    payment.provider_data = verification['data']
+                    payment.provider_data = verification.get('data') or {}
                     payment.save(update_fields=['status', 'provider_data', 'updated_at'])
                     fail_order(payment.order)
-            
+
+            return Response({
+                'status': 'FAILED',
+                'order': OrderSerializer(payment.order).data,
+            })
+
+        # Still pending at the provider. Payments previously marked FAILED stay
+        # failed for the buyer unless the provider confirms success above.
+        if payment.status == 'FAILED':
             return Response({
                 'status': 'FAILED',
                 'order': OrderSerializer(payment.order).data,
@@ -289,6 +399,68 @@ class PaymentVerifyView(APIView):
             'status': 'PENDING',
             'detail': 'Payment has not been completed yet.'
         })
+
+
+class AdminPaymentGatewayView(APIView):
+    """
+    GET/PATCH /api/admin/settings/payment-gateway/
+    Root admins pick which gateway processes new paid checkouts.
+    Both gateways stay configured; only the active one is used.
+    """
+    permission_classes = [IsAdmin]
+
+    def _payload(self):
+        setting = PlatformSetting.get_solo()
+        return {
+            'gateway': setting.payment_gateway,
+            'gateways': [
+                {
+                    'id': 'PAYSTACK',
+                    'name': 'Paystack',
+                    'configured': bool(getattr(settings, 'PAYSTACK_SECRET_KEY', '')),
+                    'active': setting.payment_gateway == 'PAYSTACK',
+                },
+                {
+                    'id': 'NOMBA',
+                    'name': 'Nomba',
+                    'configured': nomba.is_configured(),
+                    'sandbox': str(getattr(settings, 'NOMBA_SANDBOX', False)).lower() in ('true', '1', 't'),
+                    'active': setting.payment_gateway == 'NOMBA',
+                },
+            ],
+            'updated_at': setting.updated_at,
+        }
+
+    def get(self, request):
+        return Response(self._payload())
+
+    def patch(self, request):
+        gateway = (request.data.get('gateway') or request.data.get('payment_gateway') or '').upper()
+        valid = {choice[0] for choice in PlatformSetting.GATEWAY_CHOICES}
+        if gateway not in valid:
+            return Response(
+                {'detail': 'Select either PAYSTACK or NOMBA.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if gateway == 'NOMBA' and not nomba.is_configured():
+            return Response(
+                {'detail': 'Nomba credentials are missing on the server. Add the NOMBA_* environment variables first.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if gateway == 'PAYSTACK' and not getattr(settings, 'PAYSTACK_SECRET_KEY', ''):
+            return Response(
+                {'detail': 'Paystack is not configured on the server.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        setting = PlatformSetting.get_solo()
+        setting.payment_gateway = gateway
+        setting.updated_by = request.user
+        setting.save()
+
+        return Response(self._payload())
 
 
 class ReconcilePaymentsView(APIView):

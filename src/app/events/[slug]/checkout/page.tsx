@@ -449,6 +449,12 @@ export default function CheckoutPage() {
         },
       } as any);
 
+      if (response.payment_required && response.gateway === 'NOMBA' && response.nomba?.checkout_link) {
+        removeFromCart(event.id);
+        window.location.href = response.nomba.checkout_link;
+        return;
+      }
+
       if (response.payment_required && (response as any).paystack?.access_code) {
         initializePaystack({
           accessCode: (response as any).paystack.access_code,
@@ -510,6 +516,12 @@ export default function CheckoutPage() {
           ...customFieldValues,
         },
       } as any, token);
+
+      if (response.payment_required && response.gateway === 'NOMBA' && response.nomba?.checkout_link) {
+        removeFromCart(event.id);
+        window.location.href = response.nomba.checkout_link;
+        return;
+      }
 
       if (response.payment_required && (response as any).paystack?.access_code) {
         initializePaystack({

@@ -337,6 +337,7 @@ class Payment(models.Model):
     )
     PROVIDER_CHOICES = (
         ('PAYSTACK', 'Paystack'),
+        ('NOMBA', 'Nomba'),
         ('FREE', 'Free'),
     )
 
@@ -347,7 +348,7 @@ class Payment(models.Model):
     provider = models.CharField(max_length=20, choices=PROVIDER_CHOICES, default='PAYSTACK')
     channel = models.CharField(max_length=50, blank=True, help_text='e.g. card, bank, ussd')
     paid_at = models.DateTimeField(null=True, blank=True)
-    provider_data = models.JSONField(default=dict, blank=True, help_text='Raw Paystack response.')
+    provider_data = models.JSONField(default=dict, blank=True, help_text='Raw response from the payment gateway.')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -359,6 +360,48 @@ class PaymentEvent(models.Model):
     raw_body = models.JSONField(help_text='Full webhook payload.')
     processed = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
+
+
+class PlatformSetting(models.Model):
+    """Singleton row holding platform-wide switches controlled by root admins.
+
+    Checkout reads ``payment_gateway`` to decide which processor to use.
+    Paystack and Nomba both remain fully configured; only the active one is
+    used for new paid checkouts.
+    """
+
+    GATEWAY_CHOICES = (
+        ('PAYSTACK', 'Paystack'),
+        ('NOMBA', 'Nomba'),
+    )
+
+    payment_gateway = models.CharField(
+        max_length=20,
+        choices=GATEWAY_CHOICES,
+        default='PAYSTACK',
+        help_text='Active gateway for new paid checkouts.',
+    )
+    updated_by = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True, related_name='+'
+    )
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Platform Setting'
+        verbose_name_plural = 'Platform Settings'
+
+    def save(self, *args, **kwargs):
+        # Enforce a single row so settings can never diverge.
+        self.pk = 1
+        super().save(*args, **kwargs)
+
+    @classmethod
+    def get_solo(cls):
+        setting, _ = cls.objects.get_or_create(pk=1)
+        return setting
+
+    def __str__(self):
+        return f'Platform settings (gateway: {self.payment_gateway})'
 
 class OrganizerWallet(models.Model):
     organizer = models.OneToOneField(OrganizerProfile, on_delete=models.CASCADE, related_name='wallet')

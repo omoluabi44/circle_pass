@@ -108,11 +108,19 @@ export interface CheckoutAttendee {
 export interface CheckoutResponse {
   detail: string;
   payment_required: boolean;
+  gateway?: 'PAYSTACK' | 'NOMBA' | 'FREE';
   order: Order;
   tickets?: Ticket[];
+  payment_url?: string;
   paystack?: {
-    amount: number;
-    email: string;
+    access_code?: string;
+    authorization_url?: string;
+    amount?: number;
+    email?: string;
+    reference: string;
+  };
+  nomba?: {
+    checkout_link: string;
     reference: string;
   };
 }

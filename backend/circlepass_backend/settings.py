@@ -165,6 +165,14 @@ PAYSTACK_SECRET_KEY = os.environ.get('PAYSTACK_SECRET_KEY', '')
 PAYSTACK_PUBLIC_KEY = os.environ.get('PAYSTACK_PUBLIC_KEY', '')
 PAYSTACK_CALLBACK_URL = os.environ.get('PAYSTACK_CALLBACK_URL', 'https://thecirclepass.com/payment/callback')
 
+# Nomba (hosted Checkout). Credentials come from the Nomba dashboard.
+NOMBA_CLIENT_ID = os.environ.get('NOMBA_CLIENT_ID', '')
+NOMBA_CLIENT_SECRET = os.environ.get('NOMBA_CLIENT_SECRET', '')
+NOMBA_ACCOUNT_ID = os.environ.get('NOMBA_ACCOUNT_ID', '')
+NOMBA_WEBHOOK_SECRET = os.environ.get('NOMBA_WEBHOOK_SECRET', '')
+NOMBA_CALLBACK_URL = os.environ.get('NOMBA_CALLBACK_URL', 'https://thecirclepass.com/payment/callback')
+NOMBA_SANDBOX = os.environ.get('NOMBA_SANDBOX', 'False').lower() in ('true', '1', 't')
+
 EMAIL_BACKEND = os.environ.get('EMAIL_BACKEND', 'django.core.mail.backends.smtp.EmailBackend')
 EMAIL_HOST = os.environ.get('EMAIL_HOST', 'smtp.sendgrid.net')
 EMAIL_PORT = int(os.environ.get('EMAIL_PORT', 587))

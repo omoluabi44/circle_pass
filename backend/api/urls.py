@@ -9,7 +9,10 @@ from .views_waitlist import (
     WaitlistClaimView,
 )
 from .views_checkout import CheckoutView
-from .views_payment import PaystackWebhookView, PaymentVerifyView, ReconcilePaymentsView
+from .views_payment import (
+    PaystackWebhookView, NombaWebhookView, PaymentVerifyView,
+    ReconcilePaymentsView, AdminPaymentGatewayView,
+)
 from .views_wallet import OrganizerWalletView, WalletTransactionListView
 from .views_payout import (
     OrganizerPayoutListCreateView, OrganizerPayoutDetailView,
@@ -103,6 +106,7 @@ urlpatterns = [
     
     # Payments
     path('payments/paystack/webhook/', PaystackWebhookView.as_view(), name='payments_webhook'),
+    path('payments/nomba/webhook/', NombaWebhookView.as_view(), name='nomba_webhook'),
     path('payments/verify/', PaymentVerifyView.as_view(), name='payments_verify'),
     path('payments/reconcile/', ReconcilePaymentsView.as_view(), name='payments_reconcile'),
     
@@ -178,6 +182,7 @@ urlpatterns = [
     
     # Admin Views
     path('admin/overview/', AdminOverviewView.as_view(), name='admin_overview'),
+    path('admin/settings/payment-gateway/', AdminPaymentGatewayView.as_view(), name='admin_payment_gateway'),
     path('admin/', include(admin_router.urls)),
     
     # Admin: Payouts (view-only; payouts are auto-initiated and settled via Paystack webhooks)

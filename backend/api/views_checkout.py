@@ -18,6 +18,8 @@ from rest_framework.views import APIView
 from core.models import Event, TicketType, Order, OrderItem, Ticket, AttendeeProfile, Payment, WaitlistEntry
 from core.utils.qr import generate_secure_qr_token
 from core.utils.paystack import initialize_transaction
+from core.utils import nomba
+from core.utils.gateway import get_active_gateway
 from core.utils.fulfillment import fulfill_order
 from api.serializers import CheckoutRequestSerializer, OrderSerializer, TicketSerializer
 
@@ -334,14 +336,15 @@ class CheckoutView(APIView):
                     }, status=status.HTTP_201_CREATED)
 
                 # ============================================
-                # PAID TICKET PATH: Initialize Paystack server-side
+                # PAID TICKET PATH: Initialize the active gateway
                 # ============================================
                 buyer_email = guest_email or (request.user.email if request.user.is_authenticated else '')
 
                 if not buyer_email:
-                    # Paystack requires an email. Raise to trigger atomic rollback.
+                    # Both gateways require an email. Raise to trigger rollback.
                     raise ValueError("A valid email address is required to process payment.")
 
+                gateway = get_active_gateway()
                 reference = f'CP-{order.pk}-{timezone.now().strftime("%Y%m%d%H%M%S")}'
 
                 payment = Payment.objects.create(
@@ -349,19 +352,58 @@ class CheckoutView(APIView):
                     reference=reference,
                     amount=total_amount,
                     status='PENDING',
-                    provider='PAYSTACK'
+                    provider=gateway,
                 )
 
-                # Initialize with Paystack — raises on HTTP or connection error
-                paystack_data = initialize_transaction(
-                    amount=total_amount,
-                    email=buyer_email,
-                    reference=reference,
-                )
+                if gateway == 'NOMBA':
+                    if not nomba.is_configured():
+                        raise ValueError(
+                            'Nomba is selected but not configured. Please contact support.'
+                        )
+                    # Nomba Checkout is hosted: create the order, then send the
+                    # buyer to the returned checkout link.
+                    nomba_data = nomba.create_checkout_order(
+                        amount_kobo=total_amount,
+                        email=buyer_email,
+                        reference=reference,
+                    )
+                    payment.provider_data = nomba_data.get('raw', {})
+                    payment.save(update_fields=['provider_data'])
 
-                # Persist the access code / auth URL returned by Paystack
-                payment.provider_data = paystack_data.get('data', {})
-                payment.save(update_fields=['provider_data'])
+                    response_payload = {
+                        'detail': 'Order created. Proceed to payment.',
+                        'payment_required': True,
+                        'gateway': 'NOMBA',
+                        'order': OrderSerializer(order).data,
+                        'payment_url': nomba_data['checkout_link'],
+                        'nomba': {
+                            'checkout_link': nomba_data['checkout_link'],
+                            'reference': reference,
+                        },
+                    }
+                else:
+                    # Initialize with Paystack — raises on HTTP or connection error
+                    paystack_data = initialize_transaction(
+                        amount=total_amount,
+                        email=buyer_email,
+                        reference=reference,
+                    )
+
+                    # Persist the access code / auth URL returned by Paystack
+                    payment.provider_data = paystack_data.get('data', {})
+                    payment.save(update_fields=['provider_data'])
+
+                    response_payload = {
+                        'detail': 'Order created. Proceed to payment.',
+                        'payment_required': True,
+                        'gateway': 'PAYSTACK',
+                        'order': OrderSerializer(order).data,
+                        'paystack': {
+                            'access_code': paystack_data['data']['access_code'],
+                            'authorization_url': paystack_data['data']['authorization_url'],
+                            'reference': reference,
+                        },
+                    }
 
                 # Queue abandoned cart emails
                 try:
@@ -372,16 +414,7 @@ class CheckoutView(APIView):
                 except Exception as e:
                     logger.warning("Failed to queue abandoned cart emails for order %s: %s", order.id, e)
 
-                return Response({
-                    'detail': 'Order created. Proceed to payment.',
-                    'payment_required': True,
-                    'order': OrderSerializer(order).data,
-                    'paystack': {
-                        'access_code': paystack_data['data']['access_code'],
-                        'authorization_url': paystack_data['data']['authorization_url'],
-                        'reference': reference,
-                    },
-                }, status=status.HTTP_201_CREATED)
+                return Response(response_payload, status=status.HTTP_201_CREATED)
 
         except ValueError as exc:
             # Raised for business-rule errors (e.g. missing email).
