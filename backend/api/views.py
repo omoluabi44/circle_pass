@@ -12,6 +12,47 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
 
+
+def _get_or_create_google_user(email, role):
+    """Fetch or create a user for a Google sign-in without ever raising a 500.
+
+    Usernames are unique (and MySQL's default collation is case-insensitive), so
+    the naive ``get_or_create(email=...)`` used to blow up with an IntegrityError
+    whenever two different emails shared a local-part (or an account already
+    used that username). We retry with a unique suffix in that case.
+    """
+    from django.db import IntegrityError
+    import uuid
+
+    user = User.objects.filter(email__iexact=email).first()
+    if user:
+        return user, False
+
+    base = (email.split('@')[0] or 'user').strip()[:120]
+    for candidate in (base, f"{base}-{uuid.uuid4().hex[:8]}"):
+        try:
+            return User.objects.create(
+                email=email,
+                username=candidate,
+                role=role,
+                is_active=True,
+            ), True
+        except IntegrityError:
+            # Possibly created concurrently, or the username is taken — look again.
+            existing = User.objects.filter(email__iexact=email).first()
+            if existing:
+                return existing, False
+            continue
+
+    # Last resort: guaranteed-unique username.
+    return User.objects.create(
+        email=email,
+        username=f"user-{uuid.uuid4().hex[:12]}",
+        role=role,
+        is_active=True,
+    ), True
+
+
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def google_auth(request):
@@ -23,12 +64,11 @@ def google_auth(request):
         
     if not email:
         return Response({"detail": "Email is required"}, status=status.HTTP_400_BAD_REQUEST)
-    
-    user, created = User.objects.get_or_create(email=email, defaults={
-        'username': email.split('@')[0],
-        'role': role,
-        'is_active': True
-    })
+
+    user, created = _get_or_create_google_user(email, role)
+
+    # A user was found by email but an earlier sign-in may have failed before the
+    # account was fully set up, so fall through to the normalisation below.
     
     # If the user registered manually but didn't verify their email,
     # and then logs in via Google, Google has verified their email. So activate them automatically!
@@ -324,7 +364,7 @@ class EventViewSet(viewsets.ModelViewSet):
                 from core.models import TeamMember
                 return Event.objects.filter(
                     Q(organizer__user=user) |
-                    Q(team_members__user=user, team_members__status='ACTIVE') |
+                    Q(event_team_members__user=user, event_team_members__status='ACTIVE') |
                     Q(status__in=['PUBLISHED', 'LIVE', 'COMPLETED'])
                 ).distinct()
             return Event.objects.filter(status__in=['PUBLISHED', 'LIVE', 'COMPLETED'])
@@ -338,7 +378,7 @@ class EventViewSet(viewsets.ModelViewSet):
                 from core.models import TeamMember
                 qs = Event.objects.filter(
                     Q(organizer__user=user) |
-                    Q(team_members__user=user, team_members__status='ACTIVE')
+                    Q(event_team_members__user=user, event_team_members__status='ACTIVE')
                 ).distinct().order_by('-id')
         else:
             if user.is_authenticated and (is_admin_user(user) or getattr(user, 'role', '') == 'ORGANIZER'):
