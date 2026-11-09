@@ -173,7 +173,7 @@ export default function ProfilePage() {
         setProfile(data);
         setEditingField(null);
         // Refresh session if name changed
-        if (field === 'name') update();
+        if (field === 'name') update({});
       }
     } catch (err) {
       console.error("Failed to update profile", err);

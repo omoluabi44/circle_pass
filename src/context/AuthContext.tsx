@@ -49,6 +49,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  // Keep in-memory token in sync when fetchWithAuth silently refreshes it
+  useEffect(() => {
+    function handleTokenRefreshed(e: Event) {
+      const { accessToken } = (e as CustomEvent<{ accessToken: string }>).detail;
+      if (accessToken) setToken(accessToken);
+    }
+    window.addEventListener("cp:token-refreshed", handleTokenRefreshed);
+    return () => window.removeEventListener("cp:token-refreshed", handleTokenRefreshed);
+  }, []);
+
   const setSession = useCallback((accessToken: string, refreshToken?: string, userData?: Partial<User>) => {
     const isHttps = typeof window !== "undefined" && window.location.protocol === "https:";
     
