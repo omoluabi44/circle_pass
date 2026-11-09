@@ -141,8 +141,17 @@ export function refreshSession(): Promise<RefreshResult> {
  */
 export async function getValidAccessToken(fallback?: string | null): Promise<string | null> {
   const stored = getAccessToken() || fallback || null;
-  if (!stored) return null;
-  if (!isTokenExpired(stored)) return stored;
+
+  // No access token at all — but a refresh token can still restore the session.
+  if (!stored) {
+    if (!getRefreshToken()) return null;
+    const result = await refreshSession();
+    return result.token ?? null;
+  }
+
+  // A token we can't decode is corrupt / from another environment — refresh it.
+  const expiry = getTokenExpiry(stored);
+  if (expiry !== null && !isTokenExpired(stored)) return stored;
 
   const result = await refreshSession();
   if (result.token) return result.token;

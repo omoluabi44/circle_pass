@@ -3,7 +3,8 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from "react";
 import Cookies from "js-cookie";
 import { API_URL } from "@/lib/api/config";
-import { clearAuthSession, getValidAccessToken } from "@/lib/api/fetchWithAuth";
+import { clearAuthSession, getRefreshToken, getValidAccessToken } from "@/lib/api/fetchWithAuth";
+import { installAuthFetchInterceptor } from "@/lib/api/installFetchInterceptor";
 import { User } from "@/types";
 
 interface AuthContextType {
@@ -19,10 +20,21 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// Install as early as possible (before any component effect fires a request).
+if (typeof window !== "undefined") {
+  installAuthFetchInterceptor();
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Install the global auth fetch interceptor once, so requests that don't go
+  // through fetchWithAuth also recover from an invalid/expired access token.
+  useEffect(() => {
+    installAuthFetchInterceptor();
+  }, []);
 
   // Initialize auth state from cookies / localStorage on mount.
   //
@@ -39,11 +51,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           (typeof window !== "undefined" ? localStorage.getItem("accessToken") : null);
         const storedUserStr = typeof window !== "undefined" ? localStorage.getItem("cp_user") : null;
 
-        if (!storedToken || !storedUserStr) return;
+        if (!storedToken && !storedUserStr && !getRefreshToken()) return;
 
-        const parsedUser = JSON.parse(storedUserStr) as User;
+        let parsedUser: User | null = null;
+        if (storedUserStr) {
+          try {
+            parsedUser = JSON.parse(storedUserStr) as User;
+          } catch {
+            parsedUser = null;
+          }
+        }
 
-        // Refresh if the access token is expired or about to expire. Returns null
+        // Refresh if the access token is expired / undecodable. Returns null
         // only when the refresh token is missing/rejected, meaning truly signed out.
         const activeToken = await getValidAccessToken(storedToken);
         if (cancelled) return;
@@ -62,6 +81,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             }
           }
           return;
+        }
+
+        // Token is valid but the cached profile is missing/corrupt — rebuild it.
+        if (!parsedUser) {
+          try {
+            const meRes = await fetch(`${API_URL}/auth/users/me/`, {
+              headers: { Authorization: `Bearer ${activeToken}` },
+            });
+            if (!meRes.ok) {
+              clearAuthSession();
+              return;
+            }
+            const profile = await meRes.json();
+            parsedUser = {
+              id: profile.id,
+              email: profile.email,
+              username: profile.username,
+              name: profile.name || profile.username,
+              role: profile.role || "ATTENDEE",
+              isEmailVerified: profile.is_email_verified ?? profile.is_active ?? true,
+              phone_number: profile.phone_number,
+              avatar: profile.avatar,
+            };
+            localStorage.setItem("cp_user", JSON.stringify(parsedUser));
+          } catch {
+            return; // offline — keep the user signed out for this load
+          }
+          if (cancelled) return;
         }
 
         setUser(parsedUser);
@@ -107,6 +154,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     Cookies.set("access_token", accessToken, { expires: 7, secure: isHttps, sameSite: "lax" });
     if (refreshToken) {
       Cookies.set("refresh_token_cookies", refreshToken, { expires: 30, secure: isHttps, sameSite: "lax" });
+      // Mirror in localStorage so refresh still works if cookies are unavailable.
+      if (typeof window !== "undefined") {
+        localStorage.setItem("refresh_token", refreshToken);
+      }
     }
 
     if (userData) {
@@ -185,6 +236,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     if (typeof window !== "undefined") {
       localStorage.removeItem("accessToken");
+      localStorage.removeItem("refresh_token");
       localStorage.removeItem("cp_user");
     }
 
@@ -280,6 +332,7 @@ export function signOut(options?: { callbackUrl?: string }) {
   Cookies.remove("user_role");
   if (typeof window !== "undefined") {
     localStorage.removeItem("accessToken");
+    localStorage.removeItem("refresh_token");
     localStorage.removeItem("cp_user");
     window.location.href = options?.callbackUrl || "/login";
   }
