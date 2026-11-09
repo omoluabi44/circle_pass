@@ -24,7 +24,7 @@ export async function createEvent(token: string, data: any) {
 
   let res;
   try {
-    res = await fetch(`${API_URL}/events/`, {
+    res = await fetchWithAuth(`${API_URL}/events/`, {
       method: 'POST',
       headers,
       body: isFormData ? data : JSON.stringify(data)
@@ -78,7 +78,7 @@ export async function createEvent(token: string, data: any) {
 }
 
 export async function submitEvent(token: string, eventId: string | number) {
-  const res = await fetch(`${API_URL}/events/${eventId}/submit/`, {
+  const res = await fetchWithAuth(`${API_URL}/events/${eventId}/submit/`, {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${token}`
@@ -134,7 +134,7 @@ export async function getEventBySlug(slug: string) {
 }
 
 export async function getEventOverview(token: string, eventId: string | number) {
-  const res = await fetch(`${API_URL}/events/${eventId}/overview/`, {
+  const res = await fetchWithAuth(`${API_URL}/events/${eventId}/overview/`, {
     headers: { 'Authorization': `Bearer ${token}` },
     cache: 'no-store'
   });
@@ -156,7 +156,7 @@ export async function updateEvent(token: string, eventId: string | number, data:
     headers['Content-Type'] = 'application/json';
   }
 
-  const res = await fetch(`${API_URL}/events/${eventId}/`, {
+  const res = await fetchWithAuth(`${API_URL}/events/${eventId}/`, {
     method: 'PATCH',
     headers,
     body: isFormData ? data : JSON.stringify(data)
@@ -170,7 +170,7 @@ export async function updateEvent(token: string, eventId: string | number, data:
 }
 
 export async function getEventDiscounts(token: string, eventId: string | number) {
-  const res = await fetch(`${API_URL}/events/${eventId}/discounts/`, {
+  const res = await fetchWithAuth(`${API_URL}/events/${eventId}/discounts/`, {
     headers: { 'Authorization': `Bearer ${token}` },
     cache: 'no-store'
   });
@@ -183,7 +183,7 @@ export async function getEventDiscounts(token: string, eventId: string | number)
 }
 
 export async function createEventDiscount(token: string, eventId: string | number, data: any) {
-  const res = await fetch(`${API_URL}/events/${eventId}/discounts/`, {
+  const res = await fetchWithAuth(`${API_URL}/events/${eventId}/discounts/`, {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${token}`,
@@ -199,7 +199,7 @@ export async function createEventDiscount(token: string, eventId: string | numbe
 }
 
 export async function deleteEventDiscount(token: string, eventId: string | number, discountId: string | number) {
-  const res = await fetch(`${API_URL}/events/${eventId}/discounts/${discountId}/`, {
+  const res = await fetchWithAuth(`${API_URL}/events/${eventId}/discounts/${discountId}/`, {
     method: 'DELETE',
     headers: {
       'Authorization': `Bearer ${token}`
@@ -249,7 +249,7 @@ export async function getEventById(token: string, eventId: string | number) {
 }
 
 export async function getEventAttendees(token: string, eventId: string | number) {
-  const res = await fetch(`${API_URL}/organizer/contacts/?event_id=${eventId}`, {
+  const res = await fetchWithAuth(`${API_URL}/organizer/contacts/?event_id=${eventId}`, {
     headers: { 'Authorization': `Bearer ${token}` },
     cache: 'no-store'
   });
@@ -258,7 +258,7 @@ export async function getEventAttendees(token: string, eventId: string | number)
 }
 
 export async function getEventAnalytics(token: string, eventId: string | number) {
-  const res = await fetch(`${API_URL}/events/${eventId}/analytics/`, {
+  const res = await fetchWithAuth(`${API_URL}/events/${eventId}/analytics/`, {
     headers: { 'Authorization': `Bearer ${token}` },
     cache: 'no-store'
   });

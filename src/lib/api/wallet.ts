@@ -1,9 +1,10 @@
 import { API_URL as API } from './config';
+import { fetchWithAuth } from './fetchWithAuth';
 
 // ── Wallet ──────────────────────────────────────────────────────────────────
 
 export async function getOrganizerWallet(token: string) {
-  const res = await fetch(`${API}/organizer/wallet/`, {
+  const res = await fetchWithAuth(`${API}/organizer/wallet/`, {
     headers: { Authorization: `Bearer ${token}` },
   });
   if (!res.ok) throw new Error('Failed to fetch wallet');
@@ -11,7 +12,7 @@ export async function getOrganizerWallet(token: string) {
 }
 
 export async function getRecentTransactions(token: string, page = 1) {
-  const res = await fetch(`${API}/organizer/wallet/transactions/?page=${page}`, {
+  const res = await fetchWithAuth(`${API}/organizer/wallet/transactions/?page=${page}`, {
     headers: { Authorization: `Bearer ${token}` },
   });
   if (!res.ok) throw new Error('Failed to fetch transactions');
@@ -21,7 +22,7 @@ export async function getRecentTransactions(token: string, page = 1) {
 // ── Bank Accounts ────────────────────────────────────────────────────────────
 
 export async function getBankAccounts(token: string) {
-  const res = await fetch(`${API}/organizer/bank-accounts/`, {
+  const res = await fetchWithAuth(`${API}/organizer/bank-accounts/`, {
     headers: { Authorization: `Bearer ${token}` },
   });
   if (!res.ok) throw new Error('Failed to fetch bank accounts');
@@ -33,7 +34,7 @@ export async function addBankAccount(token: string, data: {
   bank_name: string;
   account_number: string;
 }) {
-  const res = await fetch(`${API}/organizer/bank-accounts/`, {
+  const res = await fetchWithAuth(`${API}/organizer/bank-accounts/`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
@@ -46,7 +47,7 @@ export async function addBankAccount(token: string, data: {
 }
 
 export async function deleteBankAccount(token: string, id: number) {
-  const res = await fetch(`${API}/organizer/bank-accounts/${id}/`, {
+  const res = await fetchWithAuth(`${API}/organizer/bank-accounts/${id}/`, {
     method: 'DELETE',
     headers: { Authorization: `Bearer ${token}` },
   });
@@ -54,7 +55,7 @@ export async function deleteBankAccount(token: string, id: number) {
 }
 
 export async function setDefaultBankAccount(token: string, id: number) {
-  const res = await fetch(`${API}/organizer/bank-accounts/${id}/`, {
+  const res = await fetchWithAuth(`${API}/organizer/bank-accounts/${id}/`, {
     method: 'PATCH',
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({}),
@@ -64,7 +65,7 @@ export async function setDefaultBankAccount(token: string, id: number) {
 }
 
 export async function resolveBankAccount(token: string, bank_code: string, account_number: string) {
-  const res = await fetch(`${API}/organizer/resolve_account/`, {
+  const res = await fetchWithAuth(`${API}/organizer/resolve_account/`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({ bank_code, account_number }),
@@ -77,7 +78,7 @@ export async function resolveBankAccount(token: string, bank_code: string, accou
 }
 
 export async function getBanks(token: string) {
-  const res = await fetch(`${API}/organizer/banks/`, {
+  const res = await fetchWithAuth(`${API}/organizer/banks/`, {
     headers: { Authorization: `Bearer ${token}` },
   });
   if (!res.ok) throw new Error('Failed to fetch banks');
@@ -87,7 +88,7 @@ export async function getBanks(token: string) {
 // ── Payout Fee Preview ───────────────────────────────────────────────────────
 
 export async function getPayoutFeePreview(token: string, amountKobo: number) {
-  const res = await fetch(`${API}/organizer/payouts/fee-preview/?amount=${amountKobo}`, {
+  const res = await fetchWithAuth(`${API}/organizer/payouts/fee-preview/?amount=${amountKobo}`, {
     headers: { Authorization: `Bearer ${token}` },
   });
   if (!res.ok) {
@@ -100,7 +101,7 @@ export async function getPayoutFeePreview(token: string, amountKobo: number) {
 // ── Payouts ──────────────────────────────────────────────────────────────────
 
 export async function getPayoutHistory(token: string) {
-  const res = await fetch(`${API}/organizer/payouts/`, {
+  const res = await fetchWithAuth(`${API}/organizer/payouts/`, {
     headers: { Authorization: `Bearer ${token}` },
   });
   if (!res.ok) throw new Error('Failed to fetch payouts');
@@ -108,7 +109,7 @@ export async function getPayoutHistory(token: string) {
 }
 
 export async function getPayoutDetail(token: string, id: number) {
-  const res = await fetch(`${API}/organizer/payouts/${id}/`, {
+  const res = await fetchWithAuth(`${API}/organizer/payouts/${id}/`, {
     headers: { Authorization: `Bearer ${token}` },
   });
   if (!res.ok) throw new Error('Failed to fetch payout details');
@@ -119,7 +120,7 @@ export async function requestPayout(token: string, data: {
   amount: number;
   bank_account_id: number;
 }) {
-  const res = await fetch(`${API}/organizer/payouts/`, {
+  const res = await fetchWithAuth(`${API}/organizer/payouts/`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
     body: JSON.stringify(data),

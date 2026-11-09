@@ -1,7 +1,8 @@
 import { API_URL } from './config';
+import { fetchWithAuth } from './fetchWithAuth';
 
 export async function getMyTickets(token: string) {
-  const res = await fetch(`${API_URL}/tickets/`, {
+  const res = await fetchWithAuth(`${API_URL}/tickets/`, {
     headers: {
       'Authorization': `Bearer ${token}`
     },
@@ -14,7 +15,7 @@ export async function getMyTickets(token: string) {
 }
 
 export async function getTicketById(token: string, id: string | number) {
-  const res = await fetch(`${API_URL}/tickets/${id}/`, {
+  const res = await fetchWithAuth(`${API_URL}/tickets/${id}/`, {
     headers: {
       'Authorization': `Bearer ${token}`
     },

@@ -1,7 +1,8 @@
 import { API_URL } from "./config";
+import { fetchWithAuth } from "./fetchWithAuth";
 
 export async function toggleSaveEvent(eventId: number, token: string) {
-  const res = await fetch(`${API_URL}/events/${eventId}/save/`, {
+  const res = await fetchWithAuth(`${API_URL}/events/${eventId}/save/`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
@@ -16,7 +17,7 @@ export async function toggleSaveEvent(eventId: number, token: string) {
 }
 
 export async function toggleFollowOrganizer(organizerId: number, token: string) {
-  const res = await fetch(`${API_URL}/organizers/${organizerId}/follow/`, {
+  const res = await fetchWithAuth(`${API_URL}/organizers/${organizerId}/follow/`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,

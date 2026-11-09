@@ -1,5 +1,6 @@
 import { CheckoutRequest, CheckoutResponse } from '@/types';
 import { API_URL } from './config';
+import { fetchWithAuth } from './fetchWithAuth';
 
 export async function checkout(data: CheckoutRequest, token?: string): Promise<CheckoutResponse> {
   const headers: Record<string, string> = {
@@ -9,7 +10,7 @@ export async function checkout(data: CheckoutRequest, token?: string): Promise<C
     headers['Authorization'] = `Bearer ${token}`;
   }
   
-  const res = await fetch(`${API_URL}/orders/checkout/`, {
+  const res = await fetchWithAuth(`${API_URL}/orders/checkout/`, {
     method: 'POST',
     headers,
     body: JSON.stringify(data),

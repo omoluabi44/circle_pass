@@ -18,7 +18,7 @@ import { API_URL } from "./config";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-function getRefreshToken(): string | null {
+export function getRefreshToken(): string | null {
   if (typeof window === "undefined") return null;
   return (
     Cookies.get("refresh_token_cookies") ||
@@ -27,13 +27,39 @@ function getRefreshToken(): string | null {
   );
 }
 
-function getAccessToken(): string | null {
+export function getAccessToken(): string | null {
   if (typeof window === "undefined") return null;
   return (
     Cookies.get("access_token") ||
     localStorage.getItem("accessToken") ||
     null
   );
+}
+
+/** Decode a JWT payload without verifying the signature (client-side only). */
+function decodeJwtPayload(token: string): Record<string, any> | null {
+  try {
+    const part = token.split(".")[1];
+    if (!part) return null;
+    const base64 = part.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = base64.padEnd(base64.length + ((4 - (base64.length % 4)) % 4), "=");
+    return JSON.parse(decodeURIComponent(escape(atob(padded))));
+  } catch {
+    return null;
+  }
+}
+
+/** Returns the token expiry as a Unix timestamp in seconds, or null if unknown. */
+export function getTokenExpiry(token: string): number | null {
+  const payload = decodeJwtPayload(token);
+  return typeof payload?.exp === "number" ? payload.exp : null;
+}
+
+/** True when the token is expired or will expire within `leewaySeconds`. */
+export function isTokenExpired(token: string, leewaySeconds = 60): boolean {
+  const exp = getTokenExpiry(token);
+  if (exp === null) return false; // opaque/undecodable token — assume still valid
+  return exp * 1000 - leewaySeconds * 1000 <= Date.now();
 }
 
 function persistNewAccessToken(accessToken: string): void {
@@ -63,11 +89,15 @@ function clearSession(): void {
 
 // ── Token refresh (singleton promise to prevent concurrent refreshes) ────────
 
-let refreshPromise: Promise<string | null> | null = null;
+let refreshPromise: Promise<RefreshResult> | null = null;
 
-async function refreshAccessToken(): Promise<string | null> {
+export type RefreshResult =
+  | { token: string; reason: "ok" | "not_needed" }
+  | { token: null; reason: "missing" | "invalid" | "network" };
+
+async function performRefresh(): Promise<RefreshResult> {
   const refreshToken = getRefreshToken();
-  if (!refreshToken) return null;
+  if (!refreshToken) return { token: null, reason: "missing" };
 
   try {
     const res = await fetch(`${API_URL}/auth/jwt/refresh/`, {
@@ -76,27 +106,52 @@ async function refreshAccessToken(): Promise<string | null> {
       body: JSON.stringify({ refresh: refreshToken }),
     });
 
-    if (!res.ok) return null;
+    if (!res.ok) return { token: null, reason: "invalid" };
 
     const data = await res.json();
     const newAccess: string | undefined = data.access;
-    if (!newAccess) return null;
+    if (!newAccess) return { token: null, reason: "invalid" };
 
     persistNewAccessToken(newAccess);
-    return newAccess;
+    return { token: newAccess, reason: "ok" };
   } catch {
-    return null;
+    return { token: null, reason: "network" };
   }
 }
 
 /** Call once; concurrent callers share the same in-flight promise. */
-function getOrStartRefresh(): Promise<string | null> {
+export function refreshSession(): Promise<RefreshResult> {
   if (!refreshPromise) {
-    refreshPromise = refreshAccessToken().finally(() => {
+    refreshPromise = performRefresh().finally(() => {
       refreshPromise = null;
     });
   }
   return refreshPromise;
+}
+
+/**
+ * Resolve an access token that is safe to use right now.
+ *
+ * - If the stored token is still valid, it is returned as-is.
+ * - If it is expired (or about to expire), a silent refresh is attempted.
+ * - If the refresh truly failed (no refresh token / rejected), null is returned so
+ *   the caller can treat the session as unauthenticated.
+ * - On a network error the existing token is returned so temporary offline states
+ *   don't log the user out.
+ */
+export async function getValidAccessToken(fallback?: string | null): Promise<string | null> {
+  const stored = getAccessToken() || fallback || null;
+  if (!stored) return null;
+  if (!isTokenExpired(stored)) return stored;
+
+  const result = await refreshSession();
+  if (result.token) return result.token;
+  if (result.reason === "network") return stored;
+  return null;
+}
+
+export function clearAuthSession(): void {
+  clearSession();
 }
 
 // ── Main export ──────────────────────────────────────────────────────────────
@@ -133,10 +188,14 @@ export async function fetchWithAuth(
   if (!isTokenError) return res; // permission 401 — don't refresh
 
   // Attempt silent refresh
-  const newToken = await getOrStartRefresh();
+  const refreshResult = await refreshSession();
+  const newToken = refreshResult.token;
 
   if (!newToken) {
-    // Refresh failed — clear session and redirect to login
+    // Only clear the session when the refresh token is genuinely unusable.
+    // A network blip should not log the user out.
+    if (refreshResult.reason === "network") return res;
+
     clearSession();
     if (typeof window !== "undefined") {
       window.location.href = "/login?reason=session_expired";

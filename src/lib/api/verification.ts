@@ -1,7 +1,8 @@
 import { API_URL } from './config';
+import { fetchWithAuth } from './fetchWithAuth';
 
 export async function getVerificationStatus(token: string) {
-  const res = await fetch(`${API_URL}/organizer/verification/`, {
+  const res = await fetchWithAuth(`${API_URL}/organizer/verification/`, {
     headers: {
       'Authorization': `Bearer ${token}`
     },
@@ -12,7 +13,7 @@ export async function getVerificationStatus(token: string) {
 }
 
 export async function submitVerification(token: string, formData: FormData) {
-  const res = await fetch(`${API_URL}/organizer/verification/`, {
+  const res = await fetchWithAuth(`${API_URL}/organizer/verification/`, {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${token}`

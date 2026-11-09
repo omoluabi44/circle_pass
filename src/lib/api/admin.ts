@@ -1,9 +1,10 @@
 import { Payout } from '@/types';
 import { API_URL } from './config';
+import { fetchWithAuth } from './fetchWithAuth';
 
 
 export async function getAdminOverview(token: string) {
-  const res = await fetch(`${API_URL}/admin/overview/`, {
+  const res = await fetchWithAuth(`${API_URL}/admin/overview/`, {
     headers: {
       'Authorization': `Bearer ${token}`
     },
@@ -17,7 +18,7 @@ export async function getAdminOverview(token: string) {
 }
 
 export async function getAdminUsers(token: string) {
-  const res = await fetch(`${API_URL}/admin/users/`, {
+  const res = await fetchWithAuth(`${API_URL}/admin/users/`, {
     headers: {
       'Authorization': `Bearer ${token}`
     },
@@ -29,7 +30,7 @@ export async function getAdminUsers(token: string) {
 }
 
 export async function getAdminOrganizerDetail(token: string, organizerIdOrUserId: number | string) {
-  const res = await fetch(`${API_URL}/admin/organizers/${organizerIdOrUserId}/`, {
+  const res = await fetchWithAuth(`${API_URL}/admin/organizers/${organizerIdOrUserId}/`, {
     headers: {
       'Authorization': `Bearer ${token}`
     },
@@ -43,7 +44,7 @@ export async function getAdminOrganizerDetail(token: string, organizerIdOrUserId
 }
 
 export async function getAdminOrganizerVerifications(token: string) {
-  const res = await fetch(`${API_URL}/admin/organizer-verifications/`, {
+  const res = await fetchWithAuth(`${API_URL}/admin/organizer-verifications/`, {
     headers: {
       'Authorization': `Bearer ${token}`
     },
@@ -55,7 +56,7 @@ export async function getAdminOrganizerVerifications(token: string) {
 }
 
 export async function getAdminOrganizerVerification(token: string, id: number) {
-  const res = await fetch(`${API_URL}/admin/organizer-verifications/${id}/`, {
+  const res = await fetchWithAuth(`${API_URL}/admin/organizer-verifications/${id}/`, {
     headers: {
       'Authorization': `Bearer ${token}`
     },
@@ -69,7 +70,7 @@ export async function getAdminOrganizerVerification(token: string, id: number) {
 }
 
 export async function approveOrganizerVerification(token: string, id: number) {
-  const res = await fetch(`${API_URL}/admin/organizer-verifications/${id}/approve/`, {
+  const res = await fetchWithAuth(`${API_URL}/admin/organizer-verifications/${id}/approve/`, {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${token}`
@@ -80,7 +81,7 @@ export async function approveOrganizerVerification(token: string, id: number) {
 }
 
 export async function rejectOrganizerVerification(token: string, id: number) {
-  const res = await fetch(`${API_URL}/admin/organizer-verifications/${id}/reject/`, {
+  const res = await fetchWithAuth(`${API_URL}/admin/organizer-verifications/${id}/reject/`, {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${token}`
@@ -91,7 +92,7 @@ export async function rejectOrganizerVerification(token: string, id: number) {
 }
 
 export async function getAdminEvents(token: string) {
-  const res = await fetch(`${API_URL}/admin/events/`, {
+  const res = await fetchWithAuth(`${API_URL}/admin/events/`, {
     headers: {
       'Authorization': `Bearer ${token}`
     },
@@ -105,7 +106,7 @@ export async function getAdminEvents(token: string) {
 }
 
 export async function getAdminEvent(token: string, id: number) {
-  const res = await fetch(`${API_URL}/admin/events/${id}/`, {
+  const res = await fetchWithAuth(`${API_URL}/admin/events/${id}/`, {
     headers: {
       'Authorization': `Bearer ${token}`
     },
@@ -119,7 +120,7 @@ export async function getAdminEvent(token: string, id: number) {
 }
 
 export async function approveEvent(token: string, id: number) {
-  const res = await fetch(`${API_URL}/admin/events/${id}/approve/`, {
+  const res = await fetchWithAuth(`${API_URL}/admin/events/${id}/approve/`, {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${token}`
@@ -130,7 +131,7 @@ export async function approveEvent(token: string, id: number) {
 }
 
 export async function rejectEvent(token: string, id: number) {
-  const res = await fetch(`${API_URL}/admin/events/${id}/reject/`, {
+  const res = await fetchWithAuth(`${API_URL}/admin/events/${id}/reject/`, {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${token}`
@@ -142,7 +143,7 @@ export async function rejectEvent(token: string, id: number) {
 
 export async function getAdminPayouts(token: string, statusFilter?: string): Promise<Payout[]> {
   const params = statusFilter ? `?status=${statusFilter}` : '';
-  const res = await fetch(`${API_URL}/admin/payouts/${params}`, {
+  const res = await fetchWithAuth(`${API_URL}/admin/payouts/${params}`, {
     headers: { Authorization: `Bearer ${token}` },
   });
   if (!res.ok) throw new Error('Failed to fetch payouts');
@@ -150,7 +151,7 @@ export async function getAdminPayouts(token: string, statusFilter?: string): Pro
 }
 
 export async function approvePayout(token: string, id: number): Promise<Payout> {
-  const res = await fetch(`${API_URL}/admin/payouts/${id}/approve/`, {
+  const res = await fetchWithAuth(`${API_URL}/admin/payouts/${id}/approve/`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}` },
   });
@@ -159,7 +160,7 @@ export async function approvePayout(token: string, id: number): Promise<Payout> 
 }
 
 export async function rejectPayout(token: string, id: number, reason: string): Promise<Payout> {
-  const res = await fetch(`${API_URL}/admin/payouts/${id}/reject/`, {
+  const res = await fetchWithAuth(`${API_URL}/admin/payouts/${id}/reject/`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${token}`,
@@ -173,7 +174,7 @@ export async function rejectPayout(token: string, id: number, reason: string): P
 
 
 export async function deleteAdminUser(token: string, userId: number) {
-  const res = await fetch(`${API_URL}/admin/users/${userId}/`, {
+  const res = await fetchWithAuth(`${API_URL}/admin/users/${userId}/`, {
     method: 'DELETE',
     headers: {
       Authorization: `Bearer ${token}`
@@ -185,7 +186,7 @@ export async function deleteAdminUser(token: string, userId: number) {
 
 
 export async function deleteAdminEvent(token: string, eventId: number) {
-  const res = await fetch(`${API_URL}/admin/events/${eventId}/`, {
+  const res = await fetchWithAuth(`${API_URL}/admin/events/${eventId}/`, {
     method: 'DELETE',
     headers: {
       Authorization: `Bearer ${token}`
@@ -198,7 +199,7 @@ export async function deleteAdminEvent(token: string, eventId: number) {
 // ─── Admin Edit: Organizer ────────────────────────────────────────────────────
 
 export async function adminEditOrganizer(token: string, id: number, data: Record<string, any>) {
-  const res = await fetch(`${API_URL}/admin/organizers/${id}/edit/`, {
+  const res = await fetchWithAuth(`${API_URL}/admin/organizers/${id}/edit/`, {
     method: 'PATCH',
     headers: {
       Authorization: `Bearer ${token}`,
@@ -216,7 +217,7 @@ export async function adminEditOrganizer(token: string, id: number, data: Record
 // ─── Admin Edit: Event ────────────────────────────────────────────────────────
 
 export async function adminGetEventDetail(token: string, id: number) {
-  const res = await fetch(`${API_URL}/admin/events/${id}/detail/`, {
+  const res = await fetchWithAuth(`${API_URL}/admin/events/${id}/detail/`, {
     headers: { Authorization: `Bearer ${token}` },
     cache: 'no-store',
   });
@@ -228,7 +229,7 @@ export async function adminGetEventDetail(token: string, id: number) {
 }
 
 export async function adminEditEvent(token: string, id: number, data: Record<string, any>) {
-  const res = await fetch(`${API_URL}/admin/events/${id}/edit/`, {
+  const res = await fetchWithAuth(`${API_URL}/admin/events/${id}/edit/`, {
     method: 'PATCH',
     headers: {
       Authorization: `Bearer ${token}`,
@@ -246,7 +247,7 @@ export async function adminEditEvent(token: string, id: number, data: Record<str
 // ─── Admin: Ticket Types ──────────────────────────────────────────────────────
 
 export async function adminCreateTicketType(token: string, eventId: number, data: Record<string, any>) {
-  const res = await fetch(`${API_URL}/admin/events/${eventId}/ticket-types/`, {
+  const res = await fetchWithAuth(`${API_URL}/admin/events/${eventId}/ticket-types/`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${token}`,
@@ -262,7 +263,7 @@ export async function adminCreateTicketType(token: string, eventId: number, data
 }
 
 export async function adminUpdateTicketType(token: string, ttId: number, data: Record<string, any>) {
-  const res = await fetch(`${API_URL}/admin/ticket-types/${ttId}/`, {
+  const res = await fetchWithAuth(`${API_URL}/admin/ticket-types/${ttId}/`, {
     method: 'PATCH',
     headers: {
       Authorization: `Bearer ${token}`,
@@ -278,7 +279,7 @@ export async function adminUpdateTicketType(token: string, ttId: number, data: R
 }
 
 export async function adminDeleteTicketType(token: string, ttId: number) {
-  const res = await fetch(`${API_URL}/admin/ticket-types/${ttId}/`, {
+  const res = await fetchWithAuth(`${API_URL}/admin/ticket-types/${ttId}/`, {
     method: 'DELETE',
     headers: { Authorization: `Bearer ${token}` },
   });
@@ -302,7 +303,7 @@ export async function getAdminTickets(
   if (params?.event_id) query.set('event_id', String(params.event_id));
 
   const url = `${API_URL}/admin/tickets/${query.toString() ? `?${query.toString()}` : ''}`;
-  const res = await fetch(url, {
+  const res = await fetchWithAuth(url, {
     headers: { Authorization: `Bearer ${token}` },
     cache: 'no-store',
   });
@@ -314,7 +315,7 @@ export async function getAdminTickets(
 }
 
 export async function getAdminTicketDetail(token: string, id: number) {
-  const res = await fetch(`${API_URL}/admin/tickets/${id}/`, {
+  const res = await fetchWithAuth(`${API_URL}/admin/tickets/${id}/`, {
     headers: { Authorization: `Bearer ${token}` },
     cache: 'no-store',
   });
@@ -326,7 +327,7 @@ export async function getAdminTicketDetail(token: string, id: number) {
 }
 
 export async function adminUpdateTicket(token: string, id: number, data: Record<string, any>) {
-  const res = await fetch(`${API_URL}/admin/tickets/${id}/`, {
+  const res = await fetchWithAuth(`${API_URL}/admin/tickets/${id}/`, {
     method: 'PATCH',
     headers: {
       Authorization: `Bearer ${token}`,
@@ -342,7 +343,7 @@ export async function adminUpdateTicket(token: string, id: number, data: Record<
 }
 
 export async function adminDeleteTicket(token: string, id: number) {
-  const res = await fetch(`${API_URL}/admin/tickets/${id}/`, {
+  const res = await fetchWithAuth(`${API_URL}/admin/tickets/${id}/`, {
     method: 'DELETE',
     headers: { Authorization: `Bearer ${token}` },
   });
@@ -359,7 +360,7 @@ export async function adminTransferEvent(
   eventId: number,
   payload: { organizer_id?: number | string; email?: string }
 ) {
-  const res = await fetch(`${API_URL}/admin/events/${eventId}/transfer/`, {
+  const res = await fetchWithAuth(`${API_URL}/admin/events/${eventId}/transfer/`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${token}`,
@@ -391,7 +392,7 @@ export async function getPaymentGatewaySetting(token: string): Promise<{
   gateways: PaymentGatewayOption[];
   updated_at: string;
 }> {
-  const res = await fetch(`${API_URL}/admin/settings/payment-gateway/`, {
+  const res = await fetchWithAuth(`${API_URL}/admin/settings/payment-gateway/`, {
     headers: { Authorization: `Bearer ${token}` },
   });
   if (!res.ok) {
@@ -405,7 +406,7 @@ export async function updatePaymentGateway(
   token: string,
   gateway: 'PAYSTACK' | 'NOMBA'
 ) {
-  const res = await fetch(`${API_URL}/admin/settings/payment-gateway/`, {
+  const res = await fetchWithAuth(`${API_URL}/admin/settings/payment-gateway/`, {
     method: 'PATCH',
     headers: {
       Authorization: `Bearer ${token}`,

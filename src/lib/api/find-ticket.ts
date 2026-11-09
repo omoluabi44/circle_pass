@@ -1,4 +1,5 @@
 import { API_URL } from "./config";
+import { fetchWithAuth } from "./fetchWithAuth";
 
 export const findTicket = async (payload: { order_reference?: string, email?: string, phone_number?: string }) => {
   const response = await fetch(`${API_URL}/tickets/find/`, {
@@ -27,7 +28,7 @@ export const requestTicketAccess = async (
   token: string,
   payload: { order_reference?: string, email?: string, phone_number?: string }
 ) => {
-  const response = await fetch(`${API_URL}/tickets/access/`, {
+  const response = await fetchWithAuth(`${API_URL}/tickets/access/`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

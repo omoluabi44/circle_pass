@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from "react";
 import Cookies from "js-cookie";
 import { API_URL } from "@/lib/api/config";
+import { clearAuthSession, getValidAccessToken } from "@/lib/api/fetchWithAuth";
 import { User } from "@/types";
 
 interface AuthContextType {
@@ -23,30 +24,70 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Initialize auth state from cookies / localStorage on mount
+  // Initialize auth state from cookies / localStorage on mount.
+  //
+  // The stored access token may already be expired (it only lives 7 days), which
+  // used to leave the UI in a "logged in but every request 401s" state for users
+  // whose token had lapsed. Silently refresh it before releasing the loading gate.
   useEffect(() => {
-    try {
-      const storedToken = Cookies.get("access_token") || (typeof window !== "undefined" ? localStorage.getItem("accessToken") : null);
-      const storedUserStr = typeof window !== "undefined" ? localStorage.getItem("cp_user") : null;
+    let cancelled = false;
 
-      if (storedToken && storedUserStr) {
-        const parsedUser = JSON.parse(storedUserStr);
+    async function restoreSession() {
+      try {
+        const storedToken =
+          Cookies.get("access_token") ||
+          (typeof window !== "undefined" ? localStorage.getItem("accessToken") : null);
+        const storedUserStr = typeof window !== "undefined" ? localStorage.getItem("cp_user") : null;
+
+        if (!storedToken || !storedUserStr) return;
+
+        const parsedUser = JSON.parse(storedUserStr) as User;
+
+        // Refresh if the access token is expired or about to expire. Returns null
+        // only when the refresh token is missing/rejected, meaning truly signed out.
+        const activeToken = await getValidAccessToken(storedToken);
+        if (cancelled) return;
+
+        if (!activeToken) {
+          clearAuthSession();
+          if (typeof window !== "undefined") {
+            localStorage.removeItem("cp_user");
+            localStorage.removeItem("accessToken");
+
+            // If the user is on a protected page, send them to login instead of
+            // leaving them on a page where every request fails.
+            if (/^\/(dashboard|organizer|admin)/.test(window.location.pathname)) {
+              const callbackUrl = window.location.pathname + window.location.search;
+              window.location.href = `/login?reason=session_expired&callbackUrl=${encodeURIComponent(callbackUrl)}`;
+            }
+          }
+          return;
+        }
+
         setUser(parsedUser);
-        setToken(storedToken);
+        setToken(activeToken);
 
         // Ensure cookies stay in sync for proxy / middleware
         if (!Cookies.get("access_token")) {
-          Cookies.set("access_token", storedToken, { expires: 7, sameSite: "lax" });
+          Cookies.set("access_token", activeToken, { expires: 7, sameSite: "lax" });
+        }
+        if (!localStorage.getItem("accessToken")) {
+          localStorage.setItem("accessToken", activeToken);
         }
         if (parsedUser.role && !Cookies.get("user_role")) {
           Cookies.set("user_role", parsedUser.role, { expires: 30, sameSite: "lax" });
         }
+      } catch (e) {
+        console.error("Error restoring session:", e);
+      } finally {
+        if (!cancelled) setIsLoading(false);
       }
-    } catch (e) {
-      console.error("Error restoring session:", e);
-    } finally {
-      setIsLoading(false);
     }
+
+    restoreSession();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   // Keep in-memory token in sync when fetchWithAuth silently refreshes it
