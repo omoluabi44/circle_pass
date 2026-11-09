@@ -190,6 +190,12 @@ function LoginForm() {
             </p>
           </div>
 
+          {searchParams.get("reason") === "session_expired" && (
+            <p className="text-sm bg-amber-500/10 text-amber-700 dark:text-amber-400 p-3 rounded-lg border border-amber-500/20">
+              Your session expired. Please sign in again to continue.
+            </p>
+          )}
+
           {/* =========================================================================
               EMAIL & PASSWORD LOGIN FORM (COMMENTED OUT TEMPORARILY AS REQUESTED)
               Uncomment this block whenever email/password login is to be re-enabled.
