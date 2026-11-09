@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { RefreshCw } from 'lucide-react';
 import { Plus, Edit2, Trash2, CheckCircle2 } from 'lucide-react';
 import { getEventById, updateEvent } from '@/lib/api/events';
 import { useParams } from 'next/navigation';
@@ -46,23 +47,30 @@ export default function TicketsPage() {
   const [description, setDescription] = useState('');
   const [isActive, setIsActive] = useState(true);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [editingTicketId, setEditingTicketId] = useState<number | null>(null);
 
-  useEffect(() => {
-    async function fetchEvent() {
-      if (status === "loading") return;
-      if (!session?.accessToken || !id || id === "undefined") return;
-      try {
-        const data = await getEventById(session.accessToken as string, id);
-        setEvent(data);
-      } catch (err: any) {
-        toast.error("Failed to fetch tickets");
-      } finally {
-        setLoading(false);
-      }
+  const fetchEvent = useCallback(async () => {
+    if (status === "loading") return;
+    if (!session?.accessToken || !id || id === "undefined") {
+      setLoading(false);
+      return;
     }
-    fetchEvent();
+    try {
+      setFetchError(null);
+      const data = await getEventById(session.accessToken as string, id);
+      setEvent(data);
+    } catch (err: any) {
+      toast.error("Failed to fetch tickets");
+      setFetchError(err?.message || "Failed to fetch event ticket types");
+    } finally {
+      setLoading(false);
+    }
   }, [id, session?.accessToken, status]);
+
+  useEffect(() => {
+    fetchEvent();
+  }, [fetchEvent]);
 
   const closeModal = () => {
     setShowModal(false);
@@ -180,6 +188,22 @@ export default function TicketsPage() {
           Create Ticket Type
         </button>
       </div>
+
+      {fetchError && !event && (
+        <div className="mb-6 p-4 rounded-xl bg-destructive/10 text-destructive border border-destructive/20 flex items-center justify-between">
+          <p className="text-sm font-medium">{fetchError}</p>
+          <button
+            onClick={() => {
+              setLoading(true);
+              fetchEvent();
+            }}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-primary text-primary-foreground rounded-lg text-xs font-semibold hover:bg-primary/90 transition-colors"
+          >
+            <RefreshCw className="w-3.5 h-3.5" />
+            Retry
+          </button>
+        </div>
+      )}
 
       <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
         <div className="overflow-x-auto">

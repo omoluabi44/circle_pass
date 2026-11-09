@@ -7,7 +7,7 @@ from djoser import utils
 from django.contrib.auth.tokens import default_token_generator
 from core.models import OrganizerProfile, User
 from .serializers import OrganizerProfileSerializer
-from .permissions import IsOrganizer, IsAttendee, IsOrganizerOrAdmin
+from .permissions import IsOrganizer, IsAttendee, IsOrganizerOrAdmin, is_admin_user, user_can_manage_event
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
@@ -316,13 +316,32 @@ class EventViewSet(viewsets.ModelViewSet):
         is_public = self.request.query_params.get('public') == 'true'
         slug = self.request.query_params.get('slug')
 
-        if user.is_authenticated and hasattr(user, 'role') and not is_public:
-            if user.role in ['ORGANIZER', 'ADMIN']:
+        # Detail actions (retrieve, overview, analytics, update, partial_update, destroy, submit, etc.)
+        if getattr(self, 'detail', False) or self.action in ['retrieve', 'overview', 'analytics', 'update', 'partial_update', 'destroy', 'submit']:
+            if user.is_authenticated:
+                if is_admin_user(user):
+                    return Event.objects.all()
+                from core.models import TeamMember
+                return Event.objects.filter(
+                    Q(organizer__user=user) |
+                    Q(team_members__user=user, team_members__status='ACTIVE') |
+                    Q(status__in=['PUBLISHED', 'LIVE', 'COMPLETED'])
+                ).distinct()
+            return Event.objects.filter(status__in=['PUBLISHED', 'LIVE', 'COMPLETED'])
+
+        if user.is_authenticated and not is_public:
+            if is_admin_user(user):
+                qs = Event.objects.all().order_by('-id')
+            elif getattr(user, 'role', '') == 'ORGANIZER':
                 qs = Event.objects.filter(organizer__user=user).order_by('-id')
             else:
-                qs = Event.objects.none() # Internal request by non-organizer should see no owned events
+                from core.models import TeamMember
+                qs = Event.objects.filter(
+                    Q(organizer__user=user) |
+                    Q(team_members__user=user, team_members__status='ACTIVE')
+                ).distinct().order_by('-id')
         else:
-            if user.is_authenticated and user.role in ['ORGANIZER', 'ADMIN']:
+            if user.is_authenticated and (is_admin_user(user) or getattr(user, 'role', '') == 'ORGANIZER'):
                 # If public request but authenticated as organizer/admin, let them see public events PLUS their own drafts
                 qs = Event.objects.filter(
                     Q(status__in=['PUBLISHED', 'LIVE']) | Q(organizer__user=user)
@@ -480,7 +499,7 @@ class EventViewSet(viewsets.ModelViewSet):
         obj = super().get_object()
         user = self.request.user
         if self.request.method not in permissions.SAFE_METHODS:
-            if user.is_authenticated and user.role != 'ADMIN' and getattr(obj.organizer, 'user', None) != user:
+            if user.is_authenticated and not user_can_manage_event(user, obj):
                 from rest_framework.exceptions import PermissionDenied
                 raise PermissionDenied("You do not have permission to modify this event.")
         return obj

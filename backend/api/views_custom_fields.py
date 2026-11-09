@@ -2,6 +2,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from core.models import Event, EventCustomField
+from api.permissions import is_admin_user, user_can_manage_event
 
 
 class EventCustomFieldListCreateView(APIView):
@@ -9,9 +10,10 @@ class EventCustomFieldListCreateView(APIView):
 
     def _get_event(self, request, event_id):
         try:
-            if getattr(request.user, 'role', '') == 'ADMIN':
-                return Event.objects.get(pk=event_id)
-            return Event.objects.get(pk=event_id, organizer__user=request.user)
+            event = Event.objects.get(pk=event_id)
+            if user_can_manage_event(request.user, event):
+                return event
+            return None
         except Event.DoesNotExist:
             return None
 
@@ -68,10 +70,9 @@ class EventCustomFieldDetailView(APIView):
 
     def _get_field(self, request, event_id, field_id):
         try:
-            if getattr(request.user, 'role', '') == 'ADMIN':
-                event = Event.objects.get(pk=event_id)
-            else:
-                event = Event.objects.get(pk=event_id, organizer__user=request.user)
+            event = Event.objects.get(pk=event_id)
+            if not user_can_manage_event(request.user, event):
+                return None
             return EventCustomField.objects.get(pk=field_id, event=event)
         except (Event.DoesNotExist, EventCustomField.DoesNotExist):
             return None

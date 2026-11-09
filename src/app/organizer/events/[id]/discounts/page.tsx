@@ -25,6 +25,7 @@ export default function DiscountsPage() {
   
   const [discounts, setDiscounts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [downloadingId, setDownloadingId] = useState<string | number | null>(null);
@@ -37,12 +38,17 @@ export default function DiscountsPage() {
 
   const fetchDiscounts = async () => {
     if (status === "loading") return;
-    if (!session?.accessToken || !id || id === "undefined") return;
+    if (!session?.accessToken || !id || id === "undefined") {
+      setLoading(false);
+      return;
+    }
     try {
+      setFetchError(null);
       const data = await getEventDiscounts(session.accessToken as string, id);
       setDiscounts(data);
     } catch (err: any) {
       toast.error(err.message || "Failed to fetch discounts");
+      setFetchError(err.message || "Failed to fetch discounts");
     } finally {
       setLoading(false);
     }
@@ -197,6 +203,22 @@ export default function DiscountsPage() {
           New Code
         </button>
       </div>
+
+      {fetchError && discounts.length === 0 && (
+        <div className="mb-6 p-4 rounded-xl bg-destructive/10 text-destructive border border-destructive/20 flex items-center justify-between">
+          <p className="text-sm font-medium">{fetchError}</p>
+          <button
+            onClick={() => {
+              setLoading(true);
+              fetchDiscounts();
+            }}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-primary text-primary-foreground rounded-lg text-xs font-semibold hover:bg-primary/90 transition-colors"
+          >
+            <RefreshCw className="w-3.5 h-3.5" />
+            Retry
+          </button>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {discounts.length === 0 && (

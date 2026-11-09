@@ -4,6 +4,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.utils import timezone
 from core.models import Discount, Event
+from api.permissions import is_admin_user, user_can_manage_event
 
 
 class EventDiscountListCreateView(APIView):
@@ -11,12 +12,11 @@ class EventDiscountListCreateView(APIView):
 
     def get(self, request, event_id):
         try:
-            if getattr(request.user, 'role', '') == 'ADMIN':
-                event = Event.objects.get(pk=event_id)
-            else:
-                event = Event.objects.get(pk=event_id, organizer__user=request.user)
+            event = Event.objects.get(pk=event_id)
         except Event.DoesNotExist:
             return Response({'error': 'Event not found'}, status=404)
+        if not user_can_manage_event(request.user, event):
+            return Response({'error': 'You do not have permission to view discounts for this event.'}, status=403)
         discounts = Discount.objects.filter(event=event)
         data = []
         for d in discounts:
@@ -35,12 +35,11 @@ class EventDiscountListCreateView(APIView):
 
     def post(self, request, event_id):
         try:
-            if getattr(request.user, 'role', '') == 'ADMIN':
-                event = Event.objects.get(pk=event_id)
-            else:
-                event = Event.objects.get(pk=event_id, organizer__user=request.user)
+            event = Event.objects.get(pk=event_id)
         except Event.DoesNotExist:
             return Response({'error': 'Event not found'}, status=404)
+        if not user_can_manage_event(request.user, event):
+            return Response({'error': 'You do not have permission to manage discounts for this event.'}, status=403)
         code = (request.data.get('code') or '').strip().upper()
         if not code:
             return Response({'error': 'Discount code is required'}, status=400)
@@ -120,23 +119,21 @@ class EventDiscountDetailView(APIView):
 
     def delete(self, request, event_id, discount_id):
         try:
-            if getattr(request.user, 'role', '') == 'ADMIN':
-                discount = Discount.objects.get(pk=discount_id, event_id=event_id)
-            else:
-                discount = Discount.objects.get(pk=discount_id, event_id=event_id, event__organizer__user=request.user)
+            discount = Discount.objects.select_related('event', 'event__organizer').get(pk=discount_id, event_id=event_id)
         except Discount.DoesNotExist:
             return Response({'error': 'Discount not found'}, status=404)
+        if not user_can_manage_event(request.user, discount.event):
+            return Response({'error': 'You do not have permission to manage discounts for this event.'}, status=403)
         discount.delete()
         return Response(status=204)
 
     def patch(self, request, event_id, discount_id):
         try:
-            if getattr(request.user, 'role', '') == 'ADMIN':
-                discount = Discount.objects.get(pk=discount_id, event_id=event_id)
-            else:
-                discount = Discount.objects.get(pk=discount_id, event_id=event_id, event__organizer__user=request.user)
+            discount = Discount.objects.select_related('event', 'event__organizer').get(pk=discount_id, event_id=event_id)
         except Discount.DoesNotExist:
             return Response({'error': 'Discount not found'}, status=404)
+        if not user_can_manage_event(request.user, discount.event):
+            return Response({'error': 'You do not have permission to manage discounts for this event.'}, status=403)
         requested_type = request.data.get('type') or request.data.get('discount_type')
         if requested_type:
             discount.type = str(requested_type).strip().upper()

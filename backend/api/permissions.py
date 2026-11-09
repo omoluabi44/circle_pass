@@ -36,10 +36,31 @@ def is_admin_user(user):
         and user.is_authenticated
         and (
             getattr(user, 'role', '') == 'ADMIN'
-            or user.is_staff
-            or user.is_superuser
+            or getattr(user, 'is_staff', False)
+            or getattr(user, 'is_superuser', False)
         )
     )
+
+
+def user_can_manage_event(user, event):
+    """
+    True if user has permission to view/manage an organizer event:
+      - Super Admin (role ADMIN or is_staff/is_superuser)
+      - Event owner (event.organizer.user_id == user.id)
+      - Active Team Member with management privileges
+    """
+    if not user or not user.is_authenticated:
+        return False
+    if is_admin_user(user):
+        return True
+    organizer = getattr(event, 'organizer', None)
+    if organizer is not None and getattr(organizer, 'user_id', None) == user.id:
+        return True
+    try:
+        from core.models import TeamMember
+        return TeamMember.objects.filter(event=event, user=user, status='ACTIVE').exists()
+    except Exception:
+        return False
 
 
 def user_can_view_ticket(user, ticket):

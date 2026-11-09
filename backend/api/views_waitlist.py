@@ -11,6 +11,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from core.models import Event, TicketType, Order, OrderItem, WaitlistEntry
+from api.permissions import is_admin_user, user_can_manage_event
 from api.serializers import WaitlistEntrySerializer
 from core.utils.notifications import (
     send_waitlist_organizer_notification,
@@ -150,8 +151,7 @@ class OrganizerWaitlistListView(APIView):
             return Response({'detail': 'Event not found.'}, status=status.HTTP_404_NOT_FOUND)
 
         # Ownership validation
-        user = request.user
-        if not (user.is_staff or getattr(event.organizer, 'user', None) == user):
+        if not user_can_manage_event(request.user, event):
             return Response({'detail': 'You do not have permission to view waitlist for this event.'}, status=status.HTTP_403_FORBIDDEN)
 
         status_filter = request.query_params.get('status')
@@ -226,8 +226,7 @@ class OrganizerWaitlistAcceptView(APIView):
         except Event.DoesNotExist:
             return Response({'detail': 'Event not found.'}, status=status.HTTP_404_NOT_FOUND)
 
-        user = request.user
-        if not (user.is_staff or getattr(event.organizer, 'user', None) == user):
+        if not user_can_manage_event(request.user, event):
             return Response({'detail': 'Permission denied.'}, status=status.HTTP_403_FORBIDDEN)
 
         try:
@@ -358,8 +357,7 @@ class OrganizerWaitlistDeclineView(APIView):
         except Event.DoesNotExist:
             return Response({'detail': 'Event not found.'}, status=status.HTTP_404_NOT_FOUND)
 
-        user = request.user
-        if not (user.is_staff or getattr(event.organizer, 'user', None) == user):
+        if not user_can_manage_event(request.user, event):
             return Response({'detail': 'Permission denied.'}, status=status.HTTP_403_FORBIDDEN)
 
         try:

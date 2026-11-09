@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect, use } from "react";
-import { Activity, PauseCircle, PlayCircle, ListPlus, Users, ArrowLeft, Ticket } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import { Activity, PauseCircle, PlayCircle, ListPlus, Users, ArrowLeft, Ticket, RefreshCw } from "lucide-react";
 import Link from "next/link";
 import { useParams } from 'next/navigation';
 import { getEventOverview, updateEvent } from "@/lib/api/events";
@@ -15,38 +15,76 @@ export default function RealTimeEventDashboard() {
   
   const [overview, setOverview] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [updating, setUpdating] = useState(false);
 
-  useEffect(() => {
-    async function fetchOverview() {
-      if (status === "loading") return;
-      if (!session?.accessToken || !id || id === "undefined") return;
-      try {
-        const data = await getEventOverview(session.accessToken as string, id);
-        setOverview(data);
-      } catch (err) {
-        toast.error("Failed to fetch event overview");
-        setOverview({}); // prevents infinite spinner
-      } finally {
-        setLoading(false);
-      }
+  const fetchOverview = useCallback(async () => {
+    if (status === "loading") return;
+    if (!session?.accessToken || !id || id === "undefined") {
+      setLoading(false);
+      return;
     }
-    fetchOverview();
+    try {
+      setError(null);
+      const data = await getEventOverview(session.accessToken as string, id);
+      setOverview(data);
+    } catch (err: any) {
+      console.error("Overview fetch error:", err);
+      toast.error("Failed to fetch event overview");
+      setError(err?.message || "Failed to fetch event overview");
+      setOverview(null);
+    } finally {
+      setLoading(false);
+    }
   }, [id, session?.accessToken, status]);
 
+  useEffect(() => {
+    fetchOverview();
+  }, [fetchOverview]);
+
   if (loading) {
-    return <div className="p-8 flex justify-center text-muted-foreground">Loading overview...</div>;
+    return (
+      <div className="p-8 flex items-center justify-center gap-2 text-muted-foreground">
+        <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+        Loading overview...
+      </div>
+    );
   }
 
-  if (!overview) {
-    return <div className="p-8 flex justify-center text-destructive">Event not found.</div>;
+  if (error || !overview) {
+    return (
+      <div className="p-8 max-w-xl mx-auto text-center space-y-4">
+        <div className="p-4 rounded-xl bg-destructive/10 text-destructive border border-destructive/20 text-sm font-medium">
+          {error || "Event not found or failed to load."}
+        </div>
+        <div className="flex justify-center gap-3">
+          <Link
+            href="/organizer/events"
+            className="px-4 py-2 rounded-lg border border-border text-foreground hover:bg-secondary text-sm font-medium transition-colors"
+          >
+            Back to Events
+          </Link>
+          <button
+            onClick={() => {
+              setLoading(true);
+              fetchOverview();
+            }}
+            className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors"
+          >
+            <RefreshCw className="w-4 h-4" />
+            Try Again
+          </button>
+        </div>
+      </div>
+    );
   }
 
   const capacity = overview.total_capacity || 1; // avoid division by zero
-  const checkInPercent = Math.min(100, Math.round((overview.check_ins / capacity) * 100));
-  const remaining = Math.max(0, capacity - overview.check_ins);
-  
+  const checkIns = overview.check_ins || 0;
+  const checkInPercent = Math.min(100, Math.round((checkIns / capacity) * 100));
+  const remaining = Math.max(0, capacity - checkIns);
   const ticketsSold = overview.tickets_sold || 0;
+  const rawStatus = overview.status || 'DRAFT';
   
   const toggleSales = async () => {
     setUpdating(true);
@@ -87,13 +125,15 @@ export default function RealTimeEventDashboard() {
         </Link>
         <div className="flex justify-between items-start">
           <div>
-            <h1 className="text-3xl font-bold text-foreground">{overview.title}</h1>
+            <h1 className="text-3xl font-bold text-foreground">{overview.title || 'Event Overview'}</h1>
             <div className="flex items-center gap-2 mt-2">
-              <span className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border ${overview.status === 'LIVE' ? 'bg-success/10 text-success border-success/20' : 'bg-secondary text-muted-foreground border-border'}`}>
-                {overview.status === 'LIVE' && <span className="w-2 h-2 rounded-full bg-success animate-pulse"></span>}
-                {overview.status.replace('_', ' ')}
+              <span className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border ${rawStatus === 'LIVE' ? 'bg-success/10 text-success border-success/20' : 'bg-secondary text-muted-foreground border-border'}`}>
+                {rawStatus === 'LIVE' && <span className="w-2 h-2 rounded-full bg-success animate-pulse"></span>}
+                {rawStatus.replace('_', ' ')}
               </span>
-              <span className="text-sm text-muted-foreground">• {new Date(overview.start_time).toLocaleDateString()}</span>
+              {overview.start_time && (
+                <span className="text-sm text-muted-foreground">• {new Date(overview.start_time).toLocaleDateString()}</span>
+              )}
             </div>
           </div>
           
@@ -137,7 +177,7 @@ export default function RealTimeEventDashboard() {
                   setUpdating(false);
                 }
               }}
-              disabled={updating || overview.status === "COMPLETED"}
+              disabled={updating || rawStatus === "COMPLETED"}
               className="flex items-center gap-2 border px-4 py-2 rounded-lg text-sm font-medium transition-colors bg-destructive/10 hover:bg-destructive/20 text-destructive border-destructive/20 disabled:opacity-50"
             >
               <PauseCircle className="w-4 h-4" />
@@ -156,8 +196,8 @@ export default function RealTimeEventDashboard() {
           <div>
             <p className="text-muted-foreground font-medium mb-1">Live Check-in Progress</p>
             <div className="flex items-baseline gap-2 mb-6">
-              <h2 className="text-5xl font-bold text-foreground">{overview.check_ins}</h2>
-              <span className="text-xl text-muted-foreground font-medium">/ {overview.total_capacity}</span>
+              <h2 className="text-5xl font-bold text-foreground">{checkIns}</h2>
+              <span className="text-xl text-muted-foreground font-medium">/ {overview.total_capacity || 0}</span>
             </div>
           </div>
           

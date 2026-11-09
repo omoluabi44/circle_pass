@@ -45,6 +45,7 @@ export default function OrganizerWaitlistPage() {
   const { data: session, status: authStatus } = useSession();
 
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [actionLoadingId, setActionLoadingId] = useState<number | null>(null);
 
@@ -64,11 +65,15 @@ export default function OrganizerWaitlistPage() {
   const [togglingWaitlist, setTogglingWaitlist] = useState(false);
 
   const fetchWaitlistData = async (isManualRefresh = false) => {
-    if (!session?.accessToken || !id) return;
+    if (!session?.accessToken || !id) {
+      setLoading(false);
+      return;
+    }
     if (isManualRefresh || event) setRefreshing(true);
     else setLoading(true);
 
     try {
+      setFetchError(null);
       // 1. Fetch event
       const eventData = await getEventById(session.accessToken as string, id);
       setEvent(eventData);
@@ -82,7 +87,8 @@ export default function OrganizerWaitlistPage() {
       });
 
       if (!res.ok) {
-        throw new Error("Failed to load waitlist entries.");
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.detail || errJson.error || "Failed to load waitlist entries.");
       }
 
       const data = await res.json();
@@ -93,6 +99,7 @@ export default function OrganizerWaitlistPage() {
       }
     } catch (err: any) {
       toast.error(err.message || "Failed to load waitlist.");
+      setFetchError(err.message || "Failed to load waitlist.");
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -214,6 +221,19 @@ export default function OrganizerWaitlistPage() {
 
   return (
     <div className="space-y-8">
+      {fetchError && (
+        <div className="p-4 rounded-xl bg-destructive/10 text-destructive border border-destructive/20 flex items-center justify-between">
+          <p className="text-sm font-medium">{fetchError}</p>
+          <button
+            onClick={() => fetchWaitlistData(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-primary text-primary-foreground rounded-lg text-xs font-semibold hover:bg-primary/90 transition-colors"
+          >
+            <RefreshCw className="w-3.5 h-3.5" />
+            Retry
+          </button>
+        </div>
+      )}
+
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-card border border-border p-6 rounded-2xl shadow-sm">
         <div>

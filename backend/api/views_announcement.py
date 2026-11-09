@@ -3,6 +3,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from core.models import EventAnnouncement, Event
+from api.permissions import is_admin_user, user_can_manage_event
 
 
 class EventAnnouncementListCreateView(APIView):
@@ -10,12 +11,11 @@ class EventAnnouncementListCreateView(APIView):
 
     def get(self, request, event_id):
         try:
-            if getattr(request.user, 'role', '') == 'ADMIN':
-                event = Event.objects.get(pk=event_id)
-            else:
-                event = Event.objects.get(pk=event_id, organizer__user=request.user)
+            event = Event.objects.get(pk=event_id)
         except Event.DoesNotExist:
             return Response({'error': 'Event not found'}, status=404)
+        if not user_can_manage_event(request.user, event):
+            return Response({'error': 'You do not have permission to view announcements for this event.'}, status=403)
         announcements = EventAnnouncement.objects.filter(event=event)
         data = [{
             'id': a.id, 'title': a.title, 'message': a.message,
@@ -31,12 +31,11 @@ class EventAnnouncementListCreateView(APIView):
 
     def post(self, request, event_id):
         try:
-            if getattr(request.user, 'role', '') == 'ADMIN':
-                event = Event.objects.get(pk=event_id)
-            else:
-                event = Event.objects.get(pk=event_id, organizer__user=request.user)
+            event = Event.objects.get(pk=event_id)
         except Event.DoesNotExist:
             return Response({'error': 'Event not found'}, status=404)
+        if not user_can_manage_event(request.user, event):
+            return Response({'error': 'You do not have permission to send announcements for this event.'}, status=403)
 
         title = request.data.get('title', '').strip()
         message = request.data.get('message', '').strip()
