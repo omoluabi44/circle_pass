@@ -607,7 +607,7 @@ export default function WalletPage() {
                         className="w-full border border-border rounded-lg pl-8 pr-4 py-2.5 text-sm focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
                       />
                     </div>
-                    <p className="text-xs text-muted-foreground mt-1">Minimum ?100</p>
+                    <p className="text-xs text-muted-foreground mt-1">Minimum ₦100</p>
                   </div>
 
                   {/* Live fee preview */}
