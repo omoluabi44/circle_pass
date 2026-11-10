@@ -138,7 +138,7 @@ def normalize_name_tokens(name: str) -> list[str]:
 def is_organizer_bank_name_match(organizer_name: str, account_name: str) -> bool:
     """
     Validate that the resolved bank account holder name matches the organizer's
-    profile name (company_name).
+    name.
     - Case-insensitive and punctuation-insensitive.
     - Supports word-order variations (e.g. 'John Doe' vs 'DOE JOHN').
     - Supports middle names when at least 2 name tokens are present and all tokens
@@ -166,6 +166,50 @@ def get_organizer_bank_name_mismatch_error(organizer_name: str, account_name: st
     """Return a clear user-facing error message when bank account name != organizer name."""
     return (
         f'Bank account name "{account_name}" does not match your organizer name '
-        f'"{organizer_name}". Please use a bank account that matches your organizer '
-        f'name or update your Organization Name in Account Settings.'
+        f'"{organizer_name}". Please use a bank account registered in your name, '
+        f'or update your name and organization name in Account Settings.'
+    )
+
+
+def get_organizer_personal_name(organizer) -> str:
+    """Return the organizer's legal/personal name (their user account name)."""
+    user = getattr(organizer, 'user', None)
+    if user is None:
+        return ''
+    return (user.get_full_name() or '').strip()
+
+
+def get_organizer_name_for_display(organizer) -> str:
+    """Name shown in validation errors: prefer the person's name, fall back to
+    the organization name when the organizer has not set a personal name."""
+    personal = get_organizer_personal_name(organizer)
+    if personal:
+        return personal
+    return (getattr(organizer, 'company_name', '') or '').strip()
+
+
+def get_organizer_matching_names(organizer) -> list[str]:
+    """All names a payout bank account may legitimately be registered under.
+
+    A bank account belongs to a person, so the organizer's personal name is the
+    primary match. Many organizers run registered businesses, so the organization
+    name is still accepted as an alternative (this also preserves the behaviour
+    for organizers who never set a personal name).
+    """
+    names: list[str] = []
+    personal = get_organizer_personal_name(organizer)
+    if personal:
+        names.append(personal)
+    company = (getattr(organizer, 'company_name', '') or '').strip()
+    if company and company not in names:
+        names.append(company)
+    return names
+
+
+def is_bank_name_valid_for_organizer(organizer, account_name: str) -> bool:
+    """True when the resolved account name matches the organizer's personal name
+    or their organization name."""
+    return any(
+        is_organizer_bank_name_match(name, account_name)
+        for name in get_organizer_matching_names(organizer)
     )

@@ -16,8 +16,9 @@ from core.models import OrganizerBankAccount, OrganizerProfile
 from core.utils.transfers import (
     resolve_account_number,
     create_transfer_recipient,
-    is_organizer_bank_name_match,
+    is_bank_name_valid_for_organizer,
     get_organizer_bank_name_mismatch_error,
+    get_organizer_name_for_display,
 )
 
 
@@ -71,15 +72,17 @@ class OrganizerBankAccountListCreateView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # Step 1b: Validate that bank account name matches organizer profile name
-        if not is_organizer_bank_name_match(organizer.company_name, account_name):
-            err_msg = get_organizer_bank_name_mismatch_error(organizer.company_name, account_name)
+        # Step 1b: Validate that the bank account name matches the organizer's
+        # personal (legal) name, falling back to the organization name.
+        if not is_bank_name_valid_for_organizer(organizer, account_name):
+            display_name = get_organizer_name_for_display(organizer)
+            err_msg = get_organizer_bank_name_mismatch_error(display_name, account_name)
             return Response(
                 {
                     'detail': err_msg,
                     'error': err_msg,
                     'account_name': account_name,
-                    'organizer_name': organizer.company_name,
+                    'organizer_name': display_name,
                     'name_mismatch': True,
                 },
                 status=status.HTTP_400_BAD_REQUEST,

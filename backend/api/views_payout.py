@@ -77,11 +77,13 @@ class PaystackResolveAccountView(APIView):
             organizer = getattr(request.user, 'organizerprofile', None) or getattr(request.user, 'organizer_profile', None)
             if organizer:
                 from core.utils.transfers import (
-                    is_organizer_bank_name_match,
+                    is_bank_name_valid_for_organizer,
                     get_organizer_bank_name_mismatch_error,
+                    get_organizer_name_for_display,
                 )
-                if not is_organizer_bank_name_match(organizer.company_name, account_name):
-                    err_msg = get_organizer_bank_name_mismatch_error(organizer.company_name, account_name)
+                if not is_bank_name_valid_for_organizer(organizer, account_name):
+                    display_name = get_organizer_name_for_display(organizer)
+                    err_msg = get_organizer_bank_name_mismatch_error(display_name, account_name)
                     return Response(
                         {
                             'status': False,
@@ -89,7 +91,7 @@ class PaystackResolveAccountView(APIView):
                             'detail': err_msg,
                             'message': err_msg,
                             'account_name': account_name,
-                            'organizer_name': organizer.company_name,
+                            'organizer_name': display_name,
                             'name_mismatch': True,
                         },
                         status=status.HTTP_400_BAD_REQUEST,

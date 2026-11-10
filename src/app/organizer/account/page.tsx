@@ -15,6 +15,8 @@ function BusinessDetailsForm() {
   const [profileId, setProfileId] = useState<number | null>(null);
   const [formData, setFormData] = useState({
     company_name: '',
+    first_name: '',
+    last_name: '',
     contact_email: '',
     bio: '',
     website: '',
@@ -41,6 +43,8 @@ function BusinessDetailsForm() {
             setProfileId(profile.id);
             setFormData({
               company_name: profile.company_name || '',
+              first_name: profile.first_name || '',
+              last_name: profile.last_name || '',
               contact_email: profile.contact_email || '',
               bio: profile.bio || '',
               website: profile.website || '',
@@ -140,6 +144,23 @@ function BusinessDetailsForm() {
         <div className="space-y-2">
           <label className="text-sm font-bold text-foreground">Contact Email</label>
           <input type="email" value={formData.contact_email} onChange={e => setFormData({ ...formData, contact_email: e.target.value })} className="w-full bg-background border border-border rounded-xl px-4 py-3 focus:outline-none focus:border-primary transition-colors" />
+        </div>
+      </div>
+
+      <div className="space-y-3">
+        <div>
+          <label className="text-sm font-bold text-foreground">Legal / Account Holder Name</label>
+          <p className="text-xs text-muted-foreground">Use the name registered on your payout bank account.</p>
+        </div>
+        <div className="grid md:grid-cols-2 gap-6">
+          <div className="space-y-2">
+            <label className="text-xs font-medium text-muted-foreground">First Name</label>
+            <input type="text" value={formData.first_name} onChange={e => setFormData({ ...formData, first_name: e.target.value })} className="w-full bg-background border border-border rounded-xl px-4 py-3 focus:outline-none focus:border-primary transition-colors" />
+          </div>
+          <div className="space-y-2">
+            <label className="text-xs font-medium text-muted-foreground">Last Name</label>
+            <input type="text" value={formData.last_name} onChange={e => setFormData({ ...formData, last_name: e.target.value })} className="w-full bg-background border border-border rounded-xl px-4 py-3 focus:outline-none focus:border-primary transition-colors" />
+          </div>
         </div>
       </div>
 

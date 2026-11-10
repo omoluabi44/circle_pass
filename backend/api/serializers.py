@@ -61,9 +61,28 @@ class UserSerializer(BaseUserSerializer):
         return getattr(obj, 'role', 'ATTENDEE')
 
 class OrganizerProfileSerializer(serializers.ModelSerializer):
+    # Legal / account-holder name lives on the user account. Payout bank-account
+    # validation compares against this before the organization name.
+    first_name = serializers.CharField(source='user.first_name', required=False, allow_blank=True)
+    last_name = serializers.CharField(source='user.last_name', required=False, allow_blank=True)
+
     class Meta:
         model = OrganizerProfile
-        fields = ('id', 'company_name', 'is_verified', 'contact_email', 'bio', 'website', 'instagram_handle', 'logo', 'sales_notifications', 'weekly_summary')
+        fields = ('id', 'company_name', 'first_name', 'last_name', 'is_verified', 'contact_email', 'bio', 'website', 'instagram_handle', 'logo', 'sales_notifications', 'weekly_summary')
+
+    def update(self, instance, validated_data):
+        user_data = validated_data.pop('user', {})
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+
+        if user_data:
+            user = instance.user
+            for attr, value in user_data.items():
+                setattr(user, attr, value)
+            user.save(update_fields=list(user_data.keys()))
+
+        return instance
 
 from core.models import OrganizerVerification
 

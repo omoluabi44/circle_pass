@@ -10,8 +10,9 @@ from api.permissions import IsOrganizerOrAdmin
 from core.models import OrganizerWallet, WalletTransaction
 from core.utils.transfers import (
     resolve_account_number,
-    is_organizer_bank_name_match,
+    is_bank_name_valid_for_organizer,
     get_organizer_bank_name_mismatch_error,
+    get_organizer_name_for_display,
 )
 
 
@@ -69,14 +70,15 @@ class OrganizerWalletView(APIView):
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
-            if not is_organizer_bank_name_match(profile.company_name, account_name):
-                err_msg = get_organizer_bank_name_mismatch_error(profile.company_name, account_name)
+            if not is_bank_name_valid_for_organizer(profile, account_name):
+                display_name = get_organizer_name_for_display(profile)
+                err_msg = get_organizer_bank_name_mismatch_error(display_name, account_name)
                 return Response(
                     {
                         'detail': err_msg,
                         'error': err_msg,
                         'account_name': account_name,
-                        'organizer_name': profile.company_name,
+                        'organizer_name': display_name,
                         'name_mismatch': True,
                     },
                     status=status.HTTP_400_BAD_REQUEST,

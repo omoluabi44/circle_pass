@@ -80,8 +80,19 @@ def google_auth(request):
         if role == 'ORGANIZER' and user.role == 'ATTENDEE':
             user.role = 'ORGANIZER'
             needs_save = True
-        if needs_save:
-            user.save()
+
+    # Store the Google account holder's name as the user's personal name. Payout
+    # bank-account validation checks this (the person's legal name) before the
+    # organization name, so it must be populated for Google sign-ins.
+    google_name = (request.data.get('name') or '').strip()
+    if google_name and not (user.first_name or user.last_name):
+        parts = google_name.split(None, 1)
+        user.first_name = parts[0][:150]
+        user.last_name = (parts[1] if len(parts) > 1 else '')[:150]
+        needs_save = True
+
+    if needs_save:
+        user.save()
 
     # Ensure organizer dependencies exist if role is ORGANIZER
     if user.role == 'ORGANIZER':

@@ -207,6 +207,28 @@ class BankAccountNameValidationTests(TestCase):
         self.assertFalse(is_organizer_bank_name_match('John', 'JOHN DOE'))
         self.assertFalse(is_organizer_bank_name_match('', 'JOHN DOE'))
 
+    def test_bank_name_matches_personal_name_not_only_company(self):
+        from core.utils.transfers import is_bank_name_valid_for_organizer
+
+        self.org_user.first_name = 'Jubril'
+        self.org_user.last_name = 'Olamilekan Ogunbiyi'
+        self.org_user.save(update_fields=['first_name', 'last_name'])
+        self.organizer.company_name = 'Jubril Olami Events'
+        self.organizer.save(update_fields=['company_name'])
+
+        # Bank account belongs to the person, whose name differs from the brand.
+        self.assertTrue(
+            is_bank_name_valid_for_organizer(self.organizer, 'JUBRIL OLAMILEKAN OGUNBIYI')
+        )
+        # Company bank accounts remain valid.
+        self.assertTrue(
+            is_bank_name_valid_for_organizer(self.organizer, 'JUBRIL OLAMI EVENTS')
+        )
+        # A completely unrelated name is still rejected.
+        self.assertFalse(
+            is_bank_name_valid_for_organizer(self.organizer, 'MERCY TEMITOPE')
+        )
+
     def test_add_bank_account_rejected_when_name_mismatches(self):
         from unittest.mock import patch
         from core.models import OrganizerBankAccount
