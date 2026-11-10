@@ -65,13 +65,30 @@ class OrganizerProfileSerializer(serializers.ModelSerializer):
     # validation compares against this before the organization name.
     first_name = serializers.CharField(source='user.first_name', required=False, allow_blank=True)
     last_name = serializers.CharField(source='user.last_name', required=False, allow_blank=True)
+    organizer_name = serializers.CharField(required=False, allow_blank=True)
 
     class Meta:
         model = OrganizerProfile
-        fields = ('id', 'company_name', 'first_name', 'last_name', 'is_verified', 'contact_email', 'bio', 'website', 'instagram_handle', 'logo', 'sales_notifications', 'weekly_summary')
+        fields = ('id', 'company_name', 'organizer_name', 'first_name', 'last_name', 'is_verified', 'contact_email', 'bio', 'website', 'instagram_handle', 'logo', 'sales_notifications', 'weekly_summary')
+
+    def to_representation(self, instance):
+        ret = super().to_representation(instance)
+        user = getattr(instance, 'user', None)
+        if user:
+            full = (user.get_full_name() or '').strip()
+            ret['organizer_name'] = full or getattr(user, 'username', '')
+        else:
+            ret['organizer_name'] = ''
+        return ret
 
     def update(self, instance, validated_data):
         user_data = validated_data.pop('user', {})
+        organizer_name = validated_data.pop('organizer_name', None)
+        if organizer_name is not None:
+            parts = organizer_name.strip().split(None, 1)
+            user_data['first_name'] = parts[0] if parts else ''
+            user_data['last_name'] = parts[1] if len(parts) > 1 else ''
+
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
         instance.save()

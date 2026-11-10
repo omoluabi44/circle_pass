@@ -15,6 +15,7 @@ function BusinessDetailsForm() {
   const [profileId, setProfileId] = useState<number | null>(null);
   const [formData, setFormData] = useState({
     company_name: '',
+    organizer_name: '',
     first_name: '',
     last_name: '',
     contact_email: '',
@@ -41,8 +42,10 @@ function BusinessDetailsForm() {
           if (data && data.length > 0) {
             const profile = data[0];
             setProfileId(profile.id);
+            const orgName = (profile.organizer_name || `${profile.first_name || ''} ${profile.last_name || ''}`).trim();
             setFormData({
               company_name: profile.company_name || '',
+              organizer_name: orgName,
               first_name: profile.first_name || '',
               last_name: profile.last_name || '',
               contact_email: profile.contact_email || '',
@@ -64,6 +67,18 @@ function BusinessDetailsForm() {
 
     if (session?.accessToken) fetchProfile();
   }, [session?.accessToken]);
+
+  const handleOrganizerNameChange = (val: string) => {
+    const parts = val.trim().split(/\s+/);
+    const first = parts[0] || '';
+    const last = parts.slice(1).join(' ') || '';
+    setFormData(prev => ({
+      ...prev,
+      organizer_name: val,
+      first_name: first,
+      last_name: last,
+    }));
+  };
 
   const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -136,31 +151,45 @@ function BusinessDetailsForm() {
         </div>
       </div>
 
+      {/* Organizer Name (Circled Location - Personal Legal Name for Payout) */}
+      <div className="space-y-2">
+        <label className="text-sm font-bold text-foreground flex items-center justify-between">
+          <span>Organizer Name</span>
+          <span className="text-xs font-normal text-muted-foreground">Matches payout bank account</span>
+        </label>
+        <input
+          type="text"
+          value={formData.organizer_name}
+          onChange={e => handleOrganizerNameChange(e.target.value)}
+          placeholder="e.g. Ogunbiyi Jubril"
+          className="w-full bg-background border border-border rounded-xl px-4 py-3 focus:outline-none focus:border-primary transition-colors text-foreground font-medium"
+        />
+        <p className="text-xs text-muted-foreground">
+          Enter your personal legal name as registered on your bank account for payout verification.
+        </p>
+      </div>
+
       <div className="grid md:grid-cols-2 gap-6">
         <div className="space-y-2">
           <label className="text-sm font-bold text-foreground">Organization Name</label>
-          <input type="text" required value={formData.company_name} onChange={e => setFormData({ ...formData, company_name: e.target.value })} className="w-full bg-background border border-border rounded-xl px-4 py-3 focus:outline-none focus:border-primary transition-colors" />
+          <input
+            type="text"
+            required
+            value={formData.company_name}
+            onChange={e => setFormData({ ...formData, company_name: e.target.value })}
+            placeholder="e.g. Ogunbiyi Jubril events"
+            className="w-full bg-background border border-border rounded-xl px-4 py-3 focus:outline-none focus:border-primary transition-colors text-foreground"
+          />
         </div>
         <div className="space-y-2">
           <label className="text-sm font-bold text-foreground">Contact Email</label>
-          <input type="email" value={formData.contact_email} onChange={e => setFormData({ ...formData, contact_email: e.target.value })} className="w-full bg-background border border-border rounded-xl px-4 py-3 focus:outline-none focus:border-primary transition-colors" />
-        </div>
-      </div>
-
-      <div className="space-y-3">
-        <div>
-          <label className="text-sm font-bold text-foreground">Legal / Account Holder Name</label>
-          <p className="text-xs text-muted-foreground">Use the name registered on your payout bank account.</p>
-        </div>
-        <div className="grid md:grid-cols-2 gap-6">
-          <div className="space-y-2">
-            <label className="text-xs font-medium text-muted-foreground">First Name</label>
-            <input type="text" value={formData.first_name} onChange={e => setFormData({ ...formData, first_name: e.target.value })} className="w-full bg-background border border-border rounded-xl px-4 py-3 focus:outline-none focus:border-primary transition-colors" />
-          </div>
-          <div className="space-y-2">
-            <label className="text-xs font-medium text-muted-foreground">Last Name</label>
-            <input type="text" value={formData.last_name} onChange={e => setFormData({ ...formData, last_name: e.target.value })} className="w-full bg-background border border-border rounded-xl px-4 py-3 focus:outline-none focus:border-primary transition-colors" />
-          </div>
+          <input
+            type="email"
+            value={formData.contact_email}
+            onChange={e => setFormData({ ...formData, contact_email: e.target.value })}
+            placeholder="e.g. contact@example.com"
+            className="w-full bg-background border border-border rounded-xl px-4 py-3 focus:outline-none focus:border-primary transition-colors text-foreground"
+          />
         </div>
       </div>
 
