@@ -272,3 +272,175 @@ def validate_webhook_signature(payload, signature, timestamp):
         return False
     computed = compute_webhook_signature(payload, secret, timestamp)
     return hmac.compare_digest(computed, signature)
+
+
+def initiate_bank_transfer(
+    amount_kobo,
+    account_number,
+    account_name,
+    bank_code,
+    reference,
+    bank_name=None,
+    sender_name='CirclePass',
+    narration=None,
+):
+    """Send a bank transfer (payout) from the Nomba parent account.
+
+    ``amount_kobo`` is our internal integer-kobo amount and is converted to the
+    decimal Naira value Nomba expects. ``reference`` is sent as
+    ``merchantTxRef`` and acts as the idempotency key, so retries must reuse it.
+
+    ``bank_code`` may be a Paystack code; when it is not one Nomba recognises we
+    fall back to matching ``bank_name`` against Nomba's bank list (Paystack and
+    Nomba use different codes for some fintechs, e.g. Moniepoint/OPay).
+
+    Returns ``{'transfer_code', 'status', 'raw'}``. Raises ``NombaError`` when
+    Nomba rejects the transfer or refunds it.
+    """
+    if not is_configured():
+        raise NombaError('Nomba is not configured on this environment.')
+
+    nomba_bank_code = resolve_bank_code(bank_name, bank_code)
+    if not nomba_bank_code:
+        raise NombaError(
+            f'Nomba error: could not resolve a bank code for "{bank_name or bank_code}".'
+        )
+
+    token = get_access_token()
+    payload = {
+        'amount': float((Decimal(int(amount_kobo)) / Decimal(100)).quantize(Decimal('0.01'))),
+        'accountNumber': str(account_number),
+        'accountName': str(account_name),
+        'bankCode': str(nomba_bank_code),
+        'merchantTxRef': str(reference),
+        'senderName': sender_name,
+        'narration': narration or 'CirclePass payout',
+    }
+
+    response = requests.post(
+        f'{get_base_url()}/v2/transfers/bank',
+        headers=_headers(token),
+        json=payload,
+        timeout=REQUEST_TIMEOUT,
+    )
+    try:
+        body = response.json()
+    except ValueError:
+        body = {}
+
+    code = str(body.get('code') or '')
+    description = body.get('description') or body.get('message') or ''
+    if code not in ('200', '201'):
+        raise NombaError(f'Nomba error: {description or "transfer failed"}')
+
+    data = body.get('data') or {}
+    status = (data.get('status') or '').upper()
+    if status == 'REFUND':
+        raise NombaError('Nomba error: the transfer was refunded.')
+
+    return {
+        'transfer_code': data.get('id') or '',
+        'status': status or 'PENDING_BILLING',
+        'raw': body,
+    }
+
+
+BANK_CODES_CACHE_KEY = 'nomba:bank_codes'
+
+# Banks whose codes differ between Paystack and Nomba (NIBSS) code lists.
+_BANK_ALIASES = {
+    'opay': '305',
+    'paycom': '305',
+    'moniepoint': '090405',
+    'palmpay': '100033',
+    'kuda': '090267',
+}
+
+_BANK_NAME_STOPWORDS = {
+    'bank', 'microfinance', 'mfb', 'limited', 'ltd', 'plc', 'services',
+    'service', 'digital', 'nigeria', 'company', 'financial', 'finance',
+}
+
+
+def _norm_token(value):
+    return ''.join(ch for ch in (value or '').lower() if ch.isalnum())
+
+
+def _bank_name_tokens(value):
+    import re
+
+    words = re.findall(r'[a-z0-9]+', (value or '').lower())
+    return {w for w in words if len(w) >= 4 and w not in _BANK_NAME_STOPWORDS}
+
+
+def get_bank_codes(force=False):
+    """Return ``{code: name}`` from Nomba's transfer bank list (cached 24h)."""
+    if not force:
+        try:
+            cached = cache.get(BANK_CODES_CACHE_KEY)
+        except Exception:
+            cached = None
+        if cached:
+            return cached
+
+    token = get_access_token()
+    try:
+        response = requests.get(
+            f'{get_base_url()}/v1/transfers/banks',
+            headers=_headers(token),
+            timeout=REQUEST_TIMEOUT,
+        )
+        payload = response.json()
+    except Exception as exc:  # network / malformed response
+        logger.warning('Could not fetch Nomba bank codes: %s', exc)
+        return {}
+
+    data = payload.get('data') or []
+    codes = {}
+    if isinstance(data, list):
+        for bank in data:
+            code = bank.get('code')
+            name = bank.get('name')
+            if code and name:
+                codes[str(code)] = name
+
+    if codes:
+        try:
+            cache.set(BANK_CODES_CACHE_KEY, codes, 24 * 60 * 60)
+        except Exception:
+            pass
+    return codes
+
+
+def resolve_bank_code(bank_name, bank_code=None):
+    """Map a (possibly Paystack) bank code/name to a valid Nomba bank code."""
+    codes = get_bank_codes()
+    if not codes:
+        return str(bank_code) if bank_code else ''
+
+    if bank_code and str(bank_code) in codes:
+        return str(bank_code)
+
+    normalized_name = _norm_token(bank_name)
+    if not normalized_name:
+        return ''
+
+    for alias, alias_code in _BANK_ALIASES.items():
+        if alias in normalized_name and alias_code in codes:
+            return alias_code
+
+    wanted_tokens = _bank_name_tokens(bank_name)
+    best_code = ''
+    best_score = 0
+    for code, name in codes.items():
+        if _norm_token(name) == normalized_name:
+            return code
+        if not wanted_tokens:
+            continue
+        score = len(wanted_tokens & _bank_name_tokens(name))
+        if score > best_score:
+            best_code, best_score = code, score
+
+    return best_code if best_score > 0 else ''
+
+

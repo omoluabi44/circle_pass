@@ -166,6 +166,9 @@ class OrganizerPayoutListCreateView(APIView):
         payout_charge = calculate_paystack_transfer_fee(amount)
         amount_received = amount - payout_charge  # organizer receives this
 
+        from core.utils.gateway import get_active_gateway
+        gateway = get_active_gateway()
+
         with transaction.atomic():
             try:
                 wallet = OrganizerWallet.objects.select_for_update().get(
@@ -204,6 +207,7 @@ class OrganizerPayoutListCreateView(APIView):
                 payout_charge=payout_charge,
                 amount_received=amount_received,
                 status='PROCESSING',
+                provider=gateway,
                 reference=reference,
                 bank_name=bank_account.bank_name,
                 account_number=bank_account.account_number,
@@ -228,27 +232,51 @@ class OrganizerPayoutListCreateView(APIView):
                 related_payout=payout,
             )
 
-            # Auto-initiate Paystack transfer
+            # Auto-initiate the payout through the currently active gateway.
             try:
-                from core.utils.transfers import initiate_transfer, create_transfer_recipient
+                if gateway == 'NOMBA':
+                    from core.utils import nomba
 
-                # Ensure recipient code exists (may have been created when bank account was saved)
-                recipient_code = bank_account.paystack_recipient_code
-                if not recipient_code:
-                    recipient_code = create_transfer_recipient(
-                        bank_account.bank_code,
-                        bank_account.account_number,
-                        bank_account.account_name,
+                    result = nomba.initiate_bank_transfer(
+                        amount_kobo=amount_received,
+                        account_number=bank_account.account_number,
+                        account_name=bank_account.account_name,
+                        bank_code=bank_account.bank_code,
+                        bank_name=bank_account.bank_name,
+                        reference=reference,
+                        sender_name='CirclePass',
+                        narration=f'CirclePass payout {reference}',
                     )
-                    bank_account.paystack_recipient_code = recipient_code
-                    bank_account.save(update_fields=['paystack_recipient_code'])
-                    payout.paystack_recipient_code = recipient_code
-                    payout.save(update_fields=['paystack_recipient_code'])
+                    payout.paystack_transfer_code = result.get('transfer_code', '')
+                    if result.get('status') == 'SUCCESS':
+                        payout.status = 'COMPLETED'
+                        payout.processed_at = timezone.now()
+                        payout.save(update_fields=[
+                            'paystack_transfer_code', 'status', 'processed_at', 'updated_at',
+                        ])
+                    else:
+                        # PENDING_BILLING / NEW — wait for the payout webhook.
+                        payout.save(update_fields=['paystack_transfer_code', 'updated_at'])
+                else:
+                    from core.utils.transfers import initiate_transfer, create_transfer_recipient
 
-                # Initiate the transfer with amount_received (what organizer gets after charge)
-                transfer_code = initiate_transfer(recipient_code, amount_received, reference)
-                payout.paystack_transfer_code = transfer_code
-                payout.save(update_fields=['paystack_transfer_code', 'updated_at'])
+                    # Ensure recipient code exists (may have been created when bank account was saved)
+                    recipient_code = bank_account.paystack_recipient_code
+                    if not recipient_code:
+                        recipient_code = create_transfer_recipient(
+                            bank_account.bank_code,
+                            bank_account.account_number,
+                            bank_account.account_name,
+                        )
+                        bank_account.paystack_recipient_code = recipient_code
+                        bank_account.save(update_fields=['paystack_recipient_code'])
+                        payout.paystack_recipient_code = recipient_code
+                        payout.save(update_fields=['paystack_recipient_code'])
+
+                    # Initiate the transfer with amount_received (what organizer gets after charge)
+                    transfer_code = initiate_transfer(recipient_code, amount_received, reference)
+                    payout.paystack_transfer_code = transfer_code
+                    payout.save(update_fields=['paystack_transfer_code', 'updated_at'])
 
             except Exception as transfer_error:
                 # Transfer initiation failed — mark as failed and refund

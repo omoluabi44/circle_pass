@@ -368,3 +368,30 @@ class NombaVerifyTests(TestCase):
 
         self.assertEqual(res.status_code, 200)
         self.assertEqual(res.data['status'], 'PENDING')
+
+class NombaBankCodeTests(TestCase):
+    """Nomba uses different bank codes than Paystack for some fintechs."""
+
+    def test_resolve_bank_code_maps_paystack_codes_to_nomba(self):
+        codes = {
+            '305': 'Paycom (Opay)',
+            '090405': 'Moniepoint Bank',
+            '058': 'GTBank',
+            '044': 'Access Bank',
+        }
+        with patch.object(nomba, 'get_bank_codes', return_value=codes):
+            self.assertEqual(
+                nomba.resolve_bank_code('OPay Digital Services Limited (OPay)', '999992'),
+                '305',
+            )
+            self.assertEqual(
+                nomba.resolve_bank_code('Moniepoint MFB', '50515'),
+                '090405',
+            )
+            # Codes that already match are passed through unchanged.
+            self.assertEqual(nomba.resolve_bank_code('Guaranty Trust Bank', '058'), '058')
+            self.assertEqual(nomba.resolve_bank_code('Access Bank', '044'), '044')
+
+    def test_resolve_bank_code_returns_empty_for_unknown_bank(self):
+        with patch.object(nomba, 'get_bank_codes', return_value={'058': 'GTBank'}):
+            self.assertEqual(nomba.resolve_bank_code('Nonexistent Bank', '000000'), '')

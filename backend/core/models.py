@@ -461,6 +461,7 @@ class Payout(models.Model):
     payout_charge = models.IntegerField(default=0, help_text='Paystack transfer fee in kobo.')
     amount_received = models.IntegerField(default=0, help_text='amount - payout_charge: what organizer actually receives (kobo).')
     status = models.CharField(max_length=50, choices=PAYOUT_STATUS_CHOICES, default='PROCESSING')
+    provider = models.CharField(max_length=20, default='PAYSTACK', help_text='Gateway used to settle this payout.')
     reference = models.CharField(max_length=100, unique=True, db_index=True, help_text='CirclePass payout reference.')
     # Bank snapshot (stored at request time)
     bank_name = models.CharField(max_length=100)

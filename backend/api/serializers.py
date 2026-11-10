@@ -567,7 +567,7 @@ class PayoutSerializer(serializers.ModelSerializer):
         model = Payout
         fields = (
             'id', 'amount', 'payout_charge', 'amount_received',
-            'status', 'reference', 'bank_name',
+            'status', 'provider', 'reference', 'bank_name',
             'account_number', 'masked_account_number', 'account_name',
             'failure_reason', 'requested_at', 'processed_at',
         )
