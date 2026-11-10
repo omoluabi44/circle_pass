@@ -56,6 +56,10 @@ interface BankAccount {
   masked_number: string;
   account_name: string;
   is_default: boolean;
+  // Server-side check: the saved account name still matches the organizer's
+  // current name. Older accounts can drift after a name change.
+  name_matches_organizer?: boolean;
+  expected_account_name?: string;
 }
 
 type ModalStep = "select-bank" | "add-bank" | "enter-amount" | "confirm" | "done";
@@ -205,8 +209,11 @@ export default function WalletPage() {
 
   // ── Open Modal ──────────────────────────────────────────────────────────────
   const openModal = () => {
-    setStep(bankAccounts.length === 0 ? "add-bank" : "select-bank");
-    setSelectedAccount(bankAccounts.find(a => a.is_default) ?? null);
+    const validAccounts = bankAccounts.filter(a => a.name_matches_organizer !== false);
+    setStep(validAccounts.length === 0 ? "add-bank" : "select-bank");
+    setSelectedAccount(
+      validAccounts.find(a => a.is_default) ?? validAccounts[0] ?? null
+    );
     setAmountNaira(""); setFeePreview(null); setSubmitError("");
     resetAddBankForm();
     setModalOpen(true);
@@ -319,6 +326,7 @@ export default function WalletPage() {
 
   const amountKobo = amountNaira ? Math.round(parseFloat(amountNaira) * 100) : 0;
   const canProceedAmount = amountKobo >= 10_000 && !!feePreview && !feeLoading;
+  const mismatchedAccounts = bankAccounts.filter(a => a.name_matches_organizer === false);
 
   return (
     <div className="p-6 md:p-8 max-w-5xl mx-auto">
@@ -336,6 +344,31 @@ export default function WalletPage() {
           <Wallet className="w-4 h-4" /> Request Payout
         </button>
       </header>
+
+      {/* Payout account name warning */}
+      {mismatchedAccounts.length > 0 && (
+        <div className="mb-6 flex items-start gap-3 bg-red-50 border border-red-200 rounded-xl p-4 text-sm">
+          <AlertCircle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <p className="font-semibold text-red-700">Payout account name mismatch</p>
+            <p className="text-red-600 mt-0.5">
+              {mismatchedAccounts.length === 1
+                ? "One saved bank account is not in your name."
+                : `${mismatchedAccounts.length} saved bank accounts are not in your name.`}{" "}
+              Withdrawals are blocked until your Organizer Name matches the account name
+              {mismatchedAccounts[0]?.expected_account_name
+                ? ` (expected: ${mismatchedAccounts[0].expected_account_name})`
+                : ""}.
+            </p>
+            <a
+              href="/organizer/account"
+              className="inline-block mt-2 text-xs font-semibold text-primary hover:underline"
+            >
+              Go to Account Settings →
+            </a>
+          </div>
+        </div>
+      )}
 
       {/* Balance Cards */}
       {wallet && (
@@ -465,30 +498,46 @@ export default function WalletPage() {
               {/* ── Step: Select Bank Account ── */}
               {step === "select-bank" && (
                 <div className="space-y-3">
-                  {bankAccounts.map(acct => (
-                    <label
-                      key={acct.id}
-                      className={`flex items-center gap-3 p-4 rounded-xl border cursor-pointer transition-colors ${
-                        selectedAccount?.id === acct.id
-                          ? "border-primary bg-primary/5"
-                          : "border-border hover:border-primary/40"
-                      }`}
-                    >
-                      <input
-                        type="radio" name="bank-account" className="accent-primary"
-                        checked={selectedAccount?.id === acct.id}
-                        onChange={() => setSelectedAccount(acct)}
-                      />
-                      <Building2 className="w-4 h-4 text-muted-foreground shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-foreground">{acct.bank_name}</p>
-                        <p className="text-xs text-muted-foreground">{acct.account_name} · {acct.masked_number}</p>
-                      </div>
-                      {acct.is_default && (
-                        <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full font-medium shrink-0">Default</span>
-                      )}
-                    </label>
-                  ))}
+                  {bankAccounts.map(acct => {
+                    const mismatched = acct.name_matches_organizer === false;
+                    return (
+                      <label
+                        key={acct.id}
+                        className={`flex items-start gap-3 p-4 rounded-xl border transition-colors ${
+                          mismatched
+                            ? "border-red-200 bg-red-50/50 cursor-not-allowed opacity-70"
+                            : selectedAccount?.id === acct.id
+                              ? "border-primary bg-primary/5 cursor-pointer"
+                              : "border-border hover:border-primary/40 cursor-pointer"
+                        }`}
+                      >
+                        <input
+                          type="radio" name="bank-account" className="accent-primary mt-1"
+                          checked={selectedAccount?.id === acct.id}
+                          disabled={mismatched}
+                          onChange={() => setSelectedAccount(acct)}
+                        />
+                        <Building2 className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold text-foreground">{acct.bank_name}</p>
+                          <p className="text-xs text-muted-foreground">{acct.account_name} · {acct.masked_number}</p>
+                          {mismatched && (
+                            <p className="text-xs text-red-600 mt-1.5 flex items-start gap-1">
+                              <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                              <span>
+                                This account name does not match your organizer name
+                                {acct.expected_account_name ? ` (${acct.expected_account_name})` : ""}.
+                                Update your Organizer Name in Account Settings or add an account in your name.
+                              </span>
+                            </p>
+                          )}
+                        </div>
+                        {acct.is_default && !mismatched && (
+                          <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full font-medium shrink-0">Default</span>
+                        )}
+                      </label>
+                    );
+                  })}
 
                   <button
                     onClick={() => setStep("add-bank")}
@@ -498,7 +547,7 @@ export default function WalletPage() {
                   </button>
 
                   <button
-                    disabled={!selectedAccount}
+                    disabled={!selectedAccount || selectedAccount.name_matches_organizer === false}
                     onClick={() => setStep("enter-amount")}
                     className="w-full bg-primary hover:bg-primary/90 text-white font-medium py-3 rounded-xl transition-colors disabled:opacity-40"
                   >
@@ -702,7 +751,7 @@ export default function WalletPage() {
                   </div>
                   <div>
                     <h4 className="text-lg font-bold text-foreground">Payout Processing</h4>
-                    <p className="text-sm text-muted-foreground mt-1">Your payout is on its way. We&apos;ll update the status once Paystack confirms the transfer.</p>
+                    <p className="text-sm text-muted-foreground mt-1">Your payout is on its way. We&apos;ll update the status once the payment provider confirms the transfer.</p>
                   </div>
                   <button
                     onClick={closeModal}

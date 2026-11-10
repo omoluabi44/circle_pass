@@ -324,3 +324,79 @@ class BankAccountNameValidationTests(TestCase):
             self.assertEqual(res2.status_code, 200)
             self.assertEqual(res2.data['data']['account_name'], 'JOHN DOE')
 
+
+class PayoutNameEnforcementTests(TestCase):
+    """A payout must re-validate the destination account against the organizer's
+    current name — accounts saved under an older name must not be payable."""
+
+    def setUp(self):
+        from core.models import OrganizerBankAccount
+
+        self.user = User.objects.create_user(
+            username='chinedu', email='chinedu@example.com', password='password',
+            role='ORGANIZER', first_name='Chinedu', last_name='Nwafor',
+        )
+        self.organizer, _ = OrganizerProfile.objects.get_or_create(user=self.user)
+        self.organizer.company_name = 'Chinedu Nwafor'
+        self.organizer.save(update_fields=['company_name'])
+
+        self.wallet = OrganizerWallet.objects.get(organizer=self.organizer)
+        self.wallet.available_balance = 1_000_000
+        self.wallet.save(update_fields=['available_balance'])
+
+        self.token = str(RefreshToken.for_user(self.user).access_token)
+
+        self.account = OrganizerBankAccount.objects.create(
+            organizer=self.organizer,
+            bank_name='OPay Digital Services Limited (OPay)',
+            bank_code='999992',
+            account_number='0123456789',
+            account_name='SOMEONE ELSE',
+            is_default=True,
+        )
+
+    def test_bank_account_serializer_flags_name_mismatch(self):
+        res = self.client.get(
+            reverse('bank_accounts'), HTTP_AUTHORIZATION=f'Bearer {self.token}'
+        )
+        self.assertEqual(res.status_code, 200)
+        account = res.data[0]
+        self.assertFalse(account['name_matches_organizer'])
+        self.assertEqual(account['expected_account_name'], 'Chinedu Nwafor')
+
+    def test_payout_blocked_when_account_name_does_not_match(self):
+        res = self.client.post(
+            reverse('organizer_payouts'),
+            {'amount': 100000, 'bank_account_id': self.account.id},
+            content_type='application/json',
+            HTTP_AUTHORIZATION=f'Bearer {self.token}',
+        )
+        self.assertEqual(res.status_code, 400)
+        self.assertTrue(res.data.get('name_mismatch'))
+        self.assertIn('does not match your organizer name', res.data.get('detail', ''))
+
+        self.wallet.refresh_from_db()
+        self.assertEqual(self.wallet.available_balance, 1_000_000)
+        self.assertEqual(Payout.objects.count(), 0)
+
+    def test_payout_allowed_when_account_name_matches(self):
+        from unittest.mock import patch
+
+        self.account.account_name = 'CHINEDU NWAFOR'
+        self.account.paystack_recipient_code = 'RCP_test123'
+        self.account.save(update_fields=['account_name', 'paystack_recipient_code'])
+
+        with patch('core.utils.transfers.initiate_transfer', return_value='TRF_test123') as mock_transfer:
+            res = self.client.post(
+                reverse('organizer_payouts'),
+                {'amount': 100000, 'bank_account_id': self.account.id},
+                content_type='application/json',
+                HTTP_AUTHORIZATION=f'Bearer {self.token}',
+            )
+
+        self.assertEqual(res.status_code, 201)
+        mock_transfer.assert_called_once()
+        self.wallet.refresh_from_db()
+        self.assertEqual(self.wallet.available_balance, 900_000)
+
+

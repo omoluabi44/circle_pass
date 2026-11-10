@@ -26,6 +26,7 @@ function BusinessDetailsForm() {
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [payoutNameWarning, setPayoutNameWarning] = useState<string>("");
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -66,6 +67,33 @@ function BusinessDetailsForm() {
     };
 
     if (session?.accessToken) fetchProfile();
+  }, [session?.accessToken]);
+
+  // Surface payout-account name mismatches as soon as the page loads.
+  useEffect(() => {
+    const token = (session as any)?.accessToken;
+    if (!token) return;
+    (async () => {
+      try {
+        const res = await fetch(`${API_URL}/organizer/bank-accounts/`, {
+          headers: { 'Authorization': `Bearer ${token}` },
+        });
+        if (!res.ok) return;
+        const accounts = await res.json();
+        const mismatched = (Array.isArray(accounts) ? accounts : [])
+          .filter((a: any) => a.name_matches_organizer === false);
+        if (mismatched.length > 0) {
+          const names = mismatched.map((a: any) => a.account_name).join(", ");
+          setPayoutNameWarning(
+            `Your saved payout account${mismatched.length > 1 ? "s" : ""} (${names}) ` +
+            `do${mismatched.length > 1 ? "" : "es"} not match this organizer name. ` +
+            `Withdrawals stay blocked until they match.`
+          );
+        }
+      } catch {
+        // Non-fatal — the payout request re-validates server-side anyway.
+      }
+    })();
   }, [session?.accessToken]);
 
   const handleOrganizerNameChange = (val: string) => {
@@ -118,6 +146,32 @@ function BusinessDetailsForm() {
         throw new Error(errData?.error || errData?.detail || errData?.message || "Failed to update profile");
       }
       toast.success("Profile updated successfully!");
+
+      // Warn immediately if saved payout accounts no longer match the new name,
+      // so the organizer doesn't discover the block at withdrawal time.
+      try {
+        const baRes = await fetch(`${API_URL}/organizer/bank-accounts/`, {
+          headers: { 'Authorization': `Bearer ${token}` },
+        });
+        if (baRes.ok) {
+          const accounts = await baRes.json();
+          const mismatched = (Array.isArray(accounts) ? accounts : [])
+            .filter((a: any) => a.name_matches_organizer === false);
+          if (mismatched.length > 0) {
+            const names = mismatched.map((a: any) => a.account_name).join(", ");
+            setPayoutNameWarning(
+              `Your saved payout account${mismatched.length > 1 ? "s" : ""} (${names}) ` +
+              `do${mismatched.length > 1 ? "" : "es"} not match this organizer name. ` +
+              `Withdrawals stay blocked until they match.`
+            );
+            toast.error("Payout account name does not match your organizer name.");
+          } else {
+            setPayoutNameWarning("");
+          }
+        }
+      } catch {
+        // Non-fatal — the payout request re-validates server-side anyway.
+      }
     } catch (err: any) {
       console.error(err);
       toast.error(err.message || "An error occurred while saving.");
@@ -167,6 +221,12 @@ function BusinessDetailsForm() {
         <p className="text-xs text-muted-foreground">
           Enter your personal legal name as registered on your bank account for payout verification.
         </p>
+        {payoutNameWarning && (
+          <div className="flex items-start gap-2 text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2.5">
+            <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+            <span>{payoutNameWarning}</span>
+          </div>
+        )}
       </div>
 
       <div className="grid md:grid-cols-2 gap-6">

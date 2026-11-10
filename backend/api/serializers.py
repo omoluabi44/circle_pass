@@ -517,18 +517,38 @@ from core.models import OrganizerBankAccount
 
 class OrganizerBankAccountSerializer(serializers.ModelSerializer):
     masked_number = serializers.SerializerMethodField()
+    name_matches_organizer = serializers.SerializerMethodField()
+    expected_account_name = serializers.SerializerMethodField()
 
     class Meta:
         model = OrganizerBankAccount
         fields = (
             'id', 'bank_name', 'bank_code', 'account_number',
             'masked_number', 'account_name', 'is_default', 'created_at',
+            'name_matches_organizer', 'expected_account_name',
         )
         read_only_fields = fields
 
     def get_masked_number(self, obj):
         num = obj.account_number
         return f'••••{num[-4:]}' if len(num) >= 4 else num
+
+    def get_name_matches_organizer(self, obj):
+        """Whether the saved account name still matches the organizer's current
+        name. Accounts saved before a name change can drift out of sync, so the
+        payout UI re-validates instead of trusting the save-time check."""
+        from core.utils.transfers import is_bank_name_valid_for_organizer
+
+        organizer = getattr(obj, 'organizer', None)
+        if organizer is None:
+            return False
+        return is_bank_name_valid_for_organizer(organizer, obj.account_name)
+
+    def get_expected_account_name(self, obj):
+        from core.utils.transfers import get_organizer_name_for_display
+
+        organizer = getattr(obj, 'organizer', None)
+        return get_organizer_name_for_display(organizer) if organizer else ''
 
 
 class OrganizerWalletSerializer(serializers.ModelSerializer):

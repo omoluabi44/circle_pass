@@ -184,6 +184,39 @@ class OrganizerPayoutListCreateView(APIView):
             except OrganizerBankAccount.DoesNotExist:
                 return Response({'detail': 'Bank account not found.'}, status=status.HTTP_404_NOT_FOUND)
 
+            # Re-validate the payout account against the organizer's current name.
+            # Saving the account validates once, but the organizer name can change
+            # afterwards (or the account may predate name validation), so the check
+            # must run again here before any money moves.
+            from core.utils.transfers import (
+                is_bank_name_valid_for_organizer,
+                get_organizer_name_for_display,
+                get_organizer_bank_name_mismatch_error,
+            )
+
+            organizer = bank_account.organizer
+            if not is_bank_name_valid_for_organizer(organizer, bank_account.account_name):
+                display_name = get_organizer_name_for_display(organizer)
+                if display_name:
+                    err_msg = get_organizer_bank_name_mismatch_error(
+                        display_name, bank_account.account_name
+                    )
+                else:
+                    err_msg = (
+                        'Set your Organizer Name in Account Settings so we can verify '
+                        'your payout account before withdrawing.'
+                    )
+                return Response(
+                    {
+                        'detail': err_msg,
+                        'error': err_msg,
+                        'account_name': bank_account.account_name,
+                        'organizer_name': display_name,
+                        'name_mismatch': True,
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
             if amount > wallet.available_balance:
                 return Response(
                     {'detail': f'Insufficient balance. Available: ₦{wallet.available_balance / 100:,.2f}'},
@@ -249,11 +282,14 @@ class OrganizerPayoutListCreateView(APIView):
                     )
                     payout.paystack_transfer_code = result.get('transfer_code', '')
                     if result.get('status') == 'SUCCESS':
-                        payout.status = 'COMPLETED'
+                        payout.status = 'SUCCESSFUL'
                         payout.processed_at = timezone.now()
                         payout.save(update_fields=[
                             'paystack_transfer_code', 'status', 'processed_at', 'updated_at',
                         ])
+                        OrganizerWallet.objects.filter(pk=wallet.pk).update(
+                            total_payouts=F('total_payouts') + amount
+                        )
                     else:
                         # PENDING_BILLING / NEW — wait for the payout webhook.
                         payout.save(update_fields=['paystack_transfer_code', 'updated_at'])
