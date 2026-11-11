@@ -28,19 +28,53 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         self.stdout.write(f'EMAIL_BACKEND:      {settings.EMAIL_BACKEND}')
-        self.stdout.write(f'EMAIL_HOST:         {settings.EMAIL_HOST}:{settings.EMAIL_PORT}')
-        self.stdout.write(f'TLS/SSL:            {settings.EMAIL_USE_TLS}/{settings.EMAIL_USE_SSL}')
-        self.stdout.write(f'EMAIL_HOST_USER:    {settings.EMAIL_HOST_USER}')
-        self.stdout.write(f'Password set:       {bool(settings.EMAIL_HOST_PASSWORD)}')
         self.stdout.write(f'DEFAULT_FROM_EMAIL: {settings.DEFAULT_FROM_EMAIL}')
 
-        self._check_smtp()
-        if 'sendgrid' in (settings.EMAIL_HOST or '').lower():
-            self._check_sendgrid()
+        is_ses = 'SESEmailBackend' in (settings.EMAIL_BACKEND or '')
+        if is_ses:
+            self._check_ses()
+        else:
+            self.stdout.write(f'EMAIL_HOST:         {settings.EMAIL_HOST}:{settings.EMAIL_PORT}')
+            self.stdout.write(f'TLS/SSL:            {settings.EMAIL_USE_TLS}/{settings.EMAIL_USE_SSL}')
+            self.stdout.write(f'EMAIL_HOST_USER:    {settings.EMAIL_HOST_USER}')
+            self.stdout.write(f'Password set:       {bool(settings.EMAIL_HOST_PASSWORD)}')
+            self._check_smtp()
+            if 'sendgrid' in (settings.EMAIL_HOST or '').lower():
+                self._check_sendgrid()
 
         recipient = options.get('send_to')
         if recipient:
             self._send(recipient)
+
+    def _check_ses(self):
+        import boto3
+
+        region = getattr(settings, 'AWS_S3_REGION_NAME', 'us-east-1')
+        self.stdout.write(f'SES region:         {region}')
+        try:
+            ses = boto3.client('sesv2', region_name=region)
+            account = ses.get_account()
+            quota = account.get('SendQuota') or {}
+            self.stdout.write(
+                f'SES sending:        enabled={account.get("SendingEnabled")} '
+                f'production={account.get("ProductionAccessEnabled")}'
+            )
+            self.stdout.write(
+                f'SES quota:          {quota.get("SentLast24Hours")} sent / '
+                f'{quota.get("Max24HourSend")} per 24h'
+            )
+            identities = ses.list_email_identities().get('EmailIdentities', [])
+            verified = [
+                i['IdentityName'] for i in identities if i.get('SendingEnabled')
+            ]
+            self.stdout.write(f'SES verified:       {verified or "none"}')
+            if settings.DEFAULT_FROM_EMAIL not in verified:
+                self.stdout.write(self.style.ERROR(
+                    f'SES: {settings.DEFAULT_FROM_EMAIL} is not verified for sending. '
+                    'Verify the domain (DKIM CNAMEs) or the single address.'
+                ))
+        except Exception as exc:
+            self.stdout.write(self.style.ERROR(f'SES: {type(exc).__name__}: {exc}'))
 
     def _check_smtp(self):
         try:
