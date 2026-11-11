@@ -553,15 +553,29 @@ class OrganizerBankAccountSerializer(serializers.ModelSerializer):
 
 class OrganizerWalletSerializer(serializers.ModelSerializer):
     pending_payout = serializers.SerializerMethodField()
+    default_bank_account = serializers.SerializerMethodField()
 
     class Meta:
         model = OrganizerWallet
         fields = (
             'available_balance', 'total_earnings', 'total_payouts',
             'pending_payout', 'updated_at',
+            'default_bank_account',
             'bank_name', 'bank_code', 'account_number', 'account_name',
         )
         read_only_fields = fields
+
+    def get_default_bank_account(self, obj):
+        """The bank account payouts actually use. Payouts read from
+        OrganizerBankAccount, so the wallet summary must expose the same row
+        instead of the legacy single-slot fields."""
+        accounts = getattr(obj.organizer, 'bank_accounts', None)
+        if accounts is None:
+            return None
+        account = accounts.filter(is_default=True).first() or accounts.first()
+        if account is None:
+            return None
+        return OrganizerBankAccountSerializer(account).data
 
     def get_pending_payout(self, obj):
         """Sum of amounts reserved by PROCESSING payouts."""

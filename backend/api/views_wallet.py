@@ -90,6 +90,28 @@ class OrganizerWalletView(APIView):
             wallet.account_name = account_name
             wallet.save(update_fields=['bank_code', 'bank_name', 'account_number', 'account_name', 'updated_at'])
 
+            # Payouts read from OrganizerBankAccount, so the account saved here
+            # must become the real default — otherwise the wallet shows the new
+            # details while withdrawals still go to the old account.
+            from django.db import transaction
+            from core.models import OrganizerBankAccount
+
+            with transaction.atomic():
+                OrganizerBankAccount.objects.filter(organizer=profile).update(is_default=False)
+                existing = OrganizerBankAccount.objects.filter(
+                    organizer=profile, bank_code=bank_code, account_number=account_number
+                ).first()
+                OrganizerBankAccount.objects.update_or_create(
+                    organizer=profile,
+                    bank_code=bank_code,
+                    account_number=account_number,
+                    defaults={
+                        'bank_name': bank_name or (existing.bank_name if existing else '') or bank_code,
+                        'account_name': account_name,
+                        'is_default': True,
+                    },
+                )
+
         from api.serializers import OrganizerWalletSerializer
         serializer = OrganizerWalletSerializer(wallet)
         return Response(serializer.data)

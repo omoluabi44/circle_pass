@@ -463,4 +463,83 @@ class OrganizerNameIsTiedToPayoutTests(TestCase):
         self.assertEqual(res2.status_code, 201)
 
 
+class WalletPayoutSettingsSyncTests(TestCase):
+    """The Payout Settings tab writes through /organizer/wallet/, but payouts read
+    from OrganizerBankAccount — saving there must update the real default account."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username='syncorg', email='sync@example.com', password='password',
+            role='ORGANIZER', first_name='Sync', last_name='Organizer',
+        )
+        self.organizer, _ = OrganizerProfile.objects.get_or_create(user=self.user)
+        self.organizer.company_name = 'Sync Events'
+        self.organizer.save(update_fields=['company_name'])
+        self.wallet = OrganizerWallet.objects.get(organizer=self.organizer)
+        self.token = str(RefreshToken.for_user(self.user).access_token)
+
+    def _patch_wallet(self, bank_code, account, bank_name='OPay Digital Services Limited (OPay)'):
+        return self.client.patch(
+            reverse('organizer_wallet'),
+            {'bank_code': bank_code, 'account_number': account, 'bank_name': bank_name},
+            content_type='application/json',
+            HTTP_AUTHORIZATION=f'Bearer {self.token}',
+        )
+
+    def test_saving_details_creates_default_bank_account(self):
+        from unittest.mock import patch
+        from core.models import OrganizerBankAccount
+
+        with patch('api.views_wallet.resolve_account_number', return_value={'account_name': 'SYNC ORGANIZER'}):
+            res = self._patch_wallet('999992', '7047849321')
+
+        self.assertEqual(res.status_code, 200)
+        acct = OrganizerBankAccount.objects.get(organizer=self.organizer)
+        self.assertTrue(acct.is_default)
+        self.assertEqual(acct.account_number, '7047849321')
+        self.assertEqual(acct.account_name, 'SYNC ORGANIZER')
+        self.assertEqual(res.data['default_bank_account']['id'], acct.id)
+
+    def test_saving_new_details_switches_the_default(self):
+        from unittest.mock import patch
+        from core.models import OrganizerBankAccount
+
+        old = OrganizerBankAccount.objects.create(
+            organizer=self.organizer, bank_name='Old Bank', bank_code='058',
+            account_number='0123456789', account_name='SYNC ORGANIZER', is_default=True,
+        )
+
+        with patch('api.views_wallet.resolve_account_number', return_value={'account_name': 'SYNC ORGANIZER'}):
+            res = self._patch_wallet('999992', '7047849321')
+
+        self.assertEqual(res.status_code, 200)
+        old.refresh_from_db()
+        self.assertFalse(old.is_default)
+
+        new = OrganizerBankAccount.objects.get(organizer=self.organizer, account_number='7047849321')
+        self.assertTrue(new.is_default)
+        self.assertEqual(res.data['default_bank_account']['id'], new.id)
+
+    def test_wallet_exposes_the_account_payouts_use(self):
+        from core.models import OrganizerBankAccount
+
+        OrganizerBankAccount.objects.create(
+            organizer=self.organizer, bank_name='Old Bank', bank_code='058',
+            account_number='0123456789', account_name='SYNC ORGANIZER', is_default=False,
+        )
+        default = OrganizerBankAccount.objects.create(
+            organizer=self.organizer, bank_name='New Bank', bank_code='999992',
+            account_number='7047849321', account_name='SYNC ORGANIZER', is_default=True,
+        )
+
+        res = self.client.get(
+            reverse('organizer_wallet'), HTTP_AUTHORIZATION=f'Bearer {self.token}'
+        )
+
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.data['default_bank_account']['id'], default.id)
+        self.assertTrue(res.data['default_bank_account']['name_matches_organizer'])
+
+
+
 

@@ -459,6 +459,7 @@ function PayoutSettingsTab() {
   });
 
   const [banks, setBanks] = useState<any[]>([]);
+  const [accounts, setAccounts] = useState<any[]>([]);
   const [resolving, setResolving] = useState(false);
   const [resolveError, setResolveError] = useState("");
 
@@ -468,23 +469,32 @@ function PayoutSettingsTab() {
         const token = (session as any)?.accessToken;
         if (!token) return;
 
-        const [walletRes, banksRes] = await Promise.all([
+        const [walletRes, banksRes, accountsRes] = await Promise.all([
           fetch(`${API_URL}/organizer/wallet/`, { headers: { 'Authorization': `Bearer ${token}` } }),
-          fetch(`${API_URL}/organizer/banks/`, { headers: { 'Authorization': `Bearer ${token}` } })
+          fetch(`${API_URL}/organizer/banks/`, { headers: { 'Authorization': `Bearer ${token}` } }),
+          fetch(`${API_URL}/organizer/bank-accounts/`, { headers: { 'Authorization': `Bearer ${token}` } }),
         ]);
 
         if (walletRes.ok) {
           const data = await walletRes.json();
+          // Payouts use the default saved account; fall back to the legacy
+          // single-slot fields for wallets that have no saved accounts yet.
+          const current = data.default_bank_account || data;
           setFormData({
-            bank_name: data.bank_code || '',
-            account_number: data.account_number || '',
-            account_name: data.account_name || ''
+            bank_name: current.bank_code || '',
+            account_number: current.account_number || '',
+            account_name: current.account_name || ''
           });
         }
-        
+
         if (banksRes.ok) {
           const banksData = await banksRes.json();
           setBanks(banksData.data || []);
+        }
+
+        if (accountsRes.ok) {
+          const accountsData = await accountsRes.json();
+          setAccounts(Array.isArray(accountsData) ? accountsData : []);
         }
       } catch (err) {
         console.error(err);
@@ -578,6 +588,25 @@ function PayoutSettingsTab() {
         throw new Error(errData?.error || errData?.detail || errData?.message || "Failed to save bank details");
       }
       toast.success("Bank details updated successfully!");
+
+      // Refresh so the page shows the account that withdrawals will now use.
+      const [walletRes, accountsRes] = await Promise.all([
+        fetch(`${API_URL}/organizer/wallet/`, { headers: { 'Authorization': `Bearer ${token}` } }),
+        fetch(`${API_URL}/organizer/bank-accounts/`, { headers: { 'Authorization': `Bearer ${token}` } }),
+      ]);
+      if (walletRes.ok) {
+        const data = await walletRes.json();
+        const current = data.default_bank_account || data;
+        setFormData({
+          bank_name: current.bank_code || '',
+          account_number: current.account_number || '',
+          account_name: current.account_name || '',
+        });
+      }
+      if (accountsRes.ok) {
+        const accountsData = await accountsRes.json();
+        setAccounts(Array.isArray(accountsData) ? accountsData : []);
+      }
     } catch (err: any) {
       console.error(err);
       toast.error(err.message || "An error occurred.");
@@ -651,6 +680,39 @@ function PayoutSettingsTab() {
             {saving ? 'Saving...' : 'Save Details'}
           </button>
         </div>
+      </div>
+
+      {/* Saved accounts — the default one is what withdrawals are paid into. */}
+      <div className="bg-background border border-border rounded-xl p-6 space-y-3">
+        <h3 className="font-bold text-foreground text-sm uppercase tracking-wider">Saved Payout Accounts</h3>
+        {accounts.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No saved accounts yet.</p>
+        ) : (
+          <ul className="divide-y divide-border">
+            {accounts.map((acct: any) => (
+              <li key={acct.id} className="flex items-start justify-between gap-3 py-3">
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-foreground">{acct.bank_name}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {acct.account_name} · {acct.masked_number}
+                  </p>
+                  {acct.name_matches_organizer === false && (
+                    <p className="text-xs text-red-600 mt-1">
+                      Name does not match your Organizer Name
+                      {acct.expected_account_name ? ` (${acct.expected_account_name})` : ""} — withdrawals are blocked.
+                    </p>
+                  )}
+                </div>
+                {acct.is_default && (
+                  <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full font-medium shrink-0">Default</span>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+        <p className="text-xs text-muted-foreground">
+          Saving details above makes that account the default used for withdrawals.
+        </p>
       </div>
 
 
