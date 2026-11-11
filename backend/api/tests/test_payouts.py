@@ -400,3 +400,67 @@ class PayoutNameEnforcementTests(TestCase):
         self.assertEqual(self.wallet.available_balance, 900_000)
 
 
+class OrganizerNameIsTiedToPayoutTests(TestCase):
+    """The Organizer Name saved in Account Settings is the name payouts are
+    validated against — the whole chain must stay wired end to end."""
+
+    def setUp(self):
+        from core.models import OrganizerBankAccount
+
+        self.user = User.objects.create_user(
+            username='tiedorg', email='tied@example.com', password='password',
+            role='ORGANIZER', first_name='Old', last_name='Name',
+        )
+        self.organizer, _ = OrganizerProfile.objects.get_or_create(user=self.user)
+        self.organizer.company_name = 'Old Brand'
+        self.organizer.save(update_fields=['company_name'])
+
+        self.wallet = OrganizerWallet.objects.get(organizer=self.organizer)
+        self.wallet.available_balance = 1_000_000
+        self.wallet.save(update_fields=['available_balance'])
+
+        self.token = str(RefreshToken.for_user(self.user).access_token)
+
+    def _payout(self, account):
+        return self.client.post(
+            reverse('organizer_payouts'),
+            {'amount': 100000, 'bank_account_id': account.id},
+            content_type='application/json',
+            HTTP_AUTHORIZATION=f'Bearer {self.token}',
+        )
+
+    def test_editing_organizer_name_changes_payout_validation(self):
+        from unittest.mock import patch
+        from core.models import OrganizerBankAccount
+
+        account = OrganizerBankAccount.objects.create(
+            organizer=self.organizer, bank_name='Guaranty Trust Bank',
+            bank_code='058', account_number='0123456789',
+            account_name='CHINEDU NWAFOR', is_default=True,
+        )
+
+        # Saved name does not match the current organizer name yet.
+        self.assertEqual(self._payout(account).status_code, 400)
+
+        # Organizer edits their name in Account Settings.
+        res = self.client.patch(
+            reverse('organizer-profile-detail', kwargs={'pk': self.organizer.pk}),
+            {'organizer_name': 'Chinedu nwafor'},
+            content_type='application/json',
+            HTTP_AUTHORIZATION=f'Bearer {self.token}',
+        )
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.data['organizer_name'], 'Chinedu nwafor')
+
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.get_full_name(), 'Chinedu nwafor')
+
+        # Now the same account is accepted (transfer itself is stubbed).
+        account.paystack_recipient_code = 'RCP_test123'
+        account.save(update_fields=['paystack_recipient_code'])
+        with patch('core.utils.transfers.initiate_transfer', return_value='TRF_test123'):
+            res2 = self._payout(account)
+        self.assertEqual(res2.status_code, 201)
+
+
+
