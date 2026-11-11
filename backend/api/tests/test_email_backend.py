@@ -27,23 +27,23 @@ class SESEmailBackendTests(TestCase):
         sent = self.backend.send_messages([message])
 
         self.assertEqual(sent, 1)
-        kwargs = self.client.send_raw_email.call_args.kwargs
+        kwargs = self.client.send_email.call_args.kwargs
         self.assertEqual(kwargs['FromEmailAddress'], 'officialcirclepass@thecirclepass.com')
         self.assertEqual(
             sorted(kwargs['Destination']['ToAddresses']),
             ['one@example.com', 'two@example.com'],
         )
-        self.assertIn(b'Html body', kwargs['RawMessage']['Data'])
+        self.assertIn(b'Html body', kwargs['Content']['Raw']['Data'])
 
     def test_raises_when_ses_rejects_and_not_silent(self):
-        self.client.send_raw_email.side_effect = Exception('Email address is not verified')
+        self.client.send_email.side_effect = Exception('Email address is not verified')
         message = EmailMultiAlternatives('Test', 'body', 'a@b.com', ['c@d.com'])
 
         with self.assertRaises(Exception):
             self.backend.send_messages([message])
 
     def test_fail_silently_swallows_errors(self):
-        self.client.send_raw_email.side_effect = Exception('boom')
+        self.client.send_email.side_effect = Exception('boom')
         backend = SESEmailBackend(fail_silently=True)
         backend._client = self.client
         message = EmailMultiAlternatives('Test', 'body', 'a@b.com', ['c@d.com'])

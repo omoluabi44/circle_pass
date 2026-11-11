@@ -46,8 +46,13 @@ class Command(BaseCommand):
         if recipient:
             self._send(recipient)
 
+    def _ses_verified_addresses(self, ses):
+        identities = ses.list_email_identities().get('EmailIdentities', [])
+        return [i['IdentityName'] for i in identities if i.get('SendingEnabled')]
+
     def _check_ses(self):
         import boto3
+        from email.utils import parseaddr
 
         region = getattr(settings, 'AWS_S3_REGION_NAME', 'us-east-1')
         self.stdout.write(f'SES region:         {region}')
@@ -63,14 +68,14 @@ class Command(BaseCommand):
                 f'SES quota:          {quota.get("SentLast24Hours")} sent / '
                 f'{quota.get("Max24HourSend")} per 24h'
             )
-            identities = ses.list_email_identities().get('EmailIdentities', [])
-            verified = [
-                i['IdentityName'] for i in identities if i.get('SendingEnabled')
-            ]
+            verified = self._ses_verified_addresses(ses)
             self.stdout.write(f'SES verified:       {verified or "none"}')
-            if settings.DEFAULT_FROM_EMAIL not in verified:
+
+            from_address = parseaddr(settings.DEFAULT_FROM_EMAIL)[1]
+            domain = from_address.rsplit('@', 1)[-1]
+            if from_address not in verified and domain not in verified:
                 self.stdout.write(self.style.ERROR(
-                    f'SES: {settings.DEFAULT_FROM_EMAIL} is not verified for sending. '
+                    f'SES: {from_address} is not verified for sending. '
                     'Verify the domain (DKIM CNAMEs) or the single address.'
                 ))
         except Exception as exc:

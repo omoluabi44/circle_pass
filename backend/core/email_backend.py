@@ -57,10 +57,10 @@ class SESEmailBackend(BaseEmailBackend):
                 )
             )
             try:
-                self.client.send_raw_email(
+                self.client.send_email(
                     FromEmailAddress=from_email,
                     Destination={'ToAddresses': envelope},
-                    RawMessage={'Data': message.message().as_bytes()},
+                    Content={'Raw': {'Data': message.message().as_bytes()}},
                 )
                 sent += 1
             except Exception as exc:
