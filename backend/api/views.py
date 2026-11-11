@@ -135,11 +135,15 @@ class CustomUserViewSet(UserViewSet):
         return super().get_throttles()
 
     def _generate_code(self, user):
+        """Issue a fresh 4-digit code, replacing any previous one.
+
+        The row is recreated rather than updated: ``created_at`` is
+        ``auto_now_add`` and drives ``is_expired()``, so reusing the old row
+        would hand out a code that is already expired.
+        """
         code = str(random.randint(1000, 9999))
-        EmailVerificationCode.objects.update_or_create(
-            user=user,
-            defaults={'code': code}
-        )
+        EmailVerificationCode.objects.filter(user=user).delete()
+        EmailVerificationCode.objects.create(user=user, code=code)
         return code
 
     def create(self, request, *args, **kwargs):

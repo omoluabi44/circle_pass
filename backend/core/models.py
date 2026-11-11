@@ -24,10 +24,10 @@ class EmailVerificationCode(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     def is_expired(self):
-        # Expires in 15 minutes
+        # Expires in 30 minutes (mail relays can delay delivery)
         from django.utils import timezone
         import datetime
-        return timezone.now() > self.created_at + datetime.timedelta(minutes=15)
+        return timezone.now() > self.created_at + datetime.timedelta(minutes=30)
 
 class AttendeeProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)

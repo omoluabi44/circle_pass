@@ -76,9 +76,16 @@ function VerifyEmailContent() {
         body: JSON.stringify({ email: email?.trim().toLowerCase(), code: fullCode })
       });
       
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       
       if (!res.ok) {
+        if (/expired/i.test(data.detail || "")) {
+          toast.error("That code expired — sending you a new one.");
+          await handleResend();
+          setCode(["", "", "", ""]);
+          inputRefs[0].current?.focus();
+          return;
+        }
         throw new Error(data.detail || "Invalid code");
       }
       
@@ -97,7 +104,15 @@ function VerifyEmailContent() {
       }
       
     } catch (err: any) {
-      toast.error(err.message);
+      const message = err?.message || "";
+      if (err instanceof TypeError || /load failed|failed to fetch|network ?error/i.test(message)) {
+        toast.error(
+          "Can't reach CirclePass right now. Check your connection and tap Verify again.",
+          { duration: 6000 }
+        );
+      } else {
+        toast.error(message);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -112,12 +127,12 @@ function VerifyEmailContent() {
         body: JSON.stringify({ email })
       });
       if (res.ok) {
-        toast.success("New code sent!");
+        toast.success("New code sent — it's valid for 30 minutes.");
       } else {
-        toast.error("Failed to resend code");
+        toast.error("Failed to resend code. Please try again.");
       }
     } catch (err) {
-      toast.error("Network error");
+      toast.error("Can't reach CirclePass right now. Check your connection.");
     }
   };
 
