@@ -280,6 +280,7 @@ function BusinessDetailsForm() {
 }
 
 import { getVerificationStatus, submitVerification } from "@/lib/api/verification";
+import { BankSelect } from "@/components/ui/BankSelect";
 
 function VerificationTab() {
   const { data: session } = useSession();
@@ -540,12 +541,6 @@ function PayoutSettingsTab() {
     }
   };
 
-  const handleBankChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const code = e.target.value;
-    setFormData(prev => ({ ...prev, bank_name: code }));
-    resolveAccount(code, formData.account_number);
-  };
-
   const handleAccountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const num = e.target.value;
     setFormData(prev => ({ ...prev, account_number: num }));
@@ -627,17 +622,15 @@ function PayoutSettingsTab() {
         <div className="space-y-4 pt-2">
           <div className="space-y-2">
             <label className="text-sm font-bold text-foreground">Bank Name</label>
-            <select
-              required
+            <BankSelect
+              banks={banks.map((bank: any) => ({ code: bank.code, name: bank.name }))}
               value={formData.bank_name}
-              onChange={handleBankChange}
-              className="w-full bg-background border border-border rounded-xl px-4 py-3 focus:outline-none focus:border-primary transition-colors"
-            >
-              <option value="">Select a Bank</option>
-              {banks.map(bank => (
-                <option key={bank.code} value={bank.code}>{bank.name}</option>
-              ))}
-            </select>
+              onChange={(code) => {
+                setFormData(prev => ({ ...prev, bank_name: code }));
+                resolveAccount(code, formData.account_number);
+              }}
+              disabled={banks.length === 0}
+            />
           </div>
 
           <div className="space-y-2">

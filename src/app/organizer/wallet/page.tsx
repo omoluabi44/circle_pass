@@ -12,6 +12,7 @@ import {
   getBankAccounts, addBankAccount, deleteBankAccount,
   getBanks, resolveBankAccount, getPayoutFeePreview, requestPayout,
 } from "@/lib/api/wallet";
+import { BankSelect } from "@/components/ui/BankSelect";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface WalletData {
@@ -561,21 +562,17 @@ export default function WalletPage() {
                 <div className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-foreground mb-1.5">Bank Name</label>
-                    <select
+                    <BankSelect
+                      banks={banks}
                       value={addBankCode}
-                      onChange={e => {
-                        const code = e.target.value;
-                        const name = banks.find(b => b.code === code)?.name ?? "";
+                      onChange={(code, name) => {
                         setAddBankCode(code);
                         setAddBankName(name);
                         setResolvedName("");
                         setAddBankError("");
                       }}
-                      className="w-full border border-border rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-primary focus:border-transparent outline-none bg-background"
-                    >
-                      <option value="">Select a bank</option>
-                      {banks.map(b => <option key={b.code} value={b.code}>{b.name}</option>)}
-                    </select>
+                      placeholder="Select a bank"
+                    />
                   </div>
 
                   <div>
