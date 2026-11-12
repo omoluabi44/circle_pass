@@ -23,7 +23,7 @@ from .views_payout import (
 from .views_bank_account import (
     OrganizerBankAccountListCreateView, OrganizerBankAccountDetailView,
 )
-from .views_find_ticket import FindTicketView
+from .views_find_ticket import FindTicketView, ResendTicketsView
 from .views_dashboard import OrganizerDashboardView
 from .views_contacts import OrganizerContactsView, OrganizerContactEventsView, OrganizerFollowersView
 from .views_analytics import OrganizerAnalyticsView
@@ -78,6 +78,7 @@ urlpatterns = [
     # "Authentication credentials were not provided." on /find-ticket.
     # ------------------------------------------------------------------
     path('tickets/find/', FindTicketView.as_view(), name='find_ticket'),
+    path('tickets/resend/', ResendTicketsView.as_view(), name='resend_tickets'),
     path('tickets/public/<str:qr_token>/', PublicTicketView.as_view(), name='public_ticket'),
     path('tickets/access/', TicketAccessView.as_view(), name='ticket_access'),
     path('tickets/', TicketViewSet.as_view({'get': 'list'}), name='tickets'),

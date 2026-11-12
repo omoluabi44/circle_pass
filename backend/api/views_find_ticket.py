@@ -18,6 +18,11 @@ class FindTicketRateThrottle(AnonRateThrottle):
     rate = '5/min'
 
 
+class ResendTicketRateThrottle(AnonRateThrottle):
+    """Ticket email resends are deliberately stingy: 3/minute per IP."""
+    rate = '3/min'
+
+
 def mask_email(email: str) -> str:
     """Mask email: j***n@example.com"""
     if not email or '@' not in email:
@@ -185,3 +190,121 @@ class FindTicketView(APIView):
         from api.serializers import FindTicketResultSerializer
         output = FindTicketResultSerializer(results, many=True)
         return Response(output.data)
+
+
+class ResendTicketsView(APIView):
+    """
+    POST /api/tickets/resend/
+
+    Re-sends the digital-ticket email for orders matched by the same criteria as
+    Find My Ticket (reference, email or phone).
+
+    Delivery uses exactly the purchase flow (`send_purchase_receipt`), so each
+    ticket still goes only to the address it was issued to — the requester
+    cannot redirect a ticket to an address of their choosing. Rate-limited.
+    """
+    permission_classes = [permissions.AllowAny]
+    throttle_classes = [ResendTicketRateThrottle]
+
+    def post(self, request):
+        from api.serializers import FindTicketRequestSerializer
+        from core.models import EmailLog
+        from core.utils.notifications import (
+            group_tickets_by_recipient,
+            send_purchase_receipt,
+        )
+
+        serializer = FindTicketRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        reference = data.get('reference', '').strip() or data.get('order_reference', '').strip()
+        email = data.get('email', '').strip().lower()
+        phone = data.get('phone', '').strip() or data.get('phone_number', '').strip()
+
+        order_filter = Q()
+        if reference:
+            order_filter |= Q(payment__reference__iexact=reference)
+        if email:
+            order_filter |= Q(guest_email__iexact=email)
+            order_filter |= Q(attendee__user__email__iexact=email)
+            order_filter |= Q(tickets__attendee_email__iexact=email)
+        if phone:
+            order_filter |= Q(guest_phone__icontains=phone)
+            order_filter |= Q(attendee__phone_number__icontains=phone)
+
+        if not order_filter:
+            return Response(
+                {'detail': 'No valid search criteria provided.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        orders = list(
+            Order.objects.filter(order_filter, status='COMPLETED')
+            .select_related('event', 'attendee__user', 'payment')
+            .prefetch_related('tickets')
+            .order_by('-created_at')
+            .distinct()[:5]
+        )
+
+        if not orders:
+            return Response(
+                {'detail': "We couldn't find a completed order with those details."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        sent = 0
+        failed = 0
+        recipients = []
+
+        for order in orders:
+            tickets = list(order.tickets.all())
+            if not tickets:
+                continue
+
+            buyer_email = (
+                order.guest_email or (order.attendee.user.email if order.attendee else '')
+            ).strip().lower()
+            expected = list(group_tickets_by_recipient(tickets, buyer_email).keys())
+            if not expected:
+                continue
+
+            send_purchase_receipt(order, tickets)
+
+            # EmailLog is written by the sender itself, so this tells us what
+            # actually left the building rather than what we tried to send.
+            for recipient in expected:
+                logged = EmailLog.objects.filter(
+                    recipient__iexact=recipient,
+                    subject__startswith='Your Tickets for',
+                ).order_by('-created_at').first()
+                if logged and logged.status == 'Sent':
+                    sent += 1
+                else:
+                    failed += 1
+                recipients.append(recipient)
+
+        if not recipients:
+            return Response(
+                {'detail': 'Those tickets have no delivery address on file.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        masked = ', '.join(mask_email(address) for address in recipients[:5])
+
+        if sent == 0:
+            return Response(
+                {
+                    'detail': 'The email provider rejected the message. Try again in a minute.',
+                    'sent': 0,
+                    'failed': failed,
+                },
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+
+        return Response({
+            'detail': f'Ticket email resent to {masked}',
+            'sent': sent,
+            'failed': failed,
+            'recipients': [mask_email(a) for a in recipients],
+        })

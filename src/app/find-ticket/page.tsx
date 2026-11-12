@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Search, Ticket, Mail, Phone, Hash, AlertCircle, RefreshCw, Lock } from "lucide-react";
-import { findTicket, requestTicketAccess } from "@/lib/api/find-ticket";
+import { Search, Ticket, Mail, Phone, Hash, AlertCircle, RefreshCw, Lock, CheckCircle2, Send } from "lucide-react";
+import { findTicket, requestTicketAccess, resendTicketEmail } from "@/lib/api/find-ticket";
 import { useSession } from "@/context/AuthContext";
 
 export default function FindTicketPage() {
@@ -13,6 +13,8 @@ export default function FindTicketPage() {
   const [inputValue, setInputValue] = useState("");
   const [loading, setLoading] = useState(false);
   const [openingPass, setOpeningPass] = useState(false);
+  const [resending, setResending] = useState<number | null>(null);
+  const [resendNotice, setResendNotice] = useState<{ type: "success" | "error"; message: string } | null>(null);
   const [error, setError] = useState("");
   const [results, setResults] = useState<any[] | null>(null);
 
@@ -35,6 +37,7 @@ export default function FindTicketPage() {
       setLoading(true);
       setError("");
       setResults(null);
+      setResendNotice(null);
       
       const data = await findTicket(buildPayload());
       setResults(data);
@@ -47,6 +50,33 @@ export default function FindTicketPage() {
       setResults([]);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleResendEmail = async (result: any, index: number) => {
+    try {
+      setResending(index);
+      setResendNotice(null);
+
+      // Prefer the specific order so only that ticket is re-sent.
+      const payload = result?.order_reference
+        ? { order_reference: result.order_reference }
+        : buildPayload();
+
+      const data = await resendTicketEmail(payload);
+      setResendNotice({
+        type: "success",
+        message: data.sent > 1
+          ? `Sent ${data.sent} ticket emails to ${data.recipients.join(", ")}. Check the inbox (and spam).`
+          : `Ticket email sent to ${data.recipients.join(", ")}. Check the inbox (and spam).`,
+      });
+    } catch (err: any) {
+      setResendNotice({
+        type: "error",
+        message: err.message || "Could not resend the ticket email. Please try again.",
+      });
+    } finally {
+      setResending(null);
     }
   };
 
@@ -159,6 +189,23 @@ export default function FindTicketPage() {
               Search Results
             </h2>
 
+            {resendNotice && (
+              <div
+                className={`mb-4 p-4 rounded-lg flex items-start gap-3 text-sm ${
+                  resendNotice.type === "success"
+                    ? "bg-green-50 text-green-700 border border-green-200"
+                    : "bg-red-50 text-red-600 border border-red-200"
+                }`}
+              >
+                {resendNotice.type === "success" ? (
+                  <CheckCircle2 className="w-5 h-5 shrink-0" />
+                ) : (
+                  <AlertCircle className="w-5 h-5 shrink-0" />
+                )}
+                <p>{resendNotice.message}</p>
+              </div>
+            )}
+
             {results.length === 0 ? (
               <div className="bg-white rounded-xl p-8 text-center border border-gray-100 shadow-sm">
                 <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -190,6 +237,20 @@ export default function FindTicketPage() {
                       }`}>
                         {ticket.status || "VALID"}
                       </span>
+                      <button
+                        type="button"
+                        onClick={() => handleResendEmail(ticket, idx)}
+                        disabled={resending !== null}
+                        title="Re-send this ticket email to the address it was issued to"
+                        className="inline-flex items-center gap-2 bg-white text-primary border border-primary/30 text-sm font-medium px-4 py-2 rounded-lg hover:bg-primary/5 transition-colors disabled:opacity-60"
+                      >
+                        {resending === idx ? (
+                          <RefreshCw className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Send className="w-4 h-4" />
+                        )}
+                        {resending === idx ? "Sending..." : "Resend email"}
+                      </button>
                       {ticket.qr_token ? (
                         <a
                           href={`/t/${ticket.qr_token}`}
