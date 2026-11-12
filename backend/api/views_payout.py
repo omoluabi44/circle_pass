@@ -25,15 +25,15 @@ import requests
 def calculate_paystack_transfer_fee(amount_kobo: int) -> int:
     """
     Dynamic Paystack NGN transfer fee in kobo.
-    ≤ ₦5,000  → ₦10  (1,000 kobo)
-    ≤ ₦50,000 → ₦25  (2,500 kobo)
+    ≤ ₦5,000  → ₦20  (2,000 kobo)
+    ≤ ₦50,000 → ₦30  (3,000 kobo)
     > ₦50,000 → ₦50  (5,000 kobo)
     """
     naira = amount_kobo / 100
     if naira <= 5_000:
-        return 1_000   # ₦10
+        return 2_000   # ₦20
     elif naira <= 50_000:
-        return 2_500   # ₦25
+        return 3_000   # ₦30
     else:
         return 5_000   # ₦50
 

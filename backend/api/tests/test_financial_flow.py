@@ -102,13 +102,13 @@ class FinancialFlowTests(APITestCase):
 
     def test_dynamic_payout_fee_calculation(self):
         """Test the tiered Paystack fee calculation."""
-        # <= 5,000 NGN (500,000 kobo) -> 10 NGN (1,000 kobo)
-        self.assertEqual(calculate_paystack_transfer_fee(200000), 1000)
-        self.assertEqual(calculate_paystack_transfer_fee(500000), 1000)
+        # <= 5,000 NGN (500,000 kobo) -> 20 NGN (2,000 kobo)
+        self.assertEqual(calculate_paystack_transfer_fee(200000), 2000)
+        self.assertEqual(calculate_paystack_transfer_fee(500000), 2000)
         
-        # 5,001 - 50,000 NGN -> 25 NGN (2,500 kobo)
-        self.assertEqual(calculate_paystack_transfer_fee(500100), 2500)
-        self.assertEqual(calculate_paystack_transfer_fee(5000000), 2500)
+        # 5,001 - 50,000 NGN -> 30 NGN (3,000 kobo)
+        self.assertEqual(calculate_paystack_transfer_fee(500100), 3000)
+        self.assertEqual(calculate_paystack_transfer_fee(5000000), 3000)
         
         # > 50,000 NGN -> 50 NGN (5,000 kobo)
         self.assertEqual(calculate_paystack_transfer_fee(5000100), 5000)
@@ -136,8 +136,8 @@ class FinancialFlowTests(APITestCase):
         
         payout = Payout.objects.first()
         self.assertEqual(payout.amount, 200000)
-        self.assertEqual(payout.payout_charge, 1000) # 10 NGN fee
-        self.assertEqual(payout.amount_received, 199000) # 1990 NGN
+        self.assertEqual(payout.payout_charge, 2000) # 20 NGN fee
+        self.assertEqual(payout.amount_received, 198000) # 1980 NGN
         self.assertEqual(payout.status, 'PROCESSING')
         self.assertEqual(payout.paystack_transfer_code, 'TRF_12345')
         
