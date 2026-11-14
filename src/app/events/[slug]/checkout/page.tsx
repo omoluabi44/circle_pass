@@ -410,13 +410,31 @@ export default function CheckoutPage() {
         } else if (data?.isGuest) {
           router.push('/find-ticket');
         } else {
-          router.push('/dashboard/orders');
+          // No pass in this order belongs to the buyer (all were issued to
+          // other people), so send them to their own ticket list instead of a
+          // non-existent orders page.
+          router.push('/dashboard/tickets');
         }
       } else {
         router.back();
       }
     }
   };
+
+  // A buyer who purchased only for other people owns none of the passes in
+  // this order, so there is no ticket of theirs to open afterwards.
+  const successOwnTicket = (() => {
+    const tickets = successData?.tickets || [];
+    const buyerEmail = (
+      session?.user?.email || successData?.guestEmail || ''
+    ).toLowerCase();
+    if (!buyerEmail) return null;
+    return (
+      tickets.find(
+        (t: any) => (t.attendee_email || '').toLowerCase() === buyerEmail
+      ) || null
+    );
+  })();
 
   const { initialize: initializePaystack, isVerifying } = usePaystack();
 
@@ -680,14 +698,17 @@ export default function CheckoutPage() {
                   </>
                 )}
                 <div className="flex items-center gap-3 justify-center">
-                  {!successData?.isGuest && !successData?.payment_required && !successData?.message && (
-                    <button
-                      onClick={handleClose}
-                      className="px-6 py-2.5 bg-primary text-primary-foreground font-medium rounded-lg hover:bg-primary/90 transition-colors shadow-md"
-                    >
-                      {sendToAttendees ? "View My Orders" : "View My Ticket"}
-                    </button>
-                  )}
+                  {!successData?.isGuest &&
+                    !successData?.payment_required &&
+                    !successData?.message &&
+                    successOwnTicket && (
+                      <button
+                        onClick={handleClose}
+                        className="px-6 py-2.5 bg-primary text-primary-foreground font-medium rounded-lg hover:bg-primary/90 transition-colors shadow-md"
+                      >
+                        View My Ticket
+                      </button>
+                    )}
                   <button
                     onClick={() => router.push(`/events/${slug}`)}
                     className="px-6 py-2.5 bg-secondary text-foreground font-medium rounded-lg hover:bg-secondary/80 transition-colors"
