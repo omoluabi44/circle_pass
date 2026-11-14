@@ -19,6 +19,7 @@ import {
   FileText,
   ChevronDown,
   ChevronUp,
+  Check,
   AlertCircle,
 } from "lucide-react";
 import { useParams } from "next/navigation";
@@ -138,6 +139,9 @@ export default function AnnouncementsPage() {
   const [title, setTitle] = useState("");
   const [message, setMessage] = useState("");
   const [audience, setAudience] = useState<Audience>("attendees_only");
+  // null = every ticket tier; otherwise a single TicketType id
+  const [ticketTypeId, setTicketTypeId] = useState<number | null>(null);
+  const [showTierMenu, setShowTierMenu] = useState(false);
 
   // Custom email list
   const [customEmails, setCustomEmails] = useState<string[]>([]);
@@ -161,11 +165,22 @@ export default function AnnouncementsPage() {
   const allCustomEmails = [...new Set([...customEmails, ...uploadedEmails])];
   const showCustomPanel = audience === "custom_only" || audience === "both";
 
+  // Ticket tiers available for this event. `null` means "all tiers".
+  const ticketTiers: any[] = event?.ticket_types || [];
+  const selectedTier = ticketTiers.find((t) => t.id === ticketTypeId) || null;
+  const attendeeTargetLabel = selectedTier
+    ? `${selectedTier.name} attendees`
+    : "All attendees";
+
   const sendLabel = (() => {
     const n = allCustomEmails.length;
-    if (audience === "attendees_only") return "Send to All Attendees";
+    if (audience === "attendees_only") {
+      return selectedTier ? `Send to ${selectedTier.name} Attendees` : "Send to All Attendees";
+    }
     if (audience === "custom_only") return `Send to ${n} Custom Recipient${n !== 1 ? "s" : ""}`;
-    return `Send to All Attendees + ${n} Custom Recipient${n !== 1 ? "s" : ""}`;
+    return `Send to ${selectedTier ? `${selectedTier.name} Attendees` : "All Attendees"} + ${n} Custom Recipient${
+      n !== 1 ? "s" : ""
+    }`;
   })();
 
   // ── Fetch ──────────────────────────────────────────────────────────────────
@@ -337,19 +352,27 @@ export default function AnnouncementsPage() {
 
     setSubmitting(true);
     try {
+      const targetTierIds =
+        audience !== "custom_only" && ticketTypeId ? [ticketTypeId] : [];
       const created = await createEventAnnouncement(session?.accessToken as string, id, {
         title,
         message,
         audience,
+        ticket_type_ids: targetTierIds,
         custom_recipients: audience === "attendees_only" ? [] : allCustomEmails,
       });
 
+      const attendeeText = selectedTier
+        ? `${selectedTier.name} attendees`
+        : "all attendees";
       const recipientText =
         audience === "attendees_only"
-          ? "all attendees"
+          ? attendeeText
           : audience === "custom_only"
           ? `${allCustomEmails.length} custom recipient${allCustomEmails.length !== 1 ? "s" : ""}`
-          : `all attendees + ${allCustomEmails.length} custom recipient${allCustomEmails.length !== 1 ? "s" : ""}`;
+          : `${attendeeText} + ${allCustomEmails.length} custom recipient${
+              allCustomEmails.length !== 1 ? "s" : ""
+            }`;
 
       const count = (created as any)?.recipients_count;
       if ((created as any)?.delivery_status === "FAILED") {
@@ -372,6 +395,8 @@ export default function AnnouncementsPage() {
       setTitle("");
       setMessage("");
       setAudience("attendees_only");
+      setTicketTypeId(null);
+      setShowTierMenu(false);
       setCustomEmails([]);
       setManualInput("");
       clearFile();
@@ -436,15 +461,107 @@ export default function AnnouncementsPage() {
             <label className="block text-sm font-medium text-muted-foreground mb-2">
               Who should receive this?
             </label>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {/* Attendee audience + ticket tier dropdown */}
+              <div className="relative sm:col-span-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (audience === "custom_only") setAudience("attendees_only");
+                    setShowTierMenu((v) => !v);
+                  }}
+                  disabled={submitting}
+                  aria-haspopup="listbox"
+                  aria-expanded={showTierMenu}
+                  className={`w-full flex items-start gap-2.5 p-3 rounded-xl border-2 text-left transition-all disabled:opacity-50 ${
+                    audience !== "custom_only"
+                      ? "border-primary bg-primary/5 text-primary"
+                      : "border-border bg-background text-foreground hover:border-primary/40"
+                  }`}
+                >
+                  <Users className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                  <span className="flex-1 min-w-0">
+                    <span className="block font-medium text-sm truncate">
+                      {selectedTier ? `${selectedTier.name} Attendees` : "All Ticketed Attendees"}
+                    </span>
+                    <span className="block text-xs text-muted-foreground truncate">
+                      {selectedTier
+                        ? `Only attendees holding the ${selectedTier.name} ticket`
+                        : "Everyone who purchased a ticket"}
+                    </span>
+                  </span>
+                  <ChevronDown
+                    className={`w-4 h-4 mt-0.5 flex-shrink-0 transition-transform ${
+                      showTierMenu ? "rotate-180" : ""
+                    }`}
+                  />
+                </button>
+
+                {showTierMenu && (
+                  <>
+                    <div
+                      className="fixed inset-0 z-20"
+                      onClick={() => setShowTierMenu(false)}
+                    />
+                    <div
+                      role="listbox"
+                      className="absolute left-0 right-0 mt-2 z-30 bg-background border border-border rounded-xl shadow-lg overflow-hidden max-h-72 overflow-y-auto"
+                    >
+                      <button
+                        type="button"
+                        role="option"
+                        aria-selected={ticketTypeId === null}
+                        onClick={() => {
+                          setTicketTypeId(null);
+                          if (audience === "custom_only") setAudience("attendees_only");
+                          setShowTierMenu(false);
+                        }}
+                        className={`flex items-center gap-2 w-full px-4 py-3 text-left text-sm transition-colors hover:bg-secondary ${
+                          ticketTypeId === null ? "text-primary font-semibold" : "text-foreground"
+                        }`}
+                      >
+                        <span className="flex-1 min-w-0">
+                          <span className="block truncate">All attendees</span>
+                          <span className="block text-xs font-normal text-muted-foreground">
+                            Everyone who purchased a ticket
+                          </span>
+                        </span>
+                        {ticketTypeId === null && <Check className="w-4 h-4 flex-shrink-0" />}
+                      </button>
+
+                      {ticketTiers.length > 0 && <div className="h-px bg-border" />}
+
+                      {ticketTiers.map((tier) => (
+                        <button
+                          key={tier.id}
+                          type="button"
+                          role="option"
+                          aria-selected={ticketTypeId === tier.id}
+                          onClick={() => {
+                            setTicketTypeId(tier.id);
+                            if (audience === "custom_only") setAudience("attendees_only");
+                            setShowTierMenu(false);
+                          }}
+                          className={`flex items-center gap-2 w-full px-4 py-3 text-left text-sm transition-colors hover:bg-secondary ${
+                            ticketTypeId === tier.id ? "text-primary font-semibold" : "text-foreground"
+                          }`}
+                        >
+                          <span className="flex-1 min-w-0">
+                            <span className="block truncate">{tier.name} attendees</span>
+                            <span className="block text-xs font-normal text-muted-foreground">
+                              {String(tier.tier || "").replace(/_/g, " ").toLowerCase()} tier
+                            </span>
+                          </span>
+                          {ticketTypeId === tier.id && <Check className="w-4 h-4 flex-shrink-0" />}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+
               {(
                 [
-                  {
-                    value: "attendees_only",
-                    icon: <Users className="w-4 h-4" />,
-                    label: "All Ticketed Attendees",
-                    desc: "Everyone who purchased a ticket",
-                  },
                   {
                     value: "custom_only",
                     icon: <Mail className="w-4 h-4" />,
@@ -709,6 +826,18 @@ export default function AnnouncementsPage() {
             NO_RECIPIENTS: { label: 'No recipients', className: 'bg-red-500/10 text-red-600' },
           };
           const meta = statusMeta[status];
+          const targetedTierNames = (ann.ticket_type_ids || [])
+            .map(
+              (tid: number) =>
+                (event?.ticket_types || []).find((t: any) => t.id === tid)?.name
+            )
+            .filter(Boolean);
+          const audienceBadge =
+            ann.audience === "custom_only"
+              ? "Custom email list"
+              : targetedTierNames.length > 0
+              ? `${targetedTierNames.join(", ")} attendees`
+              : "All attendees";
           return (
             <div key={ann.id} className="bg-card border border-border rounded-2xl p-5 shadow-sm">
               <div className="flex justify-between items-start mb-2 gap-3">
@@ -725,6 +854,10 @@ export default function AnnouncementsPage() {
                   {new Date(ann.created_at).toLocaleString()}
                 </div>
               </div>
+              <p className="mt-1 text-xs text-primary/80 flex items-center gap-1">
+                <Users className="w-3 h-3" />
+                {audienceBadge}
+              </p>
               <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">
                 {ann.message}
               </p>

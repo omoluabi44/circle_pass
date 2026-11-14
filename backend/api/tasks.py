@@ -242,29 +242,44 @@ The CirclePass Team"""
     except Exception as e:
         return str(e)
 
-def resolve_announcement_recipients(event, include_attendees=True, extra_recipients=None):
+def resolve_announcement_recipients(event, include_attendees=True, extra_recipients=None, ticket_type_ids=None):
     """Return an ordered ``{email: first_name}`` map for an event announcement.
 
-    - Ticket holders (completed orders): first name extracted (e.g. "Jubril")
+    - Ticket holders (completed orders): one entry per pass, addressed to the
+      attendee the pass was issued to (which is the buyer when no separate
+      attendee was supplied). Filtering by ``ticket_type_ids`` keeps the send
+      limited to the chosen tiers, e.g. VIP only.
     - Waitlist / manually added contacts: empty string (will produce "Hello there,")
     """
-    from core.models import Order
+    from core.models import Ticket
 
     recipients = {}
 
     if include_attendees:
-        orders = (
-            Order.objects.filter(event=event, status='COMPLETED')
-            .select_related('attendee__user')
-            .order_by('created_at')
+        tickets = (
+            Ticket.objects.filter(
+                order__event=event,
+                order__status='COMPLETED',
+                status__in=['ISSUED', 'ACTIVE', 'USED'],
+            )
+            .select_related('order__attendee__user')
+            .order_by('order__created_at', 'id')
         )
-        for order in orders:
-            email_addr = (order.guest_email or '').strip().lower()
-            name = order.guest_name or ''
+        if ticket_type_ids:
+            ticket_type_ids = [int(t) for t in ticket_type_ids]
+            tickets = tickets.filter(ticket_type_id__in=ticket_type_ids)
+
+        for ticket in tickets:
+            order = ticket.order
+            email_addr = (ticket.attendee_email or '').strip().lower()
+            name = ticket.attendee_name or ''
+            if not email_addr:
+                email_addr = (order.guest_email or '').strip().lower()
+                name = name or order.guest_name or ''
             if not email_addr and order.attendee and order.attendee.user:
                 user = order.attendee.user
                 email_addr = (user.email or '').strip().lower()
-                name = user.get_full_name() or getattr(user, 'first_name', '') or user.username or ''
+                name = name or user.get_full_name() or getattr(user, 'first_name', '') or user.username or ''
             if not email_addr or email_addr in recipients:
                 continue
             first_name = name.strip().split(' ')[0] if name and name.strip() else ''
@@ -285,7 +300,7 @@ def resolve_announcement_recipients(event, include_attendees=True, extra_recipie
 
 
 @shared_task(bind=True, max_retries=3, default_retry_delay=120)
-def send_event_announcement_email(self, announcement_id, include_attendees=True, extra_recipients=None):
+def send_event_announcement_email(self, announcement_id, include_attendees=True, extra_recipients=None, ticket_type_ids=None):
     from core.models import EventAnnouncement, EmailLog
     from django.template.loader import render_to_string
     from django.utils import timezone
@@ -317,8 +332,15 @@ def send_event_announcement_email(self, announcement_id, include_attendees=True,
 
     sent = 0
     try:
+        # Retries/resends may omit the tier filter; fall back to what was
+        # recorded on the announcement itself.
+        if ticket_type_ids is None:
+            ticket_type_ids = list(announcement.ticket_type_ids or [])
         recipients = resolve_announcement_recipients(
-            event, include_attendees=include_attendees, extra_recipients=extra_recipients
+            event,
+            include_attendees=include_attendees,
+            extra_recipients=extra_recipients,
+            ticket_type_ids=ticket_type_ids,
         )
         announcement.recipients_count = len(recipients)
         announcement.delivery_status = 'SENDING'

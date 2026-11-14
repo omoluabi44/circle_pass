@@ -629,6 +629,11 @@ class EventAnnouncement(models.Model):
     title = models.CharField(max_length=255)
     message = models.TextField()
     audience = models.CharField(max_length=20, default='attendees_only')
+    ticket_type_ids = models.JSONField(
+        default=list,
+        blank=True,
+        help_text='Ticket tier ids this announcement targets. Empty means every tier.',
+    )
     recipients_count = models.PositiveIntegerField(default=0)
     delivered_count = models.PositiveIntegerField(default=0)
     delivery_status = models.CharField(max_length=20, choices=DELIVERY_STATUS_CHOICES, default='QUEUED')
