@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Activity, PauseCircle, PlayCircle, ListPlus, Users, ArrowLeft, Ticket, RefreshCw } from "lucide-react";
+import { Activity, PauseCircle, PlayCircle, ListPlus, Users, ArrowLeft, Ticket, RefreshCw, Share2, Link as LinkIcon, MessageCircle, Music2, QrCode } from "lucide-react";
+import { QRCodeCanvas } from "qrcode.react";
+import { InstagramIcon } from "@/components/ui/InstagramIcon";
 import Link from "next/link";
 import { useParams } from 'next/navigation';
 import { getEventOverview, updateEvent } from "@/lib/api/events";
@@ -17,6 +19,8 @@ export default function RealTimeEventDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [updating, setUpdating] = useState(false);
+  const [isShareOpen, setIsShareOpen] = useState(false);
+  const [publicUrl, setPublicUrl] = useState("");
 
   const fetchOverview = useCallback(async () => {
     if (status === "loading") return;
@@ -41,6 +45,15 @@ export default function RealTimeEventDashboard() {
   useEffect(() => {
     fetchOverview();
   }, [fetchOverview]);
+
+  // Public event link, used by the Share menu. Built from the event's own slug
+  // so organisers can grab it straight after creating the event without
+  // opening the public event page first.
+  useEffect(() => {
+    if (overview?.slug && typeof window !== "undefined") {
+      setPublicUrl(`${window.location.origin}/events/${overview.slug}`);
+    }
+  }, [overview?.slug]);
 
   if (loading) {
     return (
@@ -116,14 +129,49 @@ export default function RealTimeEventDashboard() {
     }
   };
 
+  const handleCopyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(publicUrl);
+      toast.success("Link copied!");
+      setIsShareOpen(false);
+    } catch {
+      toast.error("Couldn't copy the link. Copy it manually from the address bar.");
+    }
+  };
+
+  const downloadQRCode = () => {
+    const canvas = document.getElementById("organizer-event-qr-code") as HTMLCanvasElement;
+    if (canvas) {
+      const pngUrl = canvas.toDataURL("image/png");
+      const downloadLink = document.createElement("a");
+      downloadLink.href = pngUrl;
+      downloadLink.download = `event-${overview?.slug || "share"}-qr.png`;
+      document.body.appendChild(downloadLink);
+      downloadLink.click();
+      document.body.removeChild(downloadLink);
+      setIsShareOpen(false);
+      toast.success("QR Code downloaded!");
+    }
+  };
+
   return (
     <div className="p-8 max-w-6xl mx-auto">
+      {/* Off-screen QR canvas, used for "Download QR Code" in the Share menu */}
+      <div style={{ display: 'none' }}>
+        <QRCodeCanvas
+          id="organizer-event-qr-code"
+          value={publicUrl || `https://thecirclepass.com/events/${overview?.slug || ''}`}
+          size={512}
+          level={"H"}
+          includeMargin={true}
+        />
+      </div>
       <header className="mb-8">
         <Link href="/organizer/events" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-4 transition-colors">
           <ArrowLeft className="w-4 h-4" />
           Back to Events
         </Link>
-        <div className="flex justify-between items-start">
+        <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-4">
           <div>
             <h1 className="text-3xl font-bold text-foreground">{overview.title || 'Event Overview'}</h1>
             <div className="flex items-center gap-2 mt-2">
@@ -137,7 +185,64 @@ export default function RealTimeEventDashboard() {
             </div>
           </div>
           
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+            <div className="relative">
+              <button
+                onClick={() => setIsShareOpen(!isShareOpen)}
+                className="flex items-center gap-2 border px-4 py-2 rounded-lg text-sm font-medium transition-colors bg-primary/10 hover:bg-primary/20 text-primary border-primary/20"
+                title="Share this event"
+              >
+                <Share2 className="w-4 h-4" />
+                Share
+              </button>
+              {isShareOpen && (
+                <>
+                  <div
+                    className="fixed inset-0 z-40"
+                    onClick={() => setIsShareOpen(false)}
+                  />
+                  <div className="absolute left-0 sm:left-auto sm:right-0 mt-2 w-52 bg-background border border-border rounded-xl shadow-lg z-50 overflow-hidden">
+                  <button
+                    onClick={handleCopyLink}
+                    className="flex items-center gap-3 w-full px-4 py-3 hover:bg-secondary text-sm font-medium transition-colors text-left"
+                  >
+                    <LinkIcon className="w-4 h-4 text-muted-foreground" /> Copy Link
+                  </button>
+                  <a
+                    href={`https://wa.me/?text=${encodeURIComponent('Check out this event: ' + publicUrl)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-3 w-full px-4 py-3 hover:bg-secondary text-sm font-medium transition-colors"
+                  >
+                    <MessageCircle className="w-4 h-4 text-green-500" /> WhatsApp
+                  </a>
+                  <a
+                    href={`https://www.instagram.com/`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-3 w-full px-4 py-3 hover:bg-secondary text-sm font-medium transition-colors"
+                  >
+                    <InstagramIcon className="w-4 h-4 text-pink-500" /> Instagram
+                  </a>
+                  <a
+                    href={`https://www.tiktok.com/`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-3 w-full px-4 py-3 hover:bg-secondary text-sm font-medium transition-colors"
+                  >
+                    <Music2 className="w-4 h-4 text-foreground" /> TikTok
+                  </a>
+                  <div className="h-px bg-border my-1" />
+                  <button
+                    onClick={downloadQRCode}
+                    className="flex items-center gap-3 w-full px-4 py-3 hover:bg-secondary text-sm font-medium transition-colors text-primary"
+                  >
+                    <QrCode className="w-4 h-4" /> Download QR Code
+                  </button>
+                  </div>
+                </>
+              )}
+            </div>
             <button 
               onClick={toggleSales}
               disabled={updating}

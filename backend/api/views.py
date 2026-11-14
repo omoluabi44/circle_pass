@@ -599,6 +599,7 @@ class EventViewSet(viewsets.ModelViewSet):
         return Response({
             "id": event.id,
             "title": event.title,
+            "slug": event.slug,
             "start_time": event.start_time,
             "status": event.status,
             "total_capacity": total_capacity,
