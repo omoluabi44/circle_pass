@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "@/context/AuthContext";
 import { createEvent, updateEvent, submitEvent, getCategories } from "@/lib/api/events";
-import { Save, Send, AlertCircle, Plus, Trash2, ArrowLeft } from "lucide-react";
+import { Save, Send, AlertCircle, Plus, Trash2, ArrowLeft, ArrowUp, ArrowDown } from "lucide-react";
 import Link from "next/link";
 import { toast } from "react-hot-toast";
 import { uploadToS3 } from "@/utils/s3Upload";
@@ -229,6 +229,16 @@ export default function EventForm({ initialData, eventId }: { initialData?: any;
     setTicketTypes(ticketTypes.filter((_, i) => i !== index));
   };
 
+  // Reorder tiers. The array order is what the event page (and checkout)
+  // renders, and it is persisted as sort_order on save.
+  const moveTicketType = (index: number, direction: -1 | 1) => {
+    const target = index + direction;
+    if (target < 0 || target >= ticketTypes.length) return;
+    const updated = [...ticketTypes];
+    [updated[index], updated[target]] = [updated[target], updated[index]];
+    setTicketTypes(updated);
+  };
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       setFormData({ ...formData, cover_image: e.target.files[0] });
@@ -316,8 +326,11 @@ if (!formData.title || !formData.start_time || !formData.end_time || !formData.o
     setLoading(true);
     setError(null);
     try {
-      const ticketsWithKobo = ticketTypes.map(t => ({
+      const ticketsWithKobo = ticketTypes.map((t, idx) => ({
         ...t,
+        // Array position is the display order everywhere the event is shown.
+        // Send it explicitly because the spread above carries the old value.
+        sort_order: idx,
         quantity: parseInt(t.quantity as any) || 0,
         price: (parseInt(t.price as any) || 0) * 100,
         sale_start: t.sale_start ? (parseSafeDate(t.sale_start)?.toISOString() || null) : null,
@@ -626,15 +639,42 @@ if (!formData.title || !formData.start_time || !formData.end_time || !formData.o
             </button>
           </div>
           
+          <p className="text-xs text-muted-foreground -mt-2 mb-4">
+            Use the ▲ ▼ arrows to reorder tiers. This is the order attendees see on your event page.
+          </p>
+
           <div className="space-y-4">
             {ticketTypes.map((ticket, index) => (
               <div key={index} className="border border-border rounded-xl p-4 space-y-3 bg-background">
                 {/* Row header */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-semibold text-foreground">{ticket.name || 'Untitled Ticket'}</span>
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="text-sm font-semibold text-foreground truncate">{ticket.name || 'Untitled Ticket'}</span>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                    <div className="flex items-center rounded-lg border border-border overflow-hidden">
+                      <button
+                        type="button"
+                        onClick={() => moveTicketType(index, -1)}
+                        disabled={index === 0}
+                        title="Move this tier up"
+                        aria-label={`Move ${ticket.name || 'ticket'} up`}
+                        className="p-1.5 text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors disabled:opacity-30 disabled:hover:bg-transparent disabled:cursor-not-allowed"
+                      >
+                        <ArrowUp className="w-4 h-4" />
+                      </button>
+                      <div className="w-px h-4 bg-border" />
+                      <button
+                        type="button"
+                        onClick={() => moveTicketType(index, 1)}
+                        disabled={index === ticketTypes.length - 1}
+                        title="Move this tier down"
+                        aria-label={`Move ${ticket.name || 'ticket'} down`}
+                        className="p-1.5 text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors disabled:opacity-30 disabled:hover:bg-transparent disabled:cursor-not-allowed"
+                      >
+                        <ArrowDown className="w-4 h-4" />
+                      </button>
+                    </div>
                     <button
                       type="button"
                       onClick={() => handleTicketChange(index, 'is_active', ticket.is_active === false ? true : false)}
