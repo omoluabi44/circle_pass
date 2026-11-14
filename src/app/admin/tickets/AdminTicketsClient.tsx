@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import { 
@@ -28,7 +28,7 @@ const TIER_OPTIONS = ['FREE', 'EARLY_BIRD', 'REGULAR', 'VIP', 'VVIP', 'CUSTOM'];
 export default function AdminTicketsClient({ initialTickets, initialTotal, eventsList, token }: Props) {
   const [activeTab, setActiveTab] = useState<'attendee_tickets' | 'pricing'>('attendee_tickets');
 
-  // ─── Attendee Tickets State ─────────────────────────────────────────────────
+  // â”€â”€â”€ Attendee Tickets State â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const [tickets, setTickets] = useState(initialTickets);
   const [total, setTotal] = useState(initialTotal);
   const [loading, setLoading] = useState(false);
@@ -38,14 +38,14 @@ export default function AdminTicketsClient({ initialTickets, initialTotal, event
   const [editingTicket, setEditingTicket] = useState<any | null>(null);
   const [availableTypes, setAvailableTypes] = useState<any[]>([]);
 
-  // ─── Resend ticket email ───────────────────────────────────────────────────
+  // â”€â”€â”€ Resend ticket email â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const [resendingId, setResendingId] = useState<number | null>(null);
   const [resendModalOpen, setResendModalOpen] = useState(false);
   const [resendLookup, setResendLookup] = useState('');
   const [resendBusy, setResendBusy] = useState(false);
   const [resendResult, setResendResult] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
-  // ─── Pricing / Event Tiers State ───────────────────────────────────────────
+  // â”€â”€â”€ Pricing / Event Tiers State â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const [selectedEventId, setSelectedEventId] = useState<string>(eventsList[0]?.id ? String(eventsList[0].id) : '');
   const [eventTiers, setEventTiers] = useState<any[]>([]);
   const [loadingTiers, setLoadingTiers] = useState(false);
@@ -54,13 +54,17 @@ export default function AdminTicketsClient({ initialTickets, initialTotal, event
   const [tierError, setTierError] = useState('');
 
   // Fetch / Refresh Attendee Tickets
-  const fetchTickets = async () => {
+  const fetchTickets = async (overrides?: { q?: string; status?: string; event_id?: string }) => {
     setLoading(true);
+    const nextSearch = overrides?.q ?? search;
+    const nextStatus = overrides?.status ?? statusFilter;
+    const nextEvent = overrides?.event_id ?? eventFilter;
+
     try {
       const data = await getAdminTickets(token, {
-        q: search || undefined,
-        status: statusFilter === 'ALL' ? undefined : statusFilter,
-        event_id: eventFilter || undefined,
+        q: nextSearch || undefined,
+        status: nextStatus === 'ALL' ? undefined : nextStatus,
+        event_id: nextEvent || undefined,
       });
       setTickets(data.tickets || []);
       setTotal(data.total || 0);
@@ -82,7 +86,7 @@ export default function AdminTicketsClient({ initialTickets, initialTotal, event
     }
   };
 
-  // ─── Resend ticket email ───────────────────────────────────────────────────
+  // â”€â”€â”€ Resend ticket email â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const handleResendPass = async (t: any) => {
     try {
       setResendingId(t.id);
@@ -305,7 +309,7 @@ export default function AdminTicketsClient({ initialTickets, initialTotal, event
         </div>
       )}
 
-      {/* ─── TAB 1: Attendee Tickets ────────────────────────────────────────── */}
+      {/* â”€â”€â”€ TAB 1: Attendee Tickets â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       {activeTab === 'attendee_tickets' && (
         <div className="space-y-4">
           {/* Filters Bar */}
@@ -327,7 +331,10 @@ export default function AdminTicketsClient({ initialTickets, initialTotal, event
               <select
                 className="px-3 py-2 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 max-w-[200px]"
                 value={eventFilter}
-                onChange={e => setEventFilter(e.target.value)}
+                onChange={e => {
+                  setEventFilter(e.target.value);
+                  fetchTickets({ event_id: e.target.value });
+                }}
               >
                 <option value="">All Events</option>
                 {eventsList.map(ev => (
@@ -336,7 +343,7 @@ export default function AdminTicketsClient({ initialTickets, initialTotal, event
               </select>
 
               <button
-                onClick={fetchTickets}
+                onClick={() => fetchTickets()}
                 className="px-4 py-2 bg-primary text-white text-sm font-bold rounded-xl hover:bg-primary/90 transition-colors flex items-center gap-1.5 shrink-0"
               >
                 <Search className="w-4 h-4" /> Filter
@@ -344,7 +351,7 @@ export default function AdminTicketsClient({ initialTickets, initialTotal, event
             </div>
 
             <button
-              onClick={fetchTickets}
+              onClick={() => fetchTickets()}
               disabled={loading}
               className="p-2 hover:bg-secondary border border-border rounded-xl transition-colors text-muted-foreground hover:text-foreground shrink-0"
               title="Refresh"
@@ -360,7 +367,7 @@ export default function AdminTicketsClient({ initialTickets, initialTotal, event
                 key={st}
                 onClick={() => {
                   setStatusFilter(st);
-                  setTimeout(() => fetchTickets(), 50);
+                  fetchTickets({ status: st });
                 }}
                 className={`px-3 py-1 text-xs font-bold rounded-full transition-colors border ${
                   statusFilter === st
@@ -387,6 +394,7 @@ export default function AdminTicketsClient({ initialTickets, initialTotal, event
                     <th className="px-4 py-3">Event</th>
                     <th className="px-4 py-3">Attendee</th>
                     <th className="px-4 py-3">Tier & Price</th>
+                    <th className="px-4 py-3">Amount Paid</th>
                     <th className="px-4 py-3">Order #</th>
                     <th className="px-4 py-3">Status</th>
                     <th className="px-4 py-3 text-right">Actions</th>
@@ -416,8 +424,20 @@ export default function AdminTicketsClient({ initialTickets, initialTotal, event
                       <td className="px-4 py-3">
                         <div className="font-semibold text-foreground">{t.ticket_type_name}</div>
                         <div className="text-xs text-muted-foreground font-mono">
-                          {t.price_naira === 0 ? 'FREE' : `₦${t.price_naira.toLocaleString('en-NG')}`}
+                          {t.price_naira === 0 ? 'FREE' : `â‚¦${t.price_naira.toLocaleString('en-NG')}`}
                         </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="font-bold text-foreground font-mono">
+                          {t.amount_paid_naira
+                            ? `â‚¦${t.amount_paid_naira.toLocaleString('en-NG', { maximumFractionDigits: 2 })}`
+                            : 'FREE'}
+                        </div>
+                        {t.order_ticket_count > 1 && (
+                          <div className="text-[10px] text-muted-foreground">
+                            of â‚¦{Number(t.order_total_naira || 0).toLocaleString('en-NG')} / {t.order_ticket_count} passes
+                          </div>
+                        )}
                       </td>
                       <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
                         {t.order_number}
@@ -457,7 +477,7 @@ export default function AdminTicketsClient({ initialTickets, initialTotal, event
         </div>
       )}
 
-      {/* ─── TAB 2: Event Ticket Types & Pricing ────────────────────────────── */}
+      {/* â”€â”€â”€ TAB 2: Event Ticket Types & Pricing â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       {activeTab === 'pricing' && (
         <div className="space-y-6">
           {/* Event Picker */}
@@ -592,7 +612,7 @@ export default function AdminTicketsClient({ initialTickets, initialTotal, event
                           </select>
                         </div>
                         <div>
-                          <label className="text-xs text-muted-foreground block mb-1">Price in ₦ (Naira)</label>
+                          <label className="text-xs text-muted-foreground block mb-1">Price in â‚¦ (Naira)</label>
                           <input
                             type="number"
                             min="0"
@@ -627,7 +647,7 @@ export default function AdminTicketsClient({ initialTickets, initialTotal, event
                 disabled={savingTiers || loadingTiers}
                 className="px-6 py-2.5 bg-primary text-white text-sm font-bold rounded-xl hover:bg-primary/90 transition-colors flex items-center gap-2 disabled:opacity-60 shadow"
               >
-                {savingTiers ? <><Loader2 className="w-4 h-4 animate-spin" /> Saving…</> : <><Save className="w-4 h-4" /> Save Ticket Tiers</>}
+                {savingTiers ? <><Loader2 className="w-4 h-4 animate-spin" /> Savingâ€¦</> : <><Save className="w-4 h-4" /> Save Ticket Tiers</>}
               </button>
             </div>
           </div>
@@ -670,7 +690,7 @@ export default function AdminTicketsClient({ initialTickets, initialTotal, event
                 className="w-full px-4 py-2.5 bg-primary text-white text-sm font-bold rounded-xl hover:bg-primary/90 transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
               >
                 {resendBusy
-                  ? <><Loader2 className="w-4 h-4 animate-spin" /> Sending…</>
+                  ? <><Loader2 className="w-4 h-4 animate-spin" /> Sendingâ€¦</>
                   : <><Send className="w-4 h-4" /> Send ticket email</>}
               </button>
 

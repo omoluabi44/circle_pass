@@ -809,20 +809,36 @@ class AdminTicketListView(APIView):
     permission_classes = [IsAdmin]
 
     def get(self, request):
+        import re
+
         q = request.query_params.get('q', '').strip()
         status_filter = request.query_params.get('status', '').strip()
         event_filter = request.query_params.get('event_id', '').strip()
 
-        qs = Ticket.objects.select_related('order', 'order__event', 'ticket_type').order_by('-created_at')
+        qs = Ticket.objects.select_related(
+            'order', 'order__event', 'order__payment', 'ticket_type'
+        ).prefetch_related('order__tickets').order_by('-created_at')
 
         if q:
-            qs = qs.filter(
+            # `order_number` is a display string, not a database column, so the
+            # old lookup raised FieldError and broke every search. Match the
+            # real fields and pull digits out of CP-xxxx / order references.
+            q_filter = (
                 Q(attendee_name__icontains=q) |
                 Q(attendee_email__icontains=q) |
                 Q(qr_token__icontains=q) |
-                Q(order__order_number__icontains=q) |
-                Q(order__event__title__icontains=q)
+                Q(order__guest_name__icontains=q) |
+                Q(order__guest_email__icontains=q) |
+                Q(order__event__title__icontains=q) |
+                Q(order__payment__reference__icontains=q)
             )
+            digits = re.sub(r'\D', '', q)
+            if digits:
+                try:
+                    q_filter |= Q(order_id=int(digits))
+                except ValueError:
+                    pass
+            qs = qs.filter(q_filter)
 
         if status_filter and status_filter != 'ALL':
             qs = qs.filter(status=status_filter)
@@ -835,6 +851,15 @@ class AdminTicketListView(APIView):
 
         tickets_data = []
         for t in qs[:200]:
+            # Amount the buyer actually paid, per ticket: the order's charged
+            # total (subtotal - discount + fee) split across its tickets.
+            order_total = t.order.total_amount if t.order else 0
+            order_ticket_count = t.order.tickets.count() if t.order else 0
+            amount_paid = (
+                int(round(order_total / order_ticket_count))
+                if order_ticket_count else 0
+            )
+
             tickets_data.append({
                 'id': t.id,
                 'qr_token': t.qr_token,
@@ -846,6 +871,10 @@ class AdminTicketListView(APIView):
                 'ticket_tier': t.ticket_type.tier if t.ticket_type else '',
                 'price': t.ticket_type.price if t.ticket_type else 0,
                 'price_naira': (t.ticket_type.price / 100) if t.ticket_type else 0,
+                'amount_paid': amount_paid,
+                'amount_paid_naira': amount_paid / 100,
+                'order_total_naira': (order_total / 100) if order_total else 0,
+                'order_ticket_count': order_ticket_count,
                 'order_id': t.order_id,
                 'order_number': t.order.order_number if (t.order and hasattr(t.order, 'order_number')) else f"ORD-{t.order_id}",
                 'event_id': t.order.event_id if t.order else None,

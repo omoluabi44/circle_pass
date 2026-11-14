@@ -284,6 +284,25 @@ class EventCreateUpdateSerializer(serializers.ModelSerializer):
             'is_online', 'status', 'absorb_fees', 'start_time', 'end_time', 'ticket_types',
         )
 
+    def validate_title(self, value):
+        """The public URL is the event name, so names must be unique.
+
+        Existing events keep their slugs; this check only stops a new event
+        from stealing an already-taken link.
+        """
+        from django.utils.text import slugify
+
+        slug = slugify(value) or 'event'
+        qs = Event.objects.filter(slug=slug)
+        if self.instance is not None:
+            qs = qs.exclude(pk=self.instance.pk)
+        if qs.exists():
+            raise serializers.ValidationError(
+                'An event with this name already exists. Please give your event a '
+                'different name so it gets its own link.'
+            )
+        return value
+
     def to_internal_value(self, data):
         # In multipart/form-data requests, data is often a QueryDict
         if hasattr(data, 'dict'):
@@ -341,14 +360,16 @@ class EventCreateUpdateSerializer(serializers.ModelSerializer):
             cat, _ = EventCategory.objects.get_or_create(slug=slugify(category_name), defaults={'name': category_name.title()})
             validated_data['category'] = cat
             
-        # Generate slug
+        # Generate slug — event name only, no random suffix.
+        #
+        # Existing events keep whatever slug they already have; this only
+        # affects newly created ones. Because the URL is now purely the event
+        # name, a duplicate name is rejected (see validate_title) rather than
+        # hidden behind a suffix.
         title = validated_data.get('title', '')
         from django.utils.text import slugify
         base_slug = slugify(title) or 'event'
-        slug = base_slug
-        import uuid
-        slug = f"{base_slug}-{uuid.uuid4().hex[:6]}"
-        validated_data['slug'] = slug
+        validated_data['slug'] = base_slug
             
         event = Event.objects.create(**validated_data)
         for idx, ticket_data in enumerate(ticket_types_data):
