@@ -293,6 +293,25 @@ export async function adminDeleteTicketType(token: string, ttId: number) {
 
 // ─── Admin: Attendee Tickets Management ──────────────────────────────────────
 
+/**
+ * Re-send the ticket email for one pass. Delivery uses the purchase flow, so
+ * the mail is identical to the original and only goes to the address the
+ * ticket was issued to.
+ */
+export async function resendAdminTicketEmail(token: string, ticketId: number) {
+  const res = await fetchWithAuth(`${API_URL}/admin/tickets/${ticketId}/`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    cache: 'no-store',
+  });
+
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data.error || data.detail || `Could not resend the ticket email (${res.status})`);
+  }
+  return data as { success: boolean, message: string, sent: number, failed: number, recipients: string[] };
+}
+
 export async function getAdminTickets(
   token: string,
   params?: { q?: string; status?: string; event_id?: string | number }

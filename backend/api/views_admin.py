@@ -919,6 +919,54 @@ class AdminTicketDetailView(APIView):
         t.save()
         return Response({'success': True, 'message': 'Ticket updated successfully'})
 
+    def post(self, request, pk):
+        """Re-send this pass's order email — used when an attendee says it never arrived.
+
+        Delivery is the same call the purchase flow makes, so the mail is
+        identical to the original and only goes to the address the ticket was
+        issued to.
+        """
+        from api.views_find_ticket import mask_email, resend_order_tickets
+
+        try:
+            t = Ticket.objects.select_related('order', 'order__event').get(pk=pk)
+        except Ticket.DoesNotExist:
+            return Response({'error': 'Ticket not found'}, status=404)
+
+        if not t.order:
+            return Response({'error': 'This pass has no order attached.'}, status=400)
+
+        if t.order.status != 'COMPLETED':
+            return Response(
+                {'error': f'Order is {t.order.status.lower()}; only completed orders can be emailed.'},
+                status=400,
+            )
+
+        sent, failed, recipients = resend_order_tickets(t.order)
+
+        if not recipients:
+            return Response({'error': 'No delivery address on file for this order.'}, status=400)
+
+        masked = ', '.join(mask_email(address) for address in recipients[:5])
+
+        if sent == 0:
+            return Response(
+                {
+                    'error': 'The email provider rejected the message. Try again in a minute.',
+                    'sent': 0,
+                    'failed': failed,
+                },
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+
+        return Response({
+            'success': True,
+            'message': f'Ticket email sent to {masked}',
+            'sent': sent,
+            'failed': failed,
+            'recipients': [mask_email(address) for address in recipients],
+        })
+
     def delete(self, request, pk):
         try:
             t = Ticket.objects.get(pk=pk)

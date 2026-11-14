@@ -3,14 +3,17 @@
 import { useState, useEffect } from 'react';
 import { 
   Ticket, Search, Filter, RefreshCw, ExternalLink, Pencil, AlertCircle, 
-  CheckCircle, Plus, Trash2, Loader2, Tag, Calendar, Save, DollarSign 
+  CheckCircle, Plus, Trash2, Loader2, Tag, Calendar, Save, DollarSign,
+  Send, Mail, X
 } from 'lucide-react';
 import Link from 'next/link';
 import EditTicketModal from './EditTicketModal';
 import { 
   getAdminTickets, getAdminTicketDetail, adminGetEventDetail,
-  adminCreateTicketType, adminUpdateTicketType, adminDeleteTicketType 
+  adminCreateTicketType, adminUpdateTicketType, adminDeleteTicketType,
+  resendAdminTicketEmail
 } from '@/lib/api/admin';
+import { resendTicketEmail } from '@/lib/api/find-ticket';
 
 interface Props {
   initialTickets: any[];
@@ -34,6 +37,13 @@ export default function AdminTicketsClient({ initialTickets, initialTotal, event
   const [eventFilter, setEventFilter] = useState('');
   const [editingTicket, setEditingTicket] = useState<any | null>(null);
   const [availableTypes, setAvailableTypes] = useState<any[]>([]);
+
+  // ─── Resend ticket email ───────────────────────────────────────────────────
+  const [resendingId, setResendingId] = useState<number | null>(null);
+  const [resendModalOpen, setResendModalOpen] = useState(false);
+  const [resendLookup, setResendLookup] = useState('');
+  const [resendBusy, setResendBusy] = useState(false);
+  const [resendResult, setResendResult] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   // ─── Pricing / Event Tiers State ───────────────────────────────────────────
   const [selectedEventId, setSelectedEventId] = useState<string>(eventsList[0]?.id ? String(eventsList[0].id) : '');
@@ -69,6 +79,49 @@ export default function AdminTicketsClient({ initialTickets, initialTotal, event
     } catch (e) {
       setEditingTicket(t);
       setAvailableTypes([]);
+    }
+  };
+
+  // ─── Resend ticket email ───────────────────────────────────────────────────
+  const handleResendPass = async (t: any) => {
+    try {
+      setResendingId(t.id);
+      const data = await resendAdminTicketEmail(token, t.id);
+      setResendResult({ type: 'success', message: data.message || 'Ticket email sent.' });
+    } catch (e: any) {
+      setResendResult({ type: 'error', message: e.message || 'Could not resend the ticket email.' });
+    } finally {
+      setResendingId(null);
+    }
+  };
+
+  const handleResendLookup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const value = resendLookup.trim();
+    if (!value) return;
+
+    try {
+      setResendBusy(true);
+      setResendResult(null);
+
+      const payload = value.includes('@')
+        ? { email: value.toLowerCase() }
+        : /^\+?[0-9][0-9\s-]{6,}$/.test(value)
+          ? { phone_number: value }
+          : { order_reference: value };
+
+      const data = await resendTicketEmail(payload);
+      setResendResult({
+        type: 'success',
+        message: data.sent > 1
+          ? `Sent ${data.sent} ticket emails to ${data.recipients.join(', ')}.`
+          : `Ticket email sent to ${data.recipients.join(', ')}.`,
+      });
+      setResendLookup('');
+    } catch (err: any) {
+      setResendResult({ type: 'error', message: err.message || 'Could not resend the ticket email.' });
+    } finally {
+      setResendBusy(false);
     }
   };
 
@@ -190,34 +243,67 @@ export default function AdminTicketsClient({ initialTickets, initialTotal, event
             <Ticket className="w-7 h-7 text-primary" /> Tickets & Orders Management
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Search, edit, reassign, or invalidate attendee passes & configure event ticket pricing.
+            Search, resend, edit, reassign, or invalidate attendee passes & configure event ticket pricing.
           </p>
         </div>
       </header>
 
       {/* Tabs */}
-      <div className="flex border-b border-border gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border">
+        <div className="flex gap-2">
+          <button
+            onClick={() => setActiveTab('attendee_tickets')}
+            className={`px-5 py-2.5 text-sm font-bold border-b-2 transition-all flex items-center gap-2 ${
+              activeTab === 'attendee_tickets'
+                ? 'border-primary text-primary'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <Ticket className="w-4 h-4" /> Attendee Passes & Orders ({total})
+          </button>
+          <button
+            onClick={() => setActiveTab('pricing')}
+            className={`px-5 py-2.5 text-sm font-bold border-b-2 transition-all flex items-center gap-2 ${
+              activeTab === 'pricing'
+                ? 'border-primary text-primary'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <Tag className="w-4 h-4" /> Event Ticket Pricing & Tiers
+          </button>
+        </div>
+
+        {/* Resend a ticket email by email / order reference / phone */}
         <button
-          onClick={() => setActiveTab('attendee_tickets')}
-          className={`px-5 py-2.5 text-sm font-bold border-b-2 transition-all flex items-center gap-2 ${
-            activeTab === 'attendee_tickets'
-              ? 'border-primary text-primary'
-              : 'border-transparent text-muted-foreground hover:text-foreground'
-          }`}
+          type="button"
+          onClick={() => {
+            setResendModalOpen(true);
+            setResendResult(null);
+          }}
+          className="mb-2 px-4 py-2 bg-primary text-white text-sm font-bold rounded-xl hover:bg-primary/90 transition-colors flex items-center gap-2 shrink-0"
+          title="Re-send a ticket email to a buyer"
         >
-          <Ticket className="w-4 h-4" /> Attendee Passes & Orders ({total})
-        </button>
-        <button
-          onClick={() => setActiveTab('pricing')}
-          className={`px-5 py-2.5 text-sm font-bold border-b-2 transition-all flex items-center gap-2 ${
-            activeTab === 'pricing'
-              ? 'border-primary text-primary'
-              : 'border-transparent text-muted-foreground hover:text-foreground'
-          }`}
-        >
-          <Tag className="w-4 h-4" /> Event Ticket Pricing & Tiers
+          <Send className="w-4 h-4" /> Resend ticket email
         </button>
       </div>
+
+      {resendResult && (
+        <div
+          className={`p-3.5 rounded-xl flex items-start gap-3 text-sm border ${
+            resendResult.type === 'success'
+              ? 'bg-success/10 text-success border-success/30'
+              : 'bg-destructive/10 text-destructive border-destructive/30'
+          }`}
+        >
+          {resendResult.type === 'success'
+            ? <CheckCircle className="w-5 h-5 shrink-0" />
+            : <AlertCircle className="w-5 h-5 shrink-0" />}
+          <p className="flex-1">{resendResult.message}</p>
+          <button onClick={() => setResendResult(null)} className="opacity-70 hover:opacity-100">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
 
       {/* ─── TAB 1: Attendee Tickets ────────────────────────────────────────── */}
       {activeTab === 'attendee_tickets' && (
@@ -342,12 +428,25 @@ export default function AdminTicketsClient({ initialTickets, initialTotal, event
                         </span>
                       </td>
                       <td className="px-4 py-3 text-right">
-                        <button
-                          onClick={() => openEditTicket(t)}
-                          className="px-3 py-1.5 bg-primary/10 hover:bg-primary/20 text-primary text-xs font-bold rounded-lg transition-colors inline-flex items-center gap-1 border border-primary/20"
-                        >
-                          <Pencil className="w-3.5 h-3.5" /> Edit
-                        </button>
+                        <div className="flex items-center justify-end gap-1.5">
+                          <button
+                            onClick={() => handleResendPass(t)}
+                            disabled={resendingId !== null}
+                            title="Re-send this pass by email"
+                            className="px-2.5 py-1.5 bg-secondary hover:bg-secondary/70 text-foreground text-xs font-bold rounded-lg transition-colors inline-flex items-center gap-1 border border-border disabled:opacity-60"
+                          >
+                            {resendingId === t.id
+                              ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                              : <Send className="w-3.5 h-3.5" />}
+                            Email
+                          </button>
+                          <button
+                            onClick={() => openEditTicket(t)}
+                            className="px-3 py-1.5 bg-primary/10 hover:bg-primary/20 text-primary text-xs font-bold rounded-lg transition-colors inline-flex items-center gap-1 border border-primary/20"
+                          >
+                            <Pencil className="w-3.5 h-3.5" /> Edit
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -531,6 +630,54 @@ export default function AdminTicketsClient({ initialTickets, initialTotal, event
                 {savingTiers ? <><Loader2 className="w-4 h-4 animate-spin" /> Saving…</> : <><Save className="w-4 h-4" /> Save Ticket Tiers</>}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Resend ticket email modal */}
+      {resendModalOpen && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+          <div className="bg-background w-full sm:max-w-md sm:rounded-2xl rounded-t-2xl shadow-xl overflow-hidden">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+              <h3 className="text-base font-bold flex items-center gap-2">
+                <Mail className="w-5 h-5 text-primary" /> Resend ticket email
+              </h3>
+              <button
+                onClick={() => { setResendModalOpen(false); setResendResult(null); }}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleResendLookup} className="p-5 space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Enter the buyer&apos;s email, order reference or phone number. The email is re-sent
+                exactly as it was at purchase, to the address the ticket was issued to.
+              </p>
+
+              <input
+                autoFocus
+                value={resendLookup}
+                onChange={e => setResendLookup(e.target.value)}
+                placeholder="email, order reference or phone"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+              />
+
+              <button
+                type="submit"
+                disabled={resendBusy || !resendLookup.trim()}
+                className="w-full px-4 py-2.5 bg-primary text-white text-sm font-bold rounded-xl hover:bg-primary/90 transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
+              >
+                {resendBusy
+                  ? <><Loader2 className="w-4 h-4 animate-spin" /> Sending…</>
+                  : <><Send className="w-4 h-4" /> Send ticket email</>}
+              </button>
+
+              <p className="text-xs text-muted-foreground">
+                Tip: use the <strong>Email</strong> button on a pass row to resend that exact order.
+              </p>
+            </form>
           </div>
         </div>
       )}

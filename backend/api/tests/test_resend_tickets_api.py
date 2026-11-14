@@ -1,4 +1,4 @@
-"""
+﻿"""
 Tests for the one-tap "resend ticket email" endpoint used by Find My Ticket.
 
 Delivery must reuse the purchase flow, so tickets only ever go to the address
@@ -6,6 +6,7 @@ they were issued to.
 """
 from django.core import mail
 from django.test import TestCase, override_settings
+from rest_framework.test import APIClient
 from django.urls import reverse
 from django.utils import timezone
 
@@ -114,3 +115,86 @@ class ResendTicketsEndpointTests(TestCase):
     def test_missing_criteria_rejected(self):
         response = self._resend({})
         self.assertEqual(response.status_code, 400)
+
+
+@override_settings(EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend')
+class AdminResendTicketEndpointTests(TestCase):
+    """POST /api/admin/tickets/<pk>/ re-sends that order's ticket email."""
+
+    def setUp(self):
+        from django.core.cache import cache
+        cache.clear()
+        self.client = APIClient()
+
+        org_user = User.objects.create_user(
+            username='adminresendorg', email='adminresendorg@example.com',
+            password='password', role='ORGANIZER',
+        )
+        self.organizer, _ = OrganizerProfile.objects.get_or_create(
+            user=org_user, defaults={'company_name': 'Admin Resend Org'},
+        )
+        self.event = Event.objects.create(
+            organizer=self.organizer, title='Admin Resend Event', capacity=50,
+            start_time=timezone.now(),
+            end_time=timezone.now() + timezone.timedelta(days=1),
+            status='PUBLISHED',
+        )
+        self.ticket_type = TicketType.objects.create(
+            event=self.event, tier='REGULAR', name='Standard',
+            price=100000, quantity=20,
+        )
+        self.order = Order.objects.create(
+            event=self.event, guest_email='shopper@example.com',
+            guest_name='Shopper Person', subtotal=100000,
+            total_amount=105000, fee_amount=5000, status='COMPLETED',
+        )
+        self.ticket = Ticket.objects.create(
+            order=self.order, ticket_type=self.ticket_type,
+            attendee_name='Shopper Person', attendee_email='shopper@example.com',
+            status='ISSUED', qr_token=generate_secure_qr_token(),
+        )
+
+        self.admin = User.objects.create_user(
+            username='resendadmin', email='resendadmin@example.com',
+            password='password', role='ADMIN', is_staff=True,
+        )
+
+    def _post(self, ticket_id):
+        return self.client.post(f'/api/admin/tickets/{ticket_id}/', content_type='application/json')
+
+    def test_admin_can_resend_a_pass(self):
+        self.client.force_authenticate(user=self.admin)
+
+        response = self._post(self.ticket.id)
+
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertEqual(response.data['sent'], 1)
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(mail.outbox[0].to, ['shopper@example.com'])
+
+    def test_non_admin_cannot_resend(self):
+        attendee = User.objects.create_user(
+            username='plainuser', email='plain@example.com',
+            password='password', role='ATTENDEE',
+        )
+        self.client.force_authenticate(user=attendee)
+
+        response = self._post(self.ticket.id)
+
+        self.assertIn(response.status_code, (401, 403))
+        self.assertEqual(len(mail.outbox), 0)
+
+    def test_pending_order_is_rejected(self):
+        self.client.force_authenticate(user=self.admin)
+        self.order.status = 'PENDING'
+        self.order.save(update_fields=['status'])
+
+        response = self._post(self.ticket.id)
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(len(mail.outbox), 0)
+
+    def test_missing_ticket_returns_404(self):
+        self.client.force_authenticate(user=self.admin)
+        response = self._post(999999)
+        self.assertEqual(response.status_code, 404)

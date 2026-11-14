@@ -49,6 +49,48 @@ def mask_name(name: str) -> str:
     return ' '.join(masked_parts)
 
 
+def resend_order_tickets(order):
+    """Re-send an order's ticket emails through the purchase flow.
+
+    Returns ``(sent, failed, recipients)`` where the counts come from the
+    EmailLog rows the sender writes, so the caller reports what actually left
+    the server. Tickets are only ever delivered to the address they were
+    issued to.
+    """
+    from core.models import EmailLog
+    from core.utils.notifications import (
+        group_tickets_by_recipient,
+        send_purchase_receipt,
+    )
+
+    tickets = list(order.tickets.all())
+    if not tickets:
+        return 0, 0, []
+
+    buyer_email = (
+        order.guest_email or (order.attendee.user.email if order.attendee else '')
+    ).strip().lower()
+    expected = list(group_tickets_by_recipient(tickets, buyer_email).keys())
+    if not expected:
+        return 0, 0, []
+
+    send_purchase_receipt(order, tickets)
+
+    sent = 0
+    failed = 0
+    for recipient in expected:
+        logged = EmailLog.objects.filter(
+            recipient__iexact=recipient,
+            subject__startswith='Your Tickets for',
+        ).order_by('-created_at').first()
+        if logged and logged.status == 'Sent':
+            sent += 1
+        else:
+            failed += 1
+
+    return sent, failed, expected
+
+
 class FindTicketView(APIView):
     """
     POST /api/tickets/find/
@@ -208,11 +250,6 @@ class ResendTicketsView(APIView):
 
     def post(self, request):
         from api.serializers import FindTicketRequestSerializer
-        from core.models import EmailLog
-        from core.utils.notifications import (
-            group_tickets_by_recipient,
-            send_purchase_receipt,
-        )
 
         serializer = FindTicketRequestSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -258,31 +295,12 @@ class ResendTicketsView(APIView):
         recipients = []
 
         for order in orders:
-            tickets = list(order.tickets.all())
-            if not tickets:
-                continue
-
-            buyer_email = (
-                order.guest_email or (order.attendee.user.email if order.attendee else '')
-            ).strip().lower()
-            expected = list(group_tickets_by_recipient(tickets, buyer_email).keys())
+            order_sent, order_failed, expected = resend_order_tickets(order)
             if not expected:
                 continue
-
-            send_purchase_receipt(order, tickets)
-
-            # EmailLog is written by the sender itself, so this tells us what
-            # actually left the building rather than what we tried to send.
-            for recipient in expected:
-                logged = EmailLog.objects.filter(
-                    recipient__iexact=recipient,
-                    subject__startswith='Your Tickets for',
-                ).order_by('-created_at').first()
-                if logged and logged.status == 'Sent':
-                    sent += 1
-                else:
-                    failed += 1
-                recipients.append(recipient)
+            sent += order_sent
+            failed += order_failed
+            recipients.extend(expected)
 
         if not recipients:
             return Response(
