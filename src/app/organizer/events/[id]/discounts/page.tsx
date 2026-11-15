@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, use } from 'react';
-import { Plus, Trash2, FileDown, RefreshCw, PauseCircle, PlayCircle } from 'lucide-react';
+import { Plus, Trash2, FileDown, RefreshCw, PauseCircle, PlayCircle, ChevronDown, Calendar } from 'lucide-react';
 import { useParams } from 'next/navigation';
 import { useSession } from "@/context/AuthContext";
 import { toast } from "react-hot-toast";
@@ -401,22 +401,25 @@ export default function DiscountsPage() {
 
               <div>
                 <label className="block text-sm font-medium text-muted-foreground mb-1">Discount Type</label>
-                <select
-                  value={type}
-                  onChange={(e) => setType(e.target.value)}
-                  className="w-full bg-background border border-border rounded-xl px-3 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
-                >
-                  <option value="PERCENTAGE">Percentage</option>
-                  <option value="FIXED">Amount</option>
-                </select>
+                <div className="relative">
+                  <select
+                    value={type}
+                    onChange={(e) => setType(e.target.value)}
+                    className="w-full appearance-none bg-background border border-border rounded-xl pl-3 pr-10 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  >
+                    <option value="PERCENTAGE">Percentage</option>
+                    <option value="FIXED">Amount</option>
+                  </select>
+                  <ChevronDown className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                </div>
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-muted-foreground mb-1">
                   {type === "PERCENTAGE" ? "Discount Percentage (%)" : "Discount Amount (₦)"}
                 </label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm font-medium pointer-events-none">
+                <div className="flex items-stretch rounded-xl border border-border bg-background overflow-hidden focus-within:ring-2 focus-within:ring-primary/40">
+                  <span className="flex items-center px-3 text-sm font-semibold text-foreground bg-secondary border-r border-border">
                     {type === "PERCENTAGE" ? "%" : "₦"}
                   </span>
                   <input
@@ -424,7 +427,7 @@ export default function DiscountsPage() {
                     min="0"
                     value={value}
                     onChange={(e) => setValue(e.target.value)}
-                    className="w-full bg-background border border-border rounded-xl pl-8 pr-3 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                    className="w-full bg-transparent px-3 py-2 text-foreground focus:outline-none"
                     placeholder={type === "PERCENTAGE" ? "20" : "5000"}
                   />
                 </div>
@@ -437,8 +440,8 @@ export default function DiscountsPage() {
                 <label className="block text-sm font-medium text-muted-foreground mb-2">
                   What ticket classes does this apply to?
                 </label>
-                <div className="space-y-2 rounded-xl border border-border bg-background p-3">
-                  <label className="flex items-center gap-3 cursor-pointer">
+                <div className="space-y-1.5 rounded-xl border border-border bg-background p-2">
+                  <label className={`flex items-center gap-3 cursor-pointer rounded-lg px-2.5 py-2 transition-colors ${ticketTypeIds.length === 0 ? 'bg-primary/10' : 'hover:bg-secondary'}`}>
                     <input
                       type="checkbox"
                       checked={ticketTypeIds.length === 0}
@@ -448,7 +451,7 @@ export default function DiscountsPage() {
                     <span className="text-sm font-medium text-foreground">All Ticket Classes</span>
                   </label>
                   {ticketClasses.map((cls: any) => (
-                    <label key={cls.id} className="flex items-center gap-3 cursor-pointer">
+                    <label key={cls.id} className={`flex items-center gap-3 cursor-pointer rounded-lg px-2.5 py-2 transition-colors ${ticketTypeIds.includes(cls.id) ? 'bg-primary/10' : 'hover:bg-secondary'}`}>
                       <input
                         type="checkbox"
                         checked={ticketTypeIds.includes(cls.id)}
@@ -465,7 +468,7 @@ export default function DiscountsPage() {
                     </label>
                   ))}
                   {ticketClasses.length === 0 && (
-                    <p className="text-xs text-muted-foreground">
+                    <p className="px-2.5 py-2 text-xs text-muted-foreground">
                       No ticket classes created for this event yet.
                     </p>
                   )}
@@ -494,26 +497,34 @@ export default function DiscountsPage() {
                 <label className="block text-sm font-medium text-muted-foreground mb-1">
                   Enable Multiple Usage Per User
                 </label>
-                <select
-                  value={allowMultiple}
-                  onChange={(e) => setAllowMultiple(e.target.value)}
-                  className="w-full bg-background border border-border rounded-xl px-3 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
-                >
-                  <option value="yes">Yes</option>
-                  <option value="no">No</option>
-                </select>
+                <div className="relative">
+                  <select
+                    value={allowMultiple}
+                    onChange={(e) => setAllowMultiple(e.target.value)}
+                    className="w-full appearance-none bg-background border border-border rounded-xl pl-3 pr-10 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  >
+                    <option value="yes">Yes</option>
+                    <option value="no">No</option>
+                  </select>
+                  <ChevronDown className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                </div>
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-muted-foreground mb-1">
                   Expiry Date &amp; Time
                 </label>
-                <input
-                  type="datetime-local"
-                  value={expiry}
-                  onChange={(e) => setExpiry(e.target.value)}
-                  className="w-full bg-background border border-border rounded-xl px-3 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
-                />
+                <div className="flex items-stretch rounded-xl border border-border bg-background overflow-hidden focus-within:ring-2 focus-within:ring-primary/40">
+                  <span className="flex items-center px-3 bg-secondary border-r border-border">
+                    <Calendar className="w-4 h-4 text-muted-foreground" />
+                  </span>
+                  <input
+                    type="datetime-local"
+                    value={expiry}
+                    onChange={(e) => setExpiry(e.target.value)}
+                    className="w-full bg-transparent px-3 py-2 text-foreground focus:outline-none"
+                  />
+                </div>
                 <p className="mt-1 text-xs text-muted-foreground">Leave empty for no expiry.</p>
               </div>
             </div>
