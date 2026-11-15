@@ -581,6 +581,15 @@ class Discount(models.Model):
     value = models.IntegerField(help_text='Percentage (0-100) or fixed amount in kobo.')
     usage_limit = models.IntegerField(default=0, help_text='0 = unlimited.')
     usage_count = models.IntegerField(default=0)
+    ticket_type_ids = models.JSONField(
+        default=list,
+        blank=True,
+        help_text='Ticket classes this code applies to. Empty means every class.',
+    )
+    allow_multiple_per_user = models.BooleanField(
+        default=True,
+        help_text='When false, a buyer can redeem this code only once.',
+    )
     valid_from = models.DateTimeField(null=True, blank=True)
     valid_until = models.DateTimeField(null=True, blank=True)
     is_active = models.BooleanField(default=True)
@@ -604,6 +613,27 @@ class Discount(models.Model):
             Q(discount_redemptions__discount=self)
             | Q(referral_code__iexact=self.code)
         ).distinct().count()
+
+    def applies_to_ticket_type(self, ticket_type_id):
+        """Whether this code can discount the given ticket class."""
+        ids = [int(t) for t in (self.ticket_type_ids or [])]
+        return not ids or int(ticket_type_id) in ids
+
+    def buyer_has_used(self, email):
+        """True when this buyer already used the code and repeat use is off."""
+        if self.allow_multiple_per_user:
+            return False
+        email = (email or '').strip().lower()
+        if not email:
+            return False
+        from django.db.models import Q
+
+        return self.event.orders.filter(status='COMPLETED').filter(
+            Q(discount_redemptions__discount=self)
+            | Q(referral_code__iexact=self.code)
+        ).filter(
+            Q(guest_email__iexact=email) | Q(attendee__user__email__iexact=email)
+        ).distinct().exists()
 
     def __str__(self):
         return f'{self.code} - {self.event.title}'

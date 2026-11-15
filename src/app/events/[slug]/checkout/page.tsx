@@ -185,7 +185,12 @@ export default function CheckoutPage() {
   }, [event, success, isWaitlistActive, allSoldOut, isClaimingWaitlist, isSalesPaused]);
 
   const [discountCode, setDiscountCode] = useState("");
-  const [appliedDiscount, setAppliedDiscount] = useState<{ code: string, type: string, value: number } | null>(null);
+  const [appliedDiscount, setAppliedDiscount] = useState<{
+    code: string;
+    type: string;
+    value: number;
+    ticket_type_ids?: number[];
+  } | null>(null);
   const [applyingDiscount, setApplyingDiscount] = useState(false);
   const [discountError, setDiscountError] = useState("");
 
@@ -198,10 +203,17 @@ export default function CheckoutPage() {
     setApplyingDiscount(true);
     setDiscountError("");
     try {
-      const res = await fetch(`${API_URL}/events/${event.id}/discounts/validate/?code=${encodeURIComponent(discountCode)}`);
+      const buyerEmail = (session?.user?.email || guestData.email || '').trim();
+      const validateUrl = `${API_URL}/events/${event.id}/discounts/validate/?code=${encodeURIComponent(discountCode)}${buyerEmail ? `&email=${encodeURIComponent(buyerEmail)}` : ''}`;
+      const res = await fetch(validateUrl);
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Invalid discount code.");
-      setAppliedDiscount({ code: data.code, type: data.type, value: data.value });
+      setAppliedDiscount({
+        code: data.code,
+        type: data.type,
+        value: data.value,
+        ticket_type_ids: data.ticket_type_ids || [],
+      });
     } catch (e: any) {
       setDiscountError(e.message || "Failed to apply discount.");
       setAppliedDiscount(null);
@@ -225,10 +237,19 @@ export default function CheckoutPage() {
 
   let discountAmount = 0;
   if (appliedDiscount) {
+    // A code may be limited to certain ticket classes; only those count.
+    const eligibleTierIds: number[] = appliedDiscount.ticket_type_ids || [];
+    const eligibleSubtotal = eligibleTierIds.length === 0
+      ? subtotal
+      : (event?.ticket_types || []).reduce((sum: number, ticket: any) => {
+          if (!eligibleTierIds.includes(ticket.id)) return sum;
+          return sum + (selections[ticket.id] || 0) * ticket.price;
+        }, 0);
+
     if (appliedDiscount.type === 'PERCENTAGE') {
-      discountAmount = Math.floor(subtotal * (appliedDiscount.value / 100));
+      discountAmount = Math.floor(eligibleSubtotal * (appliedDiscount.value / 100));
     } else {
-      discountAmount = Math.min(appliedDiscount.value, subtotal);
+      discountAmount = Math.min(appliedDiscount.value, eligibleSubtotal);
     }
   }
   const discountedSubtotal = Math.max(0, subtotal - discountAmount);

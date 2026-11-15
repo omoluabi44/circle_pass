@@ -198,6 +198,22 @@ export async function createEventDiscount(token: string, eventId: string | numbe
   return res.json();
 }
 
+export async function updateEventDiscount(token: string, eventId: string | number, discountId: string | number, data: any) {
+  const res = await fetchWithAuth(`${API_URL}/events/${eventId}/discounts/${discountId}/`, {
+    method: 'PATCH',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(data)
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.error || errorData.detail || 'Failed to update discount');
+  }
+  return res.json();
+}
+
 export async function deleteEventDiscount(token: string, eventId: string | number, discountId: string | number) {
   const res = await fetchWithAuth(`${API_URL}/events/${eventId}/discounts/${discountId}/`, {
     method: 'DELETE',

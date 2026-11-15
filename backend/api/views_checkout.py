@@ -232,16 +232,46 @@ class CheckoutView(APIView):
                         used_count = max(
                             discount.usage_count, discount.completed_usage_count()
                         )
-                        if (discount.usage_limit == 0 or used_count < discount.usage_limit) and \
-                           (not discount.valid_from or now_dt >= discount.valid_from) and \
-                           (not discount.valid_until or now_dt <= discount.valid_until):
-                            
+                        discount_window_ok = (
+                            (discount.usage_limit == 0 or used_count < discount.usage_limit)
+                            and (not discount.valid_from or now_dt >= discount.valid_from)
+                            and (not discount.valid_until or now_dt <= discount.valid_until)
+                        )
+                        if discount_window_ok:
+                            # A code can be limited to certain ticket classes.
+                            # Only those lines count towards the discount.
+                            eligible_lines = [
+                                li for li in line_items_data
+                                if discount.applies_to_ticket_type(li['ticket_type'].id)
+                            ]
+                            eligible_subtotal = sum(li['line_total'] for li in eligible_lines)
+
+                            if discount.ticket_type_ids and eligible_subtotal <= 0:
+                                tier_names = ', '.join(
+                                    discount.event.ticket_types
+                                    .filter(id__in=discount.ticket_type_ids)
+                                    .values_list('name', flat=True)
+                                )
+                                return Response(
+                                    {'detail': f'"{discount.code}" only applies to {tier_names} tickets.'},
+                                    status=status.HTTP_400_BAD_REQUEST,
+                                )
+
+                            buyer_email_for_discount = guest_email or (
+                                request.user.email if request.user.is_authenticated else ''
+                            )
+                            if discount.buyer_has_used(buyer_email_for_discount):
+                                return Response(
+                                    {'detail': 'This discount code can only be used once per person.'},
+                                    status=status.HTTP_400_BAD_REQUEST,
+                                )
+
                             valid_discount = discount
-                            
+
                             if discount.type == 'PERCENTAGE':
-                                discount_amount = int(subtotal * (discount.value / 100.0))
+                                discount_amount = int(eligible_subtotal * (discount.value / 100.0))
                             else:
-                                discount_amount = min(discount.value, subtotal)
+                                discount_amount = min(discount.value, eligible_subtotal)
                     except Discount.DoesNotExist:
                         pass # Ignore invalid codes silently for now, or you can return error
                         
