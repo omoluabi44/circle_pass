@@ -66,7 +66,11 @@ export default function DiscountsPage() {
         getEventDiscounts(session.accessToken as string, id),
         getEventById(session.accessToken as string, id).catch(() => null),
       ]);
-      setDiscounts(data);
+      setDiscounts(
+        (Array.isArray(data) ? data : []).filter(
+          (d: any) => (d.type || d.discount_type) !== 'REFERRAL'
+        )
+      );
       if (eventData) setEvent(eventData);
     } catch (err: any) {
       toast.error(err.message || "Failed to fetch discounts");
