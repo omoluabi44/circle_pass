@@ -45,6 +45,25 @@ class OrganizerProfile(models.Model):
     logo = models.URLField(max_length=500, null=True, blank=True)
     sales_notifications = models.BooleanField(default=True, help_text="Receive an email every time a ticket is sold.")
     weekly_summary = models.BooleanField(default=True, help_text="Receive a weekly digest of all sales and check-ins.")
+    phone_number = models.CharField(
+        max_length=20,
+        blank=True,
+        default='',
+        help_text='Organizer WhatsApp number. Editable at any time from Profile Settings.',
+    )
+    onboarding_completed = models.BooleanField(
+        default=False,
+        help_text=(
+            'Set once the organizer has supplied their full name and phone '
+            'number after sign-up. Full name is locked from then on.'
+        ),
+    )
+
+    @property
+    def has_locked_name(self):
+        """True once a personal name has been recorded (it can never change)."""
+        user = self.user
+        return bool((user.get_full_name() or '').strip())
 
 class OrganizerVerification(models.Model):
     organizer = models.OneToOneField(OrganizerProfile, on_delete=models.CASCADE)

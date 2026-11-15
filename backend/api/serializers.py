@@ -66,10 +66,12 @@ class OrganizerProfileSerializer(serializers.ModelSerializer):
     first_name = serializers.CharField(source='user.first_name', required=False, allow_blank=True)
     last_name = serializers.CharField(source='user.last_name', required=False, allow_blank=True)
     organizer_name = serializers.CharField(required=False, allow_blank=True)
+    full_name = serializers.SerializerMethodField()
+    name_locked = serializers.SerializerMethodField()
 
     class Meta:
         model = OrganizerProfile
-        fields = ('id', 'company_name', 'organizer_name', 'first_name', 'last_name', 'is_verified', 'contact_email', 'bio', 'website', 'instagram_handle', 'logo', 'sales_notifications', 'weekly_summary')
+        fields = ('id', 'company_name', 'organizer_name', 'full_name', 'first_name', 'last_name', 'name_locked', 'phone_number', 'onboarding_completed', 'is_verified', 'contact_email', 'bio', 'website', 'instagram_handle', 'logo', 'sales_notifications', 'weekly_summary')
 
     def to_representation(self, instance):
         ret = super().to_representation(instance)
@@ -77,17 +79,43 @@ class OrganizerProfileSerializer(serializers.ModelSerializer):
         if user:
             full = (user.get_full_name() or '').strip()
             ret['organizer_name'] = full or getattr(user, 'username', '')
+            ret['full_name'] = full
         else:
             ret['organizer_name'] = ''
+            ret['full_name'] = ''
         return ret
+
+    def get_full_name(self, instance):
+        return (instance.user.get_full_name() or '').strip()
+
+    def get_name_locked(self, instance):
+        # The personal/legal name is captured once on the post-sign-up popup and
+        # is then locked, because payout verification depends on it.
+        return instance.has_locked_name
 
     def update(self, instance, validated_data):
         user_data = validated_data.pop('user', {})
         organizer_name = validated_data.pop('organizer_name', None)
+
+        current_name = (instance.user.get_full_name() or '').strip()
+        requested_name = None
         if organizer_name is not None:
-            parts = organizer_name.strip().split(None, 1)
-            user_data['first_name'] = parts[0] if parts else ''
-            user_data['last_name'] = parts[1] if len(parts) > 1 else ''
+            requested_name = organizer_name.strip()
+        elif 'first_name' in user_data or 'last_name' in user_data:
+            requested_name = (
+                f"{user_data.get('first_name', instance.user.first_name)} "
+                f"{user_data.get('last_name', instance.user.last_name)}"
+            ).strip()
+
+        if requested_name is not None:
+            if current_name and requested_name != current_name:
+                raise serializers.ValidationError({
+                    'organizer_name': 'Your full name is locked and cannot be changed.',
+                })
+            if not current_name:
+                parts = requested_name.split(None, 1)
+                user_data['first_name'] = parts[0] if parts else ''
+                user_data['last_name'] = parts[1] if len(parts) > 1 else ''
 
         for attr, value in validated_data.items():
             setattr(instance, attr, value)

@@ -243,6 +243,91 @@ class OrganizerProfileViewSet(viewsets.ModelViewSet):
         # Organizer can only see and edit their own profile
         return OrganizerProfile.objects.filter(user=self.request.user)
 
+
+class OrganizerOnboardingView(APIView):
+    """Capture the organizer's full name and phone number after sign-up.
+
+    GET  /api/organizer/profile/onboarding/ -> what the popup needs (and whether
+         it is still required).
+    POST /api/organizer/profile/onboarding/ -> save both, complete onboarding.
+
+    The full name is written to the user account because payout bank-account
+    validation already compares against it, and it is locked from then on.
+    """
+    permission_classes = [IsOrganizer]
+
+    def _profile(self, request):
+        from core.models import OrganizerProfile
+
+        profile, created = OrganizerProfile.objects.get_or_create(
+            user=request.user,
+            defaults={'company_name': ''},
+        )
+        return profile
+
+    def get(self, request):
+        # Admins can preview the organizer dashboard; never prompt them and
+        # never create an organizer profile on their behalf.
+        if getattr(request.user, 'role', '') == 'ADMIN':
+            return Response({
+                'needs_onboarding': False,
+                'full_name': (request.user.get_full_name() or '').strip(),
+                'phone_number': '',
+                'name_locked': bool((request.user.get_full_name() or '').strip()),
+            })
+        profile = self._profile(request)
+        full_name = (request.user.get_full_name() or '').strip()
+        return Response({
+            'needs_onboarding': not profile.onboarding_completed,
+            'full_name': full_name,
+            'phone_number': profile.phone_number or '',
+            'name_locked': bool(full_name),
+        })
+
+    def post(self, request):
+        import re
+
+        if getattr(request.user, 'role', '') == 'ADMIN':
+            return Response({'error': 'Not available for admin accounts.'}, status=403)
+        profile = self._profile(request)
+        if profile.onboarding_completed:
+            return Response(
+                {'error': 'Your profile is already complete.'}, status=400,
+            )
+
+        full_name = ' '.join((request.data.get('full_name') or '').split())
+        phone_number = re.sub(r'[^0-9+]', '', (request.data.get('phone_number') or ''))
+
+        if not full_name:
+            return Response({'error': 'Full name is required.'}, status=400)
+        if len(full_name.split()) < 2:
+            return Response(
+                {'error': 'Enter your first and last name.'}, status=400,
+            )
+
+        digits = re.sub(r'\D', '', phone_number)
+        if len(digits) < 7 or len(digits) > 15:
+            return Response(
+                {'error': 'Enter a valid phone number.'}, status=400,
+            )
+
+        parts = full_name.split(None, 1)
+        user = request.user
+        user.first_name = parts[0][:150]
+        user.last_name = (parts[1] if len(parts) > 1 else '')[:150]
+        user.save(update_fields=['first_name', 'last_name'])
+
+        profile.phone_number = phone_number
+        profile.onboarding_completed = True
+        profile.save(update_fields=['phone_number', 'onboarding_completed'])
+
+        return Response({
+            'needs_onboarding': False,
+            'full_name': user.get_full_name(),
+            'phone_number': profile.phone_number,
+            'name_locked': True,
+        })
+
 class PublicOrganizerProfileView(APIView):
     permission_classes = [AllowAny]
 

@@ -1,6 +1,6 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import StubView, OrganizerProfileViewSet, CustomUserViewSet, EventViewSet, EventCategoryViewSet, OrganizerVerificationView, google_auth, PublicOrganizerProfileView, VerifyCodeView
+from .views import StubView, OrganizerProfileViewSet, CustomUserViewSet, EventViewSet, EventCategoryViewSet, OrganizerVerificationView, google_auth, PublicOrganizerProfileView, VerifyCodeView, OrganizerOnboardingView
 from .views_waitlist import (
     WaitlistEntryCreateView,
     OrganizerWaitlistListView,
@@ -146,6 +146,10 @@ urlpatterns = [
     path('organizer/analytics/', OrganizerAnalyticsView.as_view(), name='organizer_analytics'),
     path('organizer/inbox/', OrganizerInboxView.as_view(), name='organizer_inbox'),
     
+    # Organizer: post-sign-up profile completion (kept outside the
+    # organizer/profile router so it cannot be swallowed by the <pk> route).
+    path('organizer/onboarding/', OrganizerOnboardingView.as_view(), name='organizer_onboarding'),
+
     # Organizer: Verification
     path('organizer/verification/', OrganizerVerificationView.as_view(), name='organizer_verification'),
     path('organizers/<int:pk>/', PublicOrganizerProfileView.as_view(), name='public_organizer'),

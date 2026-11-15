@@ -11,6 +11,7 @@ import {
 import { signOut, useSession } from "@/context/AuthContext";
 import { RoleSwitcher } from "@/components/ui/RoleSwitcher";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
+import OrganizerOnboardingGate from "./OrganizerOnboardingGate";
 import { useEffect } from "react";
 import { API_URL } from "@/lib/api/config";
 
@@ -195,6 +196,9 @@ export default function OrganizerLayout({
       <main className="flex-1 overflow-y-auto custom-scrollbar w-full pt-16 lg:pt-0 min-h-screen">
         {children}
       </main>
+
+      {/* Blocking post-sign-up profile popup for new organizers */}
+      <OrganizerOnboardingGate />
     </div>
   );
 }

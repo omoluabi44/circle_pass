@@ -22,7 +22,10 @@ function BusinessDetailsForm() {
     bio: '',
     website: '',
     instagram_handle: '',
+    phone_number: '',
   });
+  // The personal/legal name is captured at sign-up and then locked.
+  const [nameLocked, setNameLocked] = useState(false);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [logoFile, setLogoFile] = useState<File | null>(null);
@@ -53,7 +56,9 @@ function BusinessDetailsForm() {
               bio: profile.bio || '',
               website: profile.website || '',
               instagram_handle: profile.instagram_handle || '',
+              phone_number: profile.phone_number || '',
             });
+            setNameLocked(profile.name_locked === true || !!profile.full_name);
             if (profile.logo) {
               setLogoPreview(profile.logo.startsWith('/') ? `${API_URL.replace('/api', '')}${profile.logo}` : profile.logo);
             }
@@ -205,21 +210,34 @@ function BusinessDetailsForm() {
         </div>
       </div>
 
-      {/* Organizer Name (Circled Location - Personal Legal Name for Payout) */}
+      {/* Full Name — captured at sign-up, locked permanently */}
       <div className="space-y-2">
         <label className="text-sm font-bold text-foreground flex items-center justify-between">
-          <span>Organizer Name</span>
-          <span className="text-xs font-normal text-muted-foreground">Matches payout bank account</span>
+          <span className="flex items-center gap-2">
+            Full Name
+            {nameLocked && <Lock className="w-3.5 h-3.5 text-muted-foreground" />}
+          </span>
+          <span className="text-xs font-normal text-muted-foreground">
+            {nameLocked ? "Locked permanently" : "Matches payout bank account"}
+          </span>
         </label>
         <input
           type="text"
           value={formData.organizer_name}
           onChange={e => handleOrganizerNameChange(e.target.value)}
+          readOnly={nameLocked}
+          disabled={nameLocked}
           placeholder="e.g. Ogunbiyi Jubril"
-          className="w-full bg-background border border-border rounded-xl px-4 py-3 focus:outline-none focus:border-primary transition-colors text-foreground font-medium"
+          className={`w-full border border-border rounded-xl px-4 py-3 focus:outline-none transition-colors font-medium ${
+            nameLocked
+              ? 'bg-secondary/60 text-muted-foreground cursor-not-allowed'
+              : 'bg-background text-foreground focus:border-primary'
+          }`}
         />
         <p className="text-xs text-muted-foreground">
-          Enter your personal legal name as registered on your bank account for payout verification.
+          {nameLocked
+            ? "Your full name is your legal payout name and cannot be changed. Contact support if it is incorrect."
+            : "Enter your personal legal name as registered on your bank account for payout verification."}
         </p>
         {payoutNameWarning && (
           <div className="flex items-start gap-2 text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2.5">
@@ -251,6 +269,23 @@ function BusinessDetailsForm() {
             className="w-full bg-background border border-border rounded-xl px-4 py-3 focus:outline-none focus:border-primary transition-colors text-foreground"
           />
         </div>
+      </div>
+
+      <div className="space-y-2 md:max-w-[calc(50%-0.75rem)]">
+        <label className="text-sm font-bold text-foreground flex items-center justify-between">
+          <span>WhatsApp Number</span>
+          <span className="text-xs font-normal text-muted-foreground">Editable anytime</span>
+        </label>
+        <input
+          type="tel"
+          value={formData.phone_number}
+          onChange={e => setFormData({ ...formData, phone_number: e.target.value })}
+          placeholder="e.g. 08012345678"
+          className="w-full bg-background border border-border rounded-xl px-4 py-3 focus:outline-none focus:border-primary transition-colors text-foreground"
+        />
+        <p className="text-xs text-muted-foreground">
+          Used to reach you about your events. WhatsApp number preferred.
+        </p>
       </div>
 
       <div className="space-y-2">
