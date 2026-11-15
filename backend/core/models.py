@@ -645,6 +645,62 @@ class DiscountRedemption(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
 
+class Referral(models.Model):
+    """A named referral code used to track who generated a sale.
+
+    Referrals are tracking-only: they never discount a ticket, never pay a
+    commission and never touch the wallet. An order is attributed to a referral
+    through its ``referral_code`` field, which is set from the ``?ref=`` link at
+    checkout or typed in by the buyer.
+
+    Kept separate from :class:`Discount` so a purchase can carry one discount
+    and one referral at the same time.
+    """
+
+    event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name='referrals')
+    name = models.CharField(max_length=120)
+    code = models.CharField(max_length=50)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('event', 'code')
+        ordering = ['-created_at']
+
+    # ── Tracking ──────────────────────────────────────────────────────────
+    def sales_queryset(self):
+        """Completed orders attributed to this referral."""
+        return self.event.orders.filter(
+            status='COMPLETED', referral_code__iexact=self.code,
+        ).distinct()
+
+    def sales_count(self):
+        """Number of completed purchases (one buyer may buy several tickets)."""
+        return self.sales_queryset().count()
+
+    def ticket_count(self):
+        """Number of individual tickets sold through this referral."""
+        from django.db.models import Sum
+
+        total = self.sales_queryset().aggregate(
+            n=Sum('items__quantity'),
+        )['n']
+        return int(total or 0)
+
+    def referral_link(self):
+        from urllib.parse import quote
+
+        from django.conf import settings
+
+        base = getattr(
+            settings, 'FRONTEND_URL', 'https://thecirclepass.com'
+        ).rstrip('/')
+        return f'{base}/events/{self.event.slug}?ref={quote(self.code)}'
+
+    def __str__(self):
+        return f'{self.name} ({self.code}) - {self.event.title}'
+
+
 class EventAnnouncement(models.Model):
     DELIVERY_STATUS_CHOICES = (
         ('QUEUED', 'Queued'),

@@ -80,6 +80,9 @@ export default function CheckoutPage() {
 
   // Waitlist Claim State (When user clicks link in acceptance email)
   const [waitlistToken, setWaitlistToken] = useState<string | null>(null);
+  // Referral code: pre-filled from a shared ?ref= link, but still editable so a
+  // buyer can type one they were given verbally.
+  const [referralCode, setReferralCode] = useState("");
   const [waitlistClaimData, setWaitlistClaimData] = useState<any>(null);
   const [claimLoading, setClaimLoading] = useState(false);
   const [claimError, setClaimError] = useState<string | null>(null);
@@ -96,6 +99,8 @@ export default function CheckoutPage() {
       const params = new URLSearchParams(window.location.search);
       const token = params.get("waitlist_token");
       if (token) setWaitlistToken(token);
+      const ref = params.get("ref");
+      if (ref) setReferralCode(ref);
     }
   }, []);
 
@@ -478,7 +483,7 @@ export default function CheckoutPage() {
       const tickets = Object.entries(selections).map(([id, quantity]) => ({
         ticket_type_id: Number(id), quantity,
       }));
-      const referral_code = window.location.search.includes('ref=') ? new URLSearchParams(window.location.search).get('ref') || "" : "";
+      const referral_code = referralCode.trim().toUpperCase();
 
       const response = await checkout({
         event_id: event.id, items: tickets, guest_name: name, guest_email: email, guest_phone: phone, referral_code, discount_code: appliedDiscount?.code || "", waitlist_token: waitlistToken || "",
@@ -546,7 +551,7 @@ export default function CheckoutPage() {
       const tickets = Object.entries(selections).map(([id, quantity]) => ({
         ticket_type_id: Number(id), quantity,
       }));
-      const referral_code = window.location.search.includes('ref=') ? new URLSearchParams(window.location.search).get('ref') || "" : "";
+      const referral_code = referralCode.trim().toUpperCase();
 
       const response = await checkout({
         event_id: event.id, items: tickets, referral_code, discount_code: appliedDiscount?.code || "", waitlist_token: waitlistToken || "",
@@ -1317,6 +1322,26 @@ export default function CheckoutPage() {
                 </div>
                 {discountError && <p className="text-destructive text-xs mt-1.5">{discountError}</p>}
                 {appliedDiscount && <p className="text-success text-xs mt-1.5 font-medium">Promo code {appliedDiscount.code} applied!</p>}
+              </div>
+
+              <div className="mb-6">
+                <label className="block text-xs font-medium text-muted-foreground mb-1.5">
+                  Referral Code (optional)
+                </label>
+                <input
+                  type="text"
+                  placeholder="Enter referral code"
+                  value={referralCode}
+                  onChange={(e) =>
+                    setReferralCode(e.target.value.toUpperCase().replace(/[^A-Z0-9_-]/g, ""))
+                  }
+                  maxLength={50}
+                  className="w-full px-4 py-2 text-sm rounded-lg border border-border bg-background outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all font-mono"
+                />
+                <p className="text-xs text-muted-foreground mt-1.5">
+                  Referral codes only track who shared the event — they never
+                  change the price. You can still use a promo code above.
+                </p>
               </div>
 
               <div className="space-y-3 mb-6">

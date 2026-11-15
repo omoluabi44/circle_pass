@@ -15,7 +15,10 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from core.models import Event, TicketType, Order, OrderItem, Ticket, AttendeeProfile, Payment, WaitlistEntry
+from core.models import (
+    Discount, Event, Referral, TicketType, Order, OrderItem, Ticket,
+    AttendeeProfile, Payment, WaitlistEntry,
+)
 from core.utils.qr import generate_secure_qr_token
 from core.utils.paystack import initialize_transaction
 from core.utils import nomba
@@ -27,6 +30,28 @@ logger = logging.getLogger(__name__)
 
 # CirclePass service fee: 5%
 CIRCLEPASS_FEE_RATE = 5  # percent
+
+
+def canonical_referral_code(event, raw):
+    """Return the event's own referral code for `raw`, or ''.
+
+    Referral codes are event-scoped: a code typed into checkout (or arriving
+    through a shared `?ref=` link) only counts when it belongs to this event.
+    Legacy REFERRAL-type discount rows are accepted so older shared links keep
+    working until they are migrated to proper Referral records.
+    """
+    code = (raw or '').strip()
+    if not code:
+        return ''
+
+    referral = Referral.objects.filter(event=event, code__iexact=code).first()
+    if referral:
+        return referral.code
+
+    legacy = Discount.objects.filter(
+        event=event, type='REFERRAL', code__iexact=code,
+    ).first()
+    return legacy.code if legacy else ''
 
 
 class CheckoutView(APIView):
@@ -225,9 +250,10 @@ class CheckoutView(APIView):
                 valid_discount = None
                 
                 if discount_code:
-                    from core.models import Discount
                     try:
-                        discount = Discount.objects.get(event=event, code=discount_code, is_active=True)
+                        discount = Discount.objects.filter(
+                            event=event, code=discount_code, is_active=True,
+                        ).exclude(type='REFERRAL').get()
                         now_dt = timezone.now()
                         used_count = max(
                             discount.usage_count, discount.completed_usage_count()
@@ -299,7 +325,9 @@ class CheckoutView(APIView):
                     fee_amount=fee_amount,
                     total_amount=total_amount,
                     status='PENDING',
-                    referral_code=request.data.get('referral_code', ''),
+                    referral_code=canonical_referral_code(
+                        event, request.data.get('referral_code', '')
+                    ),
                     custom_field_responses=custom_field_responses,
                     attendees=attendees,
                     expires_at=timezone.now() + timezone.timedelta(minutes=30) if total_amount > 0 else None

@@ -35,6 +35,7 @@ from .views_engagement import (
 from .views_attendee import AttendeeProfileView, AttendeeDashboardView
 
 from .views_discount import EventDiscountListCreateView, EventDiscountDetailView, EventDiscountValidateView
+from .views_referral import EventReferralListCreateView, EventReferralDetailView
 from .views_announcement import EventAnnouncementListCreateView
 from .views_custom_fields import EventCustomFieldListCreateView, EventCustomFieldDetailView, PublicEventCustomFieldListView
 from .views_newsletter import NewsletterSubscribeView
@@ -153,6 +154,11 @@ urlpatterns = [
     path('events/<int:event_id>/discounts/', EventDiscountListCreateView.as_view(), name='event_discounts'),
     path('events/<int:event_id>/discounts/validate/', EventDiscountValidateView.as_view(), name='event_discount_validate'),
     path('events/<int:event_id>/discounts/<int:discount_id>/', EventDiscountDetailView.as_view(), name='event_discount_detail'),
+
+    # Referrals (tracking-only codes)
+    path('events/<int:event_id>/referrals/', EventReferralListCreateView.as_view(), name='event_referrals'),
+    path('events/<int:event_id>/referrals/<int:referral_id>/', EventReferralDetailView.as_view(), name='event_referral_detail'),
+
     path('events/<int:event_id>/announcements/', EventAnnouncementListCreateView.as_view(), name='event_announcements'),
 
     # Custom Checkout Fields

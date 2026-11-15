@@ -226,6 +226,59 @@ export async function deleteEventDiscount(token: string, eventId: string | numbe
   return res.json().catch(() => null);
 }
 
+// ── Referrals (tracking-only codes) ───────────────────────────────────────
+export async function getEventReferrals(token: string, eventId: string | number) {
+  const res = await fetchWithAuth(`${API_URL}/events/${eventId}/referrals/`, {
+    headers: { 'Authorization': `Bearer ${token}` },
+    cache: 'no-store'
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.error || 'Failed to fetch referrals');
+  }
+  return res.json();
+}
+
+export async function createEventReferral(token: string, eventId: string | number, data: any) {
+  const res = await fetchWithAuth(`${API_URL}/events/${eventId}/referrals/`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(data)
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.error || errorData.detail || 'Failed to create referral');
+  }
+  return res.json();
+}
+
+export async function getEventReferral(token: string, eventId: string | number, referralId: string | number) {
+  const res = await fetchWithAuth(`${API_URL}/events/${eventId}/referrals/${referralId}/`, {
+    headers: { 'Authorization': `Bearer ${token}` },
+    cache: 'no-store'
+  });
+  if (!res.ok) throw new Error('Failed to fetch referral');
+  return res.json();
+}
+
+export async function deleteEventReferral(token: string, eventId: string | number, referralId: string | number) {
+  const res = await fetchWithAuth(`${API_URL}/events/${eventId}/referrals/${referralId}/`, {
+    method: 'DELETE',
+    headers: {
+      'Authorization': `Bearer ${token}`
+    }
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.error || 'Failed to delete referral');
+  }
+  if (res.status === 204) return null;
+  return res.json().catch(() => null);
+}
+
 export async function getEventAnnouncements(token: string, eventId: string | number) {
   const res = await fetchWithAuth(`${API_URL}/events/${eventId}/announcements/`, {
     headers: { 'Authorization': `Bearer ${token}` },

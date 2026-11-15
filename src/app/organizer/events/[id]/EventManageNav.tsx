@@ -25,7 +25,7 @@ export default function EventManageNav({ eventId }: { eventId: string }) {
     { name: "Waitlist", href: `/organizer/events/${eventId}/waitlist`, icon: Clock },
     { name: "Attendees", href: `/organizer/events/${eventId}/attendees`, icon: Users },
     { name: "PassControl", href: `/organizer/events/${eventId}/passcontrol`, icon: ScanLine },
-    { name: "Discounts", href: `/organizer/events/${eventId}/discounts`, icon: Percent },
+    { name: "Promotions", href: `/organizer/events/${eventId}/promotions`, icon: Percent },
     { name: "Announcements", href: `/organizer/events/${eventId}/announcements`, icon: Megaphone },
     { name: "Analytics", href: `/organizer/events/${eventId}/analytics`, icon: BarChart },
     { name: "Settings", href: `/organizer/events/${eventId}/settings`, icon: Settings },
