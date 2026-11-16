@@ -333,6 +333,34 @@ export async function getAdminTickets(
   return res.json();
 }
 
+/**
+ * Download tickets as a CSV (summary block + one row per ticket).
+ * Pass `ticket_type_id` to export a single tier.
+ */
+export async function exportAdminTicketsCsv(
+  token: string,
+  params?: { q?: string; status?: string; event_id?: string | number; ticket_type_id?: string | number }
+) {
+  const query = new URLSearchParams();
+  if (params?.q) query.set('q', params.q);
+  if (params?.status && params.status !== 'ALL') query.set('status', params.status);
+  if (params?.event_id) query.set('event_id', String(params.event_id));
+  if (params?.ticket_type_id) query.set('ticket_type_id', String(params.ticket_type_id));
+
+  const res = await fetchWithAuth(
+    `${API_URL}/admin/tickets/export/${query.toString() ? `?${query.toString()}` : ''}`,
+    {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: 'no-store',
+    },
+  );
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(`Export failed: ${res.status} — ${text}`);
+  }
+  return res.blob();
+}
+
 export async function getAdminTicketDetail(token: string, id: number) {
   const res = await fetchWithAuth(`${API_URL}/admin/tickets/${id}/`, {
     headers: { Authorization: `Bearer ${token}` },

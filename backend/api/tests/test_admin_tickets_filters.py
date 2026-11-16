@@ -50,7 +50,7 @@ class AdminTicketListFilterTests(TestCase):
             price=100000, quantity=20,
         )
 
-        # Two-ticket paid order: â‚¦5,000 + â‚¦5,000 tickets, â‚¦250 fee each? use fee 25000 (â‚¦250)
+        # Two-ticket paid order: ₦5,000 + ₦5,000 tickets, ₦250 fee each? use fee 25000 (₦250)
         self.order = Order.objects.create(
             event=self.event, guest_email='buyer@example.com',
             guest_name='Buyer Person', subtotal=1000000,
@@ -130,7 +130,7 @@ class AdminTicketListFilterTests(TestCase):
         self.assertEqual(response.status_code, 200, getattr(response, 'data', None))
 
         ticket = response.data['tickets'][0]
-        # â‚¦10,500 charged for 2 passes -> â‚¦5,250 each
+        # ₦10,500 charged for 2 passes -> ₦5,250 each
         self.assertEqual(ticket['amount_paid'], 525000)
         self.assertEqual(ticket['amount_paid_naira'], 5250)
         self.assertEqual(ticket['order_total_naira'], 10500)

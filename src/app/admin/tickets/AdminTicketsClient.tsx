@@ -1,17 +1,18 @@
-﻿'use client';
+'use client';
 
 import { useState, useEffect } from 'react';
 import { 
   Ticket, Search, Filter, RefreshCw, ExternalLink, Pencil, AlertCircle, 
   CheckCircle, Plus, Trash2, Loader2, Tag, Calendar, Save, DollarSign,
-  Send, Mail, X
+  Send, Mail, X, Download
 } from 'lucide-react';
 import Link from 'next/link';
+import { toast } from 'react-hot-toast';
 import EditTicketModal from './EditTicketModal';
 import { 
   getAdminTickets, getAdminTicketDetail, adminGetEventDetail,
   adminCreateTicketType, adminUpdateTicketType, adminDeleteTicketType,
-  resendAdminTicketEmail
+  resendAdminTicketEmail, exportAdminTicketsCsv
 } from '@/lib/api/admin';
 import { resendTicketEmail } from '@/lib/api/find-ticket';
 
@@ -28,7 +29,7 @@ const TIER_OPTIONS = ['FREE', 'EARLY_BIRD', 'REGULAR', 'VIP', 'VVIP', 'CUSTOM'];
 export default function AdminTicketsClient({ initialTickets, initialTotal, eventsList, token }: Props) {
   const [activeTab, setActiveTab] = useState<'attendee_tickets' | 'pricing'>('attendee_tickets');
 
-  // â”€â”€â”€ Attendee Tickets State â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─── Attendee Tickets State ─────────────────────────────────────────────────
   const [tickets, setTickets] = useState(initialTickets);
   const [total, setTotal] = useState(initialTotal);
   const [loading, setLoading] = useState(false);
@@ -38,14 +39,17 @@ export default function AdminTicketsClient({ initialTickets, initialTotal, event
   const [editingTicket, setEditingTicket] = useState<any | null>(null);
   const [availableTypes, setAvailableTypes] = useState<any[]>([]);
 
-  // â”€â”€â”€ Resend ticket email â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─── Resend ticket email ───────────────────────────────────────────────────
   const [resendingId, setResendingId] = useState<number | null>(null);
   const [resendModalOpen, setResendModalOpen] = useState(false);
   const [resendLookup, setResendLookup] = useState('');
   const [resendBusy, setResendBusy] = useState(false);
   const [resendResult, setResendResult] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
-  // â”€â”€â”€ Pricing / Event Tiers State â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─── CSV export (per tier and per filter) ──────────────────────────────────
+  const [downloadingKey, setDownloadingKey] = useState<string | null>(null);
+
+  // ─── Pricing / Event Tiers State ───────────────────────────────────────────
   const [selectedEventId, setSelectedEventId] = useState<string>(eventsList[0]?.id ? String(eventsList[0].id) : '');
   const [eventTiers, setEventTiers] = useState<any[]>([]);
   const [loadingTiers, setLoadingTiers] = useState(false);
@@ -86,7 +90,7 @@ export default function AdminTicketsClient({ initialTickets, initialTotal, event
     }
   };
 
-  // â”€â”€â”€ Resend ticket email â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─── Resend ticket email ───────────────────────────────────────────────────
   const handleResendPass = async (t: any) => {
     try {
       setResendingId(t.id);
@@ -126,6 +130,35 @@ export default function AdminTicketsClient({ initialTickets, initialTotal, event
       setResendResult({ type: 'error', message: err.message || 'Could not resend the ticket email.' });
     } finally {
       setResendBusy(false);
+    }
+  };
+
+  // ─── CSV export helpers ────────────────────────────────────────────────────
+  const safeName = (value: string) =>
+    value.replace(/[^A-Za-z0-9._-]+/g, '-').replace(/^-+|-+$/g, '') || 'tickets';
+
+  const downloadTicketsCsv = async (
+    key: string,
+    params: { q?: string; status?: string; event_id?: string | number; ticket_type_id?: string | number },
+    filenameHint: string,
+  ) => {
+    if (downloadingKey) return;
+    setDownloadingKey(key);
+    try {
+      const blob = await exportAdminTicketsCsv(token, params);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `circlepass-${safeName(filenameHint)}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+      toast.success('Download started.');
+    } catch (e: any) {
+      toast.error(e.message || 'Could not download the CSV.');
+    } finally {
+      setDownloadingKey(null);
     }
   };
 
@@ -238,6 +271,11 @@ export default function AdminTicketsClient({ initialTickets, initialTotal, event
     return 'bg-warning/15 text-warning border-warning/30';
   };
 
+  // Tiers present in the tickets currently on screen, for the download picker.
+  const tierChoices = Array.from(
+    new Map(tickets.map((t: any) => [t.ticket_type_id, t.ticket_type_name])).entries()
+  ).filter(([id]) => Boolean(id)) as [number, string][];
+
   return (
     <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-6">
       {/* Header */}
@@ -309,7 +347,7 @@ export default function AdminTicketsClient({ initialTickets, initialTotal, event
         </div>
       )}
 
-      {/* â”€â”€â”€ TAB 1: Attendee Tickets â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* ─── TAB 1: Attendee Tickets ────────────────────────────────────────── */}
       {activeTab === 'attendee_tickets' && (
         <div className="space-y-4">
           {/* Filters Bar */}
@@ -380,6 +418,62 @@ export default function AdminTicketsClient({ initialTickets, initialTotal, event
             ))}
           </div>
 
+          {/* Download by tier — easy way to verify the numbers */}
+          <div className="bg-card border border-border rounded-2xl p-3 shadow-sm flex flex-wrap items-center gap-2">
+            <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+              <Download className="w-3.5 h-3.5" /> Download
+            </span>
+            <button
+              type="button"
+              onClick={() => downloadTicketsCsv(
+                'all-tickets',
+                {
+                  q: search || undefined,
+                  status: statusFilter,
+                  event_id: eventFilter || undefined,
+                },
+                'all-tickets-' + new Date().toISOString().slice(0, 10),
+              )}
+              disabled={downloadingKey !== null}
+              className="px-3 py-1.5 bg-primary text-white text-xs font-bold rounded-lg hover:bg-primary/90 transition-colors inline-flex items-center gap-1.5 disabled:opacity-60"
+            >
+              {downloadingKey === 'all-tickets'
+                ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                : <Download className="w-3.5 h-3.5" />}
+              All tickets
+            </button>
+            {tierChoices.map(([id, name]) => {
+              const key = `tier-${id}`;
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => downloadTicketsCsv(
+                    key,
+                    {
+                      q: search || undefined,
+                      status: statusFilter,
+                      event_id: eventFilter || undefined,
+                      ticket_type_id: id,
+                    },
+                    `${name}-${new Date().toISOString().slice(0, 10)}`,
+                  )}
+                  disabled={downloadingKey !== null}
+                  title={`Download every ticket sold on ${name}`}
+                  className="px-3 py-1.5 bg-secondary hover:bg-secondary/70 text-foreground text-xs font-bold rounded-lg inline-flex items-center gap-1.5 border border-border transition-colors disabled:opacity-60"
+                >
+                  {downloadingKey === key
+                    ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    : <Download className="w-3.5 h-3.5" />}
+                  {name}
+                </button>
+              );
+            })}
+            <span className="text-[11px] text-muted-foreground">
+              CSV with totals + one row per ticket, using the filters above.
+            </span>
+          </div>
+
           {/* Tickets Table */}
           <div className="bg-card border border-border rounded-2xl shadow-sm overflow-hidden overflow-x-auto">
             {tickets.length === 0 ? (
@@ -424,18 +518,18 @@ export default function AdminTicketsClient({ initialTickets, initialTotal, event
                       <td className="px-4 py-3">
                         <div className="font-semibold text-foreground">{t.ticket_type_name}</div>
                         <div className="text-xs text-muted-foreground font-mono">
-                          {t.price_naira === 0 ? 'FREE' : `â‚¦${t.price_naira.toLocaleString('en-NG')}`}
+                          {t.price_naira === 0 ? 'FREE' : `₦${t.price_naira.toLocaleString('en-NG')}`}
                         </div>
                       </td>
                       <td className="px-4 py-3">
                         <div className="font-bold text-foreground font-mono">
                           {t.amount_paid_naira
-                            ? `â‚¦${t.amount_paid_naira.toLocaleString('en-NG', { maximumFractionDigits: 2 })}`
+                            ? `₦${t.amount_paid_naira.toLocaleString('en-NG', { maximumFractionDigits: 2 })}`
                             : 'FREE'}
                         </div>
                         {t.order_ticket_count > 1 && (
                           <div className="text-[10px] text-muted-foreground">
-                            of â‚¦{Number(t.order_total_naira || 0).toLocaleString('en-NG')} / {t.order_ticket_count} passes
+                            of ₦{Number(t.order_total_naira || 0).toLocaleString('en-NG')} / {t.order_ticket_count} passes
                           </div>
                         )}
                       </td>
@@ -477,7 +571,7 @@ export default function AdminTicketsClient({ initialTickets, initialTotal, event
         </div>
       )}
 
-      {/* â”€â”€â”€ TAB 2: Event Ticket Types & Pricing â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* ─── TAB 2: Event Ticket Types & Pricing ────────────────────────────── */}
       {activeTab === 'pricing' && (
         <div className="space-y-6">
           {/* Event Picker */}
@@ -568,6 +662,27 @@ export default function AdminTicketsClient({ initialTickets, initialTotal, event
                           <span className="text-sm font-bold text-foreground">{t.name || 'Untitled Tier'}</span>
                         </div>
                         <div className="flex items-center gap-2">
+                          {t.id && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const eventTitle = eventsList.find(ev => String(ev.id) === String(selectedEventId))?.title || 'event';
+                                downloadTicketsCsv(
+                                  `tier-${t.id}`,
+                                  { event_id: selectedEventId, ticket_type_id: t.id },
+                                  `${eventTitle}-${t.name || 'tier'}`,
+                                );
+                              }}
+                              disabled={downloadingKey !== null}
+                              title="Download every ticket sold on this tier as a CSV"
+                              className="text-xs px-2.5 py-1 rounded-lg font-bold border border-border bg-secondary hover:bg-secondary/70 text-foreground inline-flex items-center gap-1 transition-colors disabled:opacity-60"
+                            >
+                              {downloadingKey === `tier-${t.id}`
+                                ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                : <Download className="w-3.5 h-3.5" />}
+                              CSV
+                            </button>
+                          )}
                           <button
                             type="button"
                             onClick={() => updateTierField(idx, 'is_active', !t.is_active)}
@@ -612,7 +727,7 @@ export default function AdminTicketsClient({ initialTickets, initialTotal, event
                           </select>
                         </div>
                         <div>
-                          <label className="text-xs text-muted-foreground block mb-1">Price in â‚¦ (Naira)</label>
+                          <label className="text-xs text-muted-foreground block mb-1">Price in ₦ (Naira)</label>
                           <input
                             type="number"
                             min="0"
@@ -647,7 +762,7 @@ export default function AdminTicketsClient({ initialTickets, initialTotal, event
                 disabled={savingTiers || loadingTiers}
                 className="px-6 py-2.5 bg-primary text-white text-sm font-bold rounded-xl hover:bg-primary/90 transition-colors flex items-center gap-2 disabled:opacity-60 shadow"
               >
-                {savingTiers ? <><Loader2 className="w-4 h-4 animate-spin" /> Savingâ€¦</> : <><Save className="w-4 h-4" /> Save Ticket Tiers</>}
+                {savingTiers ? <><Loader2 className="w-4 h-4 animate-spin" /> Saving…</> : <><Save className="w-4 h-4" /> Save Ticket Tiers</>}
               </button>
             </div>
           </div>
@@ -690,7 +805,7 @@ export default function AdminTicketsClient({ initialTickets, initialTotal, event
                 className="w-full px-4 py-2.5 bg-primary text-white text-sm font-bold rounded-xl hover:bg-primary/90 transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
               >
                 {resendBusy
-                  ? <><Loader2 className="w-4 h-4 animate-spin" /> Sendingâ€¦</>
+                  ? <><Loader2 className="w-4 h-4 animate-spin" /> Sending…</>
                   : <><Send className="w-4 h-4" /> Send ticket email</>}
               </button>
 

@@ -913,6 +913,156 @@ class AdminTicketListView(APIView):
         })
 
 
+class AdminTicketExportView(APIView):
+    """GET /admin/tickets/export/ — CSV of tickets plus totals for reconciliation.
+
+    Filters mirror the admin ticket list (``q``, ``status``, ``event_id``) and add
+    ``ticket_type_id`` so a single ticket tier can be downloaded on its own. The
+    file starts with a summary block (tickets, gross value, amount actually paid,
+    status split) and then one row per ticket, which is what makes it easy to
+    confirm the numbers against the dashboard.
+    """
+    permission_classes = [IsAdmin]
+
+    def get(self, request):
+        import csv
+        import io
+        import re
+
+        from django.http import HttpResponse
+        from django.utils import timezone
+
+        q = request.query_params.get('q', '').strip()
+        status_filter = request.query_params.get('status', '').strip()
+        event_filter = request.query_params.get('event_id', '').strip()
+        tier_filter = request.query_params.get('ticket_type_id', '').strip()
+
+        qs = Ticket.objects.select_related(
+            'order', 'order__event', 'ticket_type'
+        ).prefetch_related('order__tickets').order_by('order_id', 'id')
+
+        if q:
+            q_filter = (
+                Q(attendee_name__icontains=q) |
+                Q(attendee_email__icontains=q) |
+                Q(qr_token__icontains=q) |
+                Q(order__guest_name__icontains=q) |
+                Q(order__guest_email__icontains=q) |
+                Q(order__event__title__icontains=q)
+            )
+            digits = re.sub(r'\D', '', q)
+            if digits:
+                try:
+                    q_filter |= Q(order_id=int(digits))
+                except ValueError:
+                    pass
+            qs = qs.filter(q_filter)
+
+        if status_filter and status_filter != 'ALL':
+            qs = qs.filter(status=status_filter)
+
+        if event_filter:
+            try:
+                qs = qs.filter(order__event_id=int(event_filter))
+            except (ValueError, TypeError):
+                pass
+
+        tier = None
+        if tier_filter:
+            try:
+                tier_id = int(tier_filter)
+            except (ValueError, TypeError):
+                tier_id = None
+            if tier_id:
+                qs = qs.filter(ticket_type_id=tier_id)
+                tier = TicketType.objects.filter(pk=tier_id).first()
+
+        tickets = list(qs[:5000])
+
+        gross_kobo = 0
+        paid_kobo = 0
+        order_ids = set()
+        status_counts = {}
+        tier_names = set()
+
+        rows = []
+        for t in tickets:
+            order = t.order
+            order_total = order.total_amount if order else 0
+            order_count = order.tickets.count() if order else 0
+            amount_paid = int(round(order_total / order_count)) if order_count else 0
+            price = t.ticket_type.price if t.ticket_type else 0
+
+            gross_kobo += price
+            paid_kobo += amount_paid
+            if order:
+                order_ids.add(order.id)
+            status_counts[t.status] = status_counts.get(t.status, 0) + 1
+            if t.ticket_type:
+                tier_names.add(t.ticket_type.name)
+
+            rows.append([
+                order.order_number if (order and hasattr(order, 'order_number')) else f"ORD-{t.order_id}",
+                order.created_at.strftime('%Y-%m-%d %H:%M') if order else '',
+                order.event.title if (order and order.event) else '',
+                t.ticket_type.name if t.ticket_type else 'Unknown',
+                t.attendee_name or (order.guest_name if order else ''),
+                t.attendee_email or (order.guest_email if order else ''),
+                t.status,
+                order_count,
+                f"{price / 100:.2f}",
+                f"{amount_paid / 100:.2f}",
+                f"{order_total / 100:.2f}",
+                t.qr_token,
+            ])
+
+        buffer = io.StringIO()
+        writer = csv.writer(buffer)
+
+        writer.writerow(['CirclePass ticket export'])
+        writer.writerow(['Generated', timezone.now().strftime('%Y-%m-%d %H:%M')])
+        if tier:
+            writer.writerow(['Ticket tier', tier.name])
+            if tier.event_id:
+                writer.writerow(['Event', tier.event.title])
+        elif event_filter:
+            event = Event.objects.filter(pk=event_filter).first()
+            if event:
+                writer.writerow(['Event', event.title])
+        writer.writerow(['Tickets', len(tickets)])
+        writer.writerow(['Distinct orders', len(order_ids)])
+        writer.writerow(['Gross at tier price (NGN)', f"{gross_kobo / 100:.2f}"])
+        writer.writerow(['Amount paid by buyers (NGN)', f"{paid_kobo / 100:.2f}"])
+        if status_counts:
+            writer.writerow([
+                'Status breakdown',
+                ', '.join(f"{key} {value}" for key, value in sorted(status_counts.items())),
+            ])
+        writer.writerow([])
+        writer.writerow([
+            'Order Number', 'Order Date', 'Event', 'Ticket Tier', 'Attendee',
+            'Email', 'Ticket Status', 'Qty in Order', 'Tier Price (NGN)',
+            'Amount Paid (NGN)', 'Order Total (NGN)', 'Pass Code',
+        ])
+        writer.writerows(rows)
+
+        label = 'all-tickets'
+        if tier:
+            label = f"{tier.event.title if tier.event_id else 'event'}-{tier.name}"
+        elif event_filter:
+            event = Event.objects.filter(pk=event_filter).first()
+            label = event.title if event else f'event-{event_filter}'
+        safe_label = re.sub(r'[^A-Za-z0-9._-]+', '-', label).strip('-') or 'tickets'
+
+        filename = f"circlepass-{safe_label}-{timezone.now():%Y%m%d-%H%M}.csv"
+        response = HttpResponse(
+            buffer.getvalue().encode('utf-8-sig'),
+            content_type='text/csv; charset=utf-8',
+        )
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        return response
+
+
 class AdminTicketDetailView(APIView):
     """GET / PATCH / DELETE /api/admin/tickets/<pk>/"""
     permission_classes = [IsAdmin]

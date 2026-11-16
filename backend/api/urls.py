@@ -46,7 +46,7 @@ from .views_admin import (
     AdminEventViewSet, AdminPayoutViewSet, AdminReconcilePaymentsView, AdminOrganizerDetailView,
     AdminOrganizerEditView, AdminEventDetailView2, AdminEventEditView,
     AdminTicketTypeListCreateView, AdminTicketTypeDetailView,
-    AdminTicketListView, AdminTicketDetailView, AdminEventTransferView
+    AdminTicketListView, AdminTicketDetailView, AdminTicketExportView, AdminEventTransferView
 )
 
 auth_router = DefaultRouter()
@@ -209,6 +209,7 @@ urlpatterns = [
     path('admin/events/<int:event_pk>/ticket-types/', AdminTicketTypeListCreateView.as_view(), name='admin_ticket_type_list'),
     path('admin/ticket-types/<int:pk>/', AdminTicketTypeDetailView.as_view(), name='admin_ticket_type_detail'),
     path('admin/tickets/', AdminTicketListView.as_view(), name='admin_ticket_list'),
+    path('admin/tickets/export/', AdminTicketExportView.as_view(), name='admin_ticket_export'),
     path('admin/tickets/<int:pk>/', AdminTicketDetailView.as_view(), name='admin_ticket_detail'),
 
     # Content/Blog (stubs)
