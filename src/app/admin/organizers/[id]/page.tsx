@@ -5,7 +5,7 @@ import Link from "next/link";
 import {
   ArrowLeft, Building2, User, Globe, AtSign, Mail, Phone, Calendar,
   Ticket, Wallet, Banknote, CheckCircle, Clock, ExternalLink, ShieldCheck,
-  BarChart3, Users, AlertCircle, Pencil, FileText, MapPin
+  BarChart3, Users, AlertCircle, Pencil, FileText, MapPin, MessageCircle
 } from "lucide-react";
 import EditOrganizerButton from "./EditOrganizerButton";
 import TransferOrganizerEventButton from "./TransferOrganizerEventButton";
@@ -111,7 +111,7 @@ export default async function AdminOrganizerDashboardPage({
                   <Mail className="w-4 h-4 text-primary" />
                   {organizer.email}
                 </span>
-                {organizer.phone && (
+                {organizer.phone ? (
                   <span className="flex items-center gap-1.5">
                     <Phone className="w-4 h-4 text-primary" />
                     <a
@@ -131,6 +131,11 @@ export default async function AdminOrganizerDashboardPage({
                       WhatsApp
                     </a>
                   </span>
+                ) : (
+                  <span className="flex items-center gap-1.5">
+                    <Phone className="w-4 h-4 text-muted-foreground" />
+                    No phone on file
+                  </span>
                 )}
                 {organizer.created_at && (
                   <span className="flex items-center gap-1.5">
@@ -147,6 +152,17 @@ export default async function AdminOrganizerDashboardPage({
             </div>
 
             <div className="flex flex-wrap items-center gap-3">
+              {organizer.phone && (
+                <a
+                  href={whatsappHref(organizer.phone)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-3 py-2 bg-success/10 text-success hover:bg-success/20 text-xs font-bold rounded-lg inline-flex items-center gap-1.5 transition-colors border border-success/20"
+                  title={`Message ${organizer.company_name} on WhatsApp`}
+                >
+                  <MessageCircle className="w-3.5 h-3.5" /> WhatsApp
+                </a>
+              )}
               <EditOrganizerButton organizer={organizer} token={(session as any).accessToken} />
               {organizer.website && (
                 <a
