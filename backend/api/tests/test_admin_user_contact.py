@@ -12,11 +12,17 @@ class AdminUserContactTests(TestCase):
             password='password', role='ORGANIZER',
             first_name='Ada', last_name='Okafor',
         )
-        OrganizerProfile.objects.create(
-            user=user, company_name='Ada Events', phone_number='08012345678',
+        # A post_save signal already creates the profile, so update in place.
+        profile, _ = OrganizerProfile.objects.get_or_create(
+            user=user, defaults={'company_name': 'Ada Events'},
         )
+        profile.company_name = 'Ada Events'
+        profile.phone_number = '08012345678'
+        profile.save(update_fields=['company_name', 'phone_number'])
 
-        data = AdminUserSerializer(user).data
+        # Admin lists read users fresh from the database, so reload to avoid
+        # the profile copy cached on this in-memory user by the signal.
+        data = AdminUserSerializer(User.objects.get(pk=user.pk)).data
 
         self.assertEqual(data['phone_number'], '08012345678')
         self.assertEqual(data['full_name'], 'Ada Okafor')
@@ -28,7 +34,7 @@ class AdminUserContactTests(TestCase):
         )
         AttendeeProfile.objects.create(user=user, phone_number='08099998888')
 
-        data = AdminUserSerializer(user).data
+        data = AdminUserSerializer(User.objects.get(pk=user.pk)).data
 
         self.assertEqual(data['phone_number'], '08099998888')
 
@@ -38,6 +44,6 @@ class AdminUserContactTests(TestCase):
             password='password', role='ATTENDEE',
         )
 
-        data = AdminUserSerializer(user).data
+        data = AdminUserSerializer(User.objects.get(pk=user.pk)).data
 
         self.assertEqual(data['phone_number'], '')
