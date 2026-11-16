@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Trash2, BarChart3 } from "lucide-react";
+import { Trash2, BarChart3, Phone, MessageCircle } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { useSession } from "@/context/AuthContext";
 import { deleteAdminUser } from "@/lib/api/admin";
@@ -15,6 +15,19 @@ interface User {
   date_joined: string;
   organizer_id?: number | null;
   company_name?: string | null;
+  full_name?: string | null;
+  phone_number?: string | null;
+}
+
+/** Turn a local Nigerian number into a wa.me link (234… instead of 0…). */
+function whatsappHref(phone: string) {
+  const digits = phone.replace(/\D/g, "");
+  const international = digits.startsWith("0")
+    ? `234${digits.slice(1)}`
+    : digits.startsWith("234")
+      ? digits
+      : `234${digits}`;
+  return `https://wa.me/${international}`;
 }
 
 export default function UserListTabs({ users: initialUsers }: { users: User[] }) {
@@ -67,6 +80,7 @@ export default function UserListTabs({ users: initialUsers }: { users: User[] })
             <tr>
               <th className="px-4 py-3">Username</th>
               <th className="px-4 py-3">Email</th>
+              <th className="px-4 py-3">Phone</th>
               <th className="px-4 py-3">Role</th>
               <th className="px-4 py-3">Joined</th>
               <th className="px-4 py-3 text-right">Actions</th>
@@ -75,7 +89,7 @@ export default function UserListTabs({ users: initialUsers }: { users: User[] })
           <tbody className="divide-y divide-gray-100">
             {filteredUsers.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">
+                <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">
                   No users found in this category.
                 </td>
               </tr>
@@ -84,11 +98,40 @@ export default function UserListTabs({ users: initialUsers }: { users: User[] })
                 <tr key={u.id} className="hover:bg-secondary transition-colors">
                   <td className="px-4 py-3 font-medium text-foreground">
                     <div>{u.username}</div>
+                    {u.full_name && (
+                      <div className="text-xs text-muted-foreground">{u.full_name}</div>
+                    )}
                     {u.company_name && (
                       <div className="text-xs text-muted-foreground">{u.company_name}</div>
                     )}
                   </td>
                   <td className="px-4 py-3 text-muted-foreground">{u.email}</td>
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    {u.phone_number ? (
+                      <div className="flex items-center gap-2">
+                        <a
+                          href={`tel:${u.phone_number}`}
+                          className="text-foreground font-medium hover:text-primary transition-colors"
+                          title="Call"
+                        >
+                          {u.phone_number}
+                        </a>
+                        <a
+                          href={whatsappHref(u.phone_number)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="p-1 text-[#25D366] hover:bg-success/10 rounded-md transition-colors"
+                          title="Message on WhatsApp"
+                        >
+                          <MessageCircle className="w-4 h-4" />
+                        </a>
+                      </div>
+                    ) : (
+                      <span className="text-xs text-muted-foreground inline-flex items-center gap-1.5">
+                        <Phone className="w-3.5 h-3.5" /> Not provided
+                      </span>
+                    )}
+                  </td>
                   <td className="px-4 py-3">
                     <span className={`px-2 py-1 rounded-full text-[10px] font-bold ${
                       u.role === 'ADMIN' ? 'bg-destructive/10 text-destructive' :

@@ -10,6 +10,17 @@ import {
 import EditOrganizerButton from "./EditOrganizerButton";
 import TransferOrganizerEventButton from "./TransferOrganizerEventButton";
 
+/** Turn a local Nigerian number into a wa.me link (234… instead of 0…). */
+function whatsappHref(phone: string) {
+  const digits = phone.replace(/\D/g, "");
+  const international = digits.startsWith("0")
+    ? `234${digits.slice(1)}`
+    : digits.startsWith("234")
+      ? digits
+      : `234${digits}`;
+  return `https://wa.me/${international}`;
+}
+
 export default async function AdminOrganizerDashboardPage({
   params,
 }: {
@@ -103,7 +114,22 @@ export default async function AdminOrganizerDashboardPage({
                 {organizer.phone && (
                   <span className="flex items-center gap-1.5">
                     <Phone className="w-4 h-4 text-primary" />
-                    {organizer.phone}
+                    <a
+                      href={`tel:${organizer.phone}`}
+                      className="hover:text-primary transition-colors"
+                      title="Call organizer"
+                    >
+                      {organizer.phone}
+                    </a>
+                    <a
+                      href={whatsappHref(organizer.phone)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[#25D366] hover:underline text-xs font-semibold"
+                      title="Message on WhatsApp"
+                    >
+                      WhatsApp
+                    </a>
                   </span>
                 )}
                 {organizer.created_at && (

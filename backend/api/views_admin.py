@@ -12,10 +12,12 @@ from rest_framework import serializers
 class AdminUserSerializer(serializers.ModelSerializer):
     organizer_id = serializers.SerializerMethodField()
     company_name = serializers.SerializerMethodField()
+    full_name = serializers.SerializerMethodField()
+    phone_number = serializers.SerializerMethodField()
 
     class Meta:
         model = User
-        fields = ('id', 'username', 'email', 'role', 'date_joined', 'organizer_id', 'company_name')
+        fields = ('id', 'username', 'email', 'role', 'date_joined', 'organizer_id', 'company_name', 'full_name', 'phone_number')
 
     def get_organizer_id(self, obj):
         try:
@@ -28,6 +30,21 @@ class AdminUserSerializer(serializers.ModelSerializer):
             return obj.organizerprofile.company_name
         except Exception:
             return None
+
+    def get_full_name(self, obj):
+        return (obj.get_full_name() or '').strip()
+
+    def get_phone_number(self, obj):
+        # Organizer WhatsApp number lives on the organizer profile; attendees
+        # keep theirs on the attendee profile. Admins need either to reach out.
+        try:
+            return obj.organizerprofile.phone_number or ''
+        except Exception:
+            pass
+        try:
+            return obj.attendeeprofile.phone_number or ''
+        except Exception:
+            return ''
 
 class AdminOrganizerVerificationSerializer(serializers.ModelSerializer):
     company_name = serializers.CharField(source='organizer.company_name', read_only=True)
@@ -446,7 +463,7 @@ class AdminOrganizerDetailView(APIView):
                 "username": organizer.user.username,
                 "first_name": organizer.user.first_name,
                 "last_name": organizer.user.last_name,
-                "phone": getattr(organizer.user, "phone", None),
+                "phone": organizer.phone_number or getattr(organizer.user, "phone", "") or "",
                 "bio": organizer.bio,
                 "website": organizer.website,
                 "instagram_handle": organizer.instagram_handle,
@@ -496,7 +513,7 @@ class AdminOrganizerEditView(APIView):
 
         # ── User fields ───────────────────────────────────────────────────────
         user_changed = False
-        for field in ('first_name', 'last_name', 'email', 'phone'):
+        for field in ('first_name', 'last_name', 'email'):
             if field in data:
                 setattr(user, field, data[field])
                 user_changed = True
@@ -512,6 +529,11 @@ class AdminOrganizerEditView(APIView):
             if field in data:
                 setattr(organizer, field, data[field])
                 org_changed = True
+        # The contact number lives on the organizer profile now (it used to be
+        # written to a non-existent User.phone attribute and silently lost).
+        if 'phone' in data or 'phone_number' in data:
+            organizer.phone_number = (data.get('phone_number') or data.get('phone') or '').strip()
+            org_changed = True
         if 'is_verified' in data:
             organizer.is_verified = bool(data['is_verified'])
             org_changed = True
