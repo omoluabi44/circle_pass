@@ -111,14 +111,31 @@ class AttendeeDashboardView(APIView):
             "next_event": next_event_data,
             "suggested_events": suggested_data,
             "waitlist_entries": self._get_waitlist_entries(request, user, now),
-            "waitlist_count": WaitlistEntry.objects.filter(email__iexact=user.email, status__in=['PENDING', 'ACCEPTED']).count()
+            "waitlist_count": self._waitlist_queryset(user).filter(
+                status__in=['PENDING', 'ACCEPTED']
+            ).count()
         })
+
+    @staticmethod
+    def _waitlist_queryset(user):
+        """Waitlist requests that belong to this attendee.
+
+        Matches the account link (set when the request was made while signed
+        in) as well as the email on the request, so older entries and requests
+        made with the same address still show up.
+        """
+        from django.db.models import Q
+
+        lookup = Q(user=user)
+        email = (getattr(user, 'email', '') or '').strip()
+        if email:
+            lookup |= Q(email__iexact=email)
+        return WaitlistEntry.objects.filter(lookup).distinct()
 
     def _get_waitlist_entries(self, request, user, now):
         from django.db.models import Sum
         entries = (
-            WaitlistEntry.objects
-            .filter(email__iexact=user.email)
+            self._waitlist_queryset(user)
             .select_related('event', 'ticket_type', 'order')
             .order_by('-created_at')
         )

@@ -800,6 +800,17 @@ class WaitlistEntry(models.Model):
     )
 
     event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name='waitlist_entries')
+    user = models.ForeignKey(
+        'User',
+        on_delete=models.SET_NULL,
+        related_name='waitlist_entries',
+        null=True,
+        blank=True,
+        help_text=(
+            'Signed-in attendee who joined this waitlist. Lets the attendee '
+            'dashboard show the request even if the form email differs.'
+        ),
+    )
     ticket_type = models.ForeignKey(
         TicketType,
         on_delete=models.SET_NULL,

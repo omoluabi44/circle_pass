@@ -212,6 +212,12 @@ export default function AttendeeDashboard() {
                               ? ` • ₦${((entry.ticket_price * entry.quantity) / 100).toLocaleString()}`
                               : " • Free"}
                           </p>
+                          {entry.event_date && (
+                            <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1.5">
+                              <Calendar className="w-3.5 h-3.5 shrink-0" />
+                              {entry.event_date}
+                            </p>
+                          )}
                         </div>
                         <span
                           className={`px-2.5 py-1 rounded-full text-[11px] font-bold border shrink-0 ${cfg.badgeClass}`}

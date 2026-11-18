@@ -119,6 +119,9 @@ class WaitlistEntryCreateView(APIView):
             quantity=quantity,
             status='PENDING',
             access_token=token,
+            # Remember the account so the request follows the attendee to their
+            # dashboard even if a different email was typed here.
+            user=request.user if request.user.is_authenticated else None,
         )
 
         # Notify the organizer that a new request arrived
