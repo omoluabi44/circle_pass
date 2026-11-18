@@ -9,6 +9,7 @@ import { checkout } from "@/lib/api/checkout";
 import { API_URL } from "@/lib/api/config";
 import { usePaystack } from "@/hooks/usePaystack";
 import { useCart } from "@/context/CartContext";
+import { emailSuggestion } from "@/lib/email";
 
 type AttendeeFormState = {
   first_name: string;
@@ -169,7 +170,11 @@ export default function CheckoutPage() {
 
   const isClaimingWaitlist = Boolean(waitlistClaimData && waitlistClaimData.status === 'ACCEPTED');
   const isPast = event ? new Date() > new Date(event.end_time) : false;
-  const isWaitlistActive = Boolean(!isClaimingWaitlist && event?.waitlist_enabled && (allSoldOut || isPast));
+  // A waitlist exists to chase more tickets; an event that has already ended
+  // is not taking requests. Sold out + still upcoming is the only case.
+  const isWaitlistActive = Boolean(
+    !isClaimingWaitlist && event?.waitlist_enabled && !isPast && allSoldOut
+  );
 
   const [timeLeft, setTimeLeft] = useState(600);
 
@@ -769,12 +774,10 @@ export default function CheckoutPage() {
                   <Ticket className="w-8 h-8" />
                 </div>
                 <h3 className="text-xl font-bold text-foreground mb-1.5 text-center">
-                  {isPast ? "Event Ended" : "Event Sold Out"}
+                  Event Sold Out
                 </h3>
                 <p className="text-muted-foreground mb-6 text-center max-w-sm text-sm">
-                  {isPast
-                    ? "This event has ended. Join the waitlist to be notified if tickets open up."
-                    : "All tickets are currently sold out. Select your preferred tier and quantity to join the waitlist."}
+                  All tickets are currently sold out. Select your preferred tier and quantity to join the waitlist.
                 </p>
 
                 {claimError && (
@@ -865,6 +868,19 @@ export default function CheckoutPage() {
                       onChange={(e) => setWaitlistEmail(e.target.value)}
                       className="w-full px-4 py-3 rounded-xl border border-border bg-background text-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all text-sm"
                     />
+                    {emailSuggestion(waitlistEmail) && (
+                      <p className="text-xs text-warning mt-1.5">
+                        Did you mean{" "}
+                        <button
+                          type="button"
+                          onClick={() => setWaitlistEmail(emailSuggestion(waitlistEmail) as string)}
+                          className="font-semibold underline"
+                        >
+                          {emailSuggestion(waitlistEmail)}
+                        </button>
+                        ?
+                      </p>
+                    )}
                   </div>
 
                   {/* Phone (Optional) */}
@@ -940,6 +956,21 @@ export default function CheckoutPage() {
                   onChange={(e) => setGuestData(prev => ({ ...prev, email: e.target.value }))}
                   className="w-full px-4 py-3 rounded-xl border border-border bg-secondary/50 text-foreground placeholder-muted-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
                 />
+                {emailSuggestion(guestData.email) && (
+                  <p className="text-xs text-warning -mt-1">
+                    Did you mean{" "}
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setGuestData(prev => ({ ...prev, email: emailSuggestion(prev.email) as string }))
+                      }
+                      className="font-semibold underline"
+                    >
+                      {emailSuggestion(guestData.email)}
+                    </button>
+                    ? Your ticket is sent to this address.
+                  </p>
+                )}
                 <input type="tel" placeholder="Phone number" required
                   value={guestData.phone}
                   onChange={(e) => setGuestData(prev => ({ ...prev, phone: e.target.value }))}
@@ -1238,6 +1269,23 @@ export default function CheckoutPage() {
                             />
                             {emailError && (
                               <p className="text-destructive text-xs mt-1">{emailError}</p>
+                            )}
+                            {emailSuggestion(form.email) && (
+                              <p className="text-warning text-xs mt-1">
+                                Did you mean{" "}
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    updateAttendeeForm(slot.key, {
+                                      email: emailSuggestion(form.email) as string,
+                                    })
+                                  }
+                                  className="font-semibold underline"
+                                >
+                                  {emailSuggestion(form.email)}
+                                </button>
+                                ?
+                              </p>
                             )}
                           </div>
 

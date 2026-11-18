@@ -9,7 +9,8 @@ class NewsletterSubscribeView(APIView):
     permission_classes = [AllowAny]
 
     def post(self, request):
-        email = request.data.get('email', '').strip().lower()
+        from core.utils.email_validation import normalise_email
+        email = normalise_email(request.data.get('email', '')).strip().lower()
         if not email or '@' not in email:
             return Response({'error': 'Valid email is required'}, status=400)
         subscriber, created = NewsletterSubscriber.objects.get_or_create(email=email)

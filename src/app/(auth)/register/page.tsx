@@ -7,6 +7,7 @@ import Image from "next/image";
 import Cookies from "js-cookie";
 import { InteractiveExperience } from "@/components/ui/InteractiveExperience";
 import { Eye, EyeOff } from "lucide-react";
+import { emailSuggestion } from "@/lib/email";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -188,6 +189,19 @@ export default function RegisterPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                 />
+                {emailSuggestion(email) && (
+                  <p className="mt-1.5 text-xs text-warning">
+                    Did you mean{" "}
+                    <button
+                      type="button"
+                      onClick={() => setEmail(emailSuggestion(email) as string)}
+                      className="font-semibold underline"
+                    >
+                      {emailSuggestion(email)}
+                    </button>
+                    ? We send your verification link and tickets there.
+                  </p>
+                )}
               </div>
               <div className="relative">
                 <label className="sr-only">Password</label>

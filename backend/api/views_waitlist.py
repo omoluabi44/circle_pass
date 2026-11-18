@@ -55,6 +55,18 @@ class WaitlistEntryCreateView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
+        # Nobody joins a waitlist for something that already happened.
+        if event.end_time and event.end_time <= timezone.now():
+            return Response(
+                {'detail': 'This event has ended. The waitlist is closed.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        if event.status in ('COMPLETED', 'ARCHIVED', 'CANCELLED'):
+            return Response(
+                {'detail': 'This event is no longer taking waitlist requests.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
         # Attendee Rule: Waitlist appears only when all event ticket categories are sold out.
         if not _is_event_sold_out(event):
             return Response(
@@ -63,7 +75,8 @@ class WaitlistEntryCreateView(APIView):
             )
 
         name = request.data.get('name', '').strip()
-        email = request.data.get('email', '').strip().lower()
+        from core.utils.email_validation import normalise_email
+        email = normalise_email(request.data.get('email', '')).strip().lower()
         phone = request.data.get('phone', '').strip()
         ticket_type_id = request.data.get('ticket_type_id') or request.data.get('ticket_type')
 

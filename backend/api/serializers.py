@@ -19,6 +19,16 @@ class UserCreateSerializer(BaseUserCreateSerializer):
 
     def validate(self, attrs):
         phone_number = attrs.pop('phone_number', None)
+        # A mistyped domain (…@gmail.con) means the verification mail and every
+        # future ticket silently disappears, so correct it before saving. If
+        # the corrected address already belongs to someone, leave the typed one
+        # alone and let the normal unique-email check speak.
+        from core.utils.email_validation import normalise_email
+        email = (attrs.get('email') or '').strip()
+        if email:
+            corrected = normalise_email(email)
+            if corrected != email and not User.objects.filter(email__iexact=corrected).exists():
+                attrs['email'] = corrected
         attrs = super().validate(attrs)
 
         from api.spam_guard import registration_problem
@@ -557,6 +567,10 @@ class CheckoutAttendeeSerializer(serializers.Serializer):
     )
     email = serializers.EmailField()
 
+    def validate_email(self, value):
+        from core.utils.email_validation import normalise_email
+        return normalise_email(value)
+
 
 class CheckoutRequestSerializer(serializers.Serializer):
     """Payload for the checkout endpoint."""
@@ -574,6 +588,10 @@ class CheckoutRequestSerializer(serializers.Serializer):
     # Discounts & Referrals
     discount_code = serializers.CharField(required=False, allow_blank=True, default='')
     waitlist_token = serializers.CharField(required=False, allow_blank=True, default='')
+
+    def validate_guest_email(self, value):
+        from core.utils.email_validation import normalise_email
+        return normalise_email(value)
 
 
 class OrderItemSerializer(serializers.ModelSerializer):
