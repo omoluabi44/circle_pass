@@ -94,6 +94,27 @@ services:
         max-size: "10m"
         max-file: "3"
 
+  celery_beat:
+    image: omoluabi44/circlepass-backend:latest
+    container_name: circlepass_celery_beat
+    restart: always
+    command: celery -A circlepass_backend beat --loglevel=info --schedule=/tmp/celerybeat-schedule
+    env_file:
+      - ./backend/.env
+    environment:
+      - PYTHONUNBUFFERED=1
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - REDIS_URL=redis://redis:6379/1
+    depends_on:
+      - redis
+      - backend
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
   certbot:
     image: certbot/certbot
     container_name: circlepass_certbot

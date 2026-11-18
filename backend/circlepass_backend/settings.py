@@ -203,3 +203,12 @@ CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_TIMEZONE = TIME_ZONE
 
+# Periodic safety net: the checkout queues its reminder with a one-hour
+# countdown, but beat re-runs the sweep in case a worker lost the task.
+CELERY_BEAT_SCHEDULE = {
+    'send-checkout-reminders': {
+        'task': 'api.tasks.send_checkout_reminder_sweep',
+        'schedule': 600.0,
+    },
+}
+

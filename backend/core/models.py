@@ -289,6 +289,10 @@ class Order(models.Model):
         default=list, blank=True,
         help_text='Per-ticket holders: [{ticket_type_id, first_name, last_name, email}]',
     )
+    checkout_reminder_sent_at = models.DateTimeField(
+        null=True, blank=True,
+        help_text='When the "you left your ticket purchase unfinished" reminder was emailed.',
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -847,6 +851,24 @@ class WaitlistEntry(models.Model):
 class NewsletterSubscriber(models.Model):
     email = models.EmailField(unique=True)
     subscribed_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.email
+
+
+class EmailOptOut(models.Model):
+    """An address that asked not to receive non-essential CirclePass email.
+
+    Unsubscribe links carry a signed token, so only the recipient can add their
+    own address. Transactional ticket email is unaffected.
+    """
+
+    email = models.EmailField(unique=True)
+    reason = models.CharField(max_length=100, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
 
     def __str__(self):
         return self.email

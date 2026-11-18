@@ -463,14 +463,12 @@ class CheckoutView(APIView):
                         },
                     }
 
-                # Queue abandoned cart emails
+                # Queue the one-hour "you left your ticket purchase unfinished" reminder
                 try:
-                    from .tasks import send_abandoned_cart_email
-                    send_abandoned_cart_email.apply_async((order.id, '1hr'), countdown=3600) # 1 hour
-                    send_abandoned_cart_email.apply_async((order.id, '24hr'), countdown=86400) # 24 hours
-                    send_abandoned_cart_email.apply_async((order.id, '7days'), countdown=604800) # 7 days
+                    from .tasks import send_abandoned_checkout_reminder
+                    send_abandoned_checkout_reminder.apply_async((order.id,), countdown=3600)
                 except Exception as e:
-                    logger.warning("Failed to queue abandoned cart emails for order %s: %s", order.id, e)
+                    logger.warning("Failed to queue checkout reminder for order %s: %s", order.id, e)
 
                 return Response(response_payload, status=status.HTTP_201_CREATED)
 

@@ -98,36 +98,262 @@ def send_html_email(subject, text_content, to_emails, title_for_html=None):
     msg.send(fail_silently=True)
 
 @shared_task
-def send_abandoned_cart_email(order_id, time_period):
+def send_abandoned_cart_email(order_id, time_period=None):
+    """Retired multi-stage cart email.
+
+    Kept so tasks queued before the one-hour reminder replaced it finish
+    quietly instead of failing as unregistered.
     """
-    time_period can be '1hr', '24hr', or '7days'
+    return "Retired: use send_abandoned_checkout_reminder."
+
+
+@shared_task
+def send_checkout_reminder_sweep():
+    """Catch any abandoned checkout whose one-hour task never ran.
+
+    Scheduled by Celery beat. The per-order marker keeps this idempotent, so a
+    sweep can never double-email someone whose countdown task succeeded.
     """
+    from datetime import timedelta
+
+    from django.utils import timezone
+
+    now = timezone.now()
+    orders = (
+        Order.objects.filter(
+            checkout_reminder_sent_at__isnull=True,
+            created_at__lte=now - timedelta(hours=1),
+            created_at__gte=now - timedelta(hours=24),
+        )
+        .exclude(status='COMPLETED')
+        .exclude(total_amount__lte=0)
+        .order_by('created_at')
+    )
+
+    sent = 0
+    for order in orders.iterator():
+        result = send_abandoned_checkout_reminder(order.id)
+        if str(result).startswith('Sent'):
+            sent += 1
+    return f'Checkout reminder sweep sent {sent} email(s).'
+
+
+@shared_task
+def send_abandoned_checkout_reminder(order_id):
+    """One-hour nudge for a checkout that never turned into a ticket.
+
+    Runs an hour after the order was created. By then the pending order has
+    usually expired (orders time out after 30 minutes), so an abandoned
+    checkout must be recognised by "never paid / no tickets", not by the order
+    still being PENDING.
+    """
+    import logging
+
+    from django.utils import timezone
+
+    from core.models import Payment, Ticket
+    from core.utils.email_prefs import is_email_opted_out, unsubscribe_url
+
+    logger = logging.getLogger(__name__)
+
     try:
-        order = Order.objects.get(id=order_id)
-        # If the order is no longer PENDING, they either paid or cancelled, so do not send.
-        if order.status != 'PENDING':
-            return "Order not pending, skipped."
-            
-        subject = f"You left something behind for {order.event.title}!"
-        title = "Don't Miss Out!"
-        
-        if time_period == '1hr':
-            message = "Hi! We noticed you left some tickets in your cart. Complete your purchase before they sell out!"
-        elif time_period == '24hr':
-            message = "Hi again! Your tickets for {} are still waiting. Don't miss out on this event!".format(order.event.title)
-        else: # 7days
-            message = "Last chance! This is your final reminder to complete your ticket purchase for {}.".format(order.event.title)
-            
-        email_to = order.guest_email or (order.attendee.user.email if order.attendee else None)
-        if not email_to:
-            return "No email to send to."
-            
-        send_html_email(subject, message, [email_to], title_for_html=title)
-        return f"Sent {time_period} email for order {order_id}"
+        order = Order.objects.select_related('event', 'attendee__user').get(id=order_id)
     except Order.DoesNotExist:
         return "Order does not exist."
-    except Exception as e:
-        return str(e)
+
+    # Only one reminder per checkout.
+    if order.checkout_reminder_sent_at:
+        return "Reminder already sent."
+
+    if order.status == 'COMPLETED':
+        return "Order completed, no reminder needed."
+
+    # Free orders complete immediately; there is nothing to recover.
+    if (order.total_amount or 0) <= 0:
+        return "Free order, no reminder needed."
+
+    if Ticket.objects.filter(order=order).exists():
+        return "Tickets already issued."
+
+    payment = Payment.objects.filter(order=order).first()
+    if payment and payment.status in ('SUCCESS', 'COMPLETED'):
+        return "Payment already succeeded."
+
+    buyer_email = (
+        order.guest_email
+        or (order.attendee.user.email if order.attendee and order.attendee.user else '')
+    )
+    buyer_email = (buyer_email or '').strip()
+    if not buyer_email:
+        return "No email to send to."
+
+    if is_email_opted_out(buyer_email):
+        return "Recipient unsubscribed."
+
+    event = order.event
+    first_name = ''
+    if order.guest_name:
+        first_name = order.guest_name
+    elif order.attendee and order.attendee.user:
+        first_name = order.attendee.user.get_full_name() or order.attendee.user.first_name
+    first_name = (first_name or '').strip().split(' ')[0]
+    if not first_name:
+        first_name = 'there'
+
+    items = list(order.items.select_related('ticket_type'))
+    if len(items) == 1:
+        ticket_label = items[0].ticket_type.name
+        if items[0].quantity > 1:
+            ticket_label = f'{ticket_label} ×{items[0].quantity}'
+    elif items:
+        ticket_label = ', '.join(i.ticket_type.name for i in items)
+    else:
+        ticket_label = 'General Admission'
+
+    frontend_url = getattr(
+        settings, 'FRONTEND_URL', 'https://thecirclepass.com'
+    ).rstrip('/')
+    event_url = f"{frontend_url}/events/{event.slug or event.id}"
+
+    cover_image = getattr(event, 'cover_image', None)
+    if cover_image and not str(cover_image).startswith(('http://', 'https://')):
+        base_api = getattr(
+            settings, 'API_BASE_URL', 'https://api.thecirclepass.com'
+        ).rstrip('/')
+        cover_image = (
+            f"{base_api}{cover_image}"
+            if str(cover_image).startswith('/')
+            else f"{base_api}/media/{cover_image}"
+        )
+    if not cover_image:
+        cover_image = f"{frontend_url}/image-folders/festival/IMG_0772.jpg"
+
+    subject = f"Your {event.title} ticket purchase isn't complete"
+    text_body = (
+        f"Hi {first_name},\n\n"
+        f"You started checkout for a {ticket_label} ticket to {event.title}, "
+        "but it looks like your payment wasn't completed.\n\n"
+        "Still interested? We'd love to have you there!\n"
+        f"You can still get your ticket here: {event_url}\n\n"
+        "Ticket availability and prices may change.\n\n"
+        "Already got your ticket or changed your mind? No worries!\n\n"
+        "CirclePass — Your Pass to the Next Experience.\n"
+        f"Unsubscribe: {unsubscribe_url(buyer_email)}\n"
+    )
+
+    html_body = f"""<!DOCTYPE html>
+<html>
+  <body style="margin:0;padding:0;background-color:#f4f5f7;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f5f7;">
+      <tr>
+        <td align="center" style="padding:28px 12px;">
+          <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:100%;max-width:600px;background:#ffffff;border-radius:18px;overflow:hidden;font-family:'Roboto',Helvetica,Arial,sans-serif;">
+            <tr>
+              <td style="padding:26px 28px 0 28px;">
+                <table role="presentation" cellpadding="0" cellspacing="0">
+                  <tr>
+                    <td style="vertical-align:middle;">
+                      <img src="{frontend_url}/logo.png" alt="CirclePass" width="46" height="46" style="display:block;border:0;" />
+                    </td>
+                    <td style="vertical-align:middle;padding-left:10px;">
+                      <span style="font-size:26px;font-weight:800;color:#131a4d;letter-spacing:-0.5px;">CirclePass</span>
+                    </td>
+                  </tr>
+                </table>
+                <div style="height:1px;background:#e5e7eb;margin:22px 0 0 0;"></div>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:26px 28px 0 28px;text-align:center;">
+                <h1 style="margin:0;font-size:32px;line-height:1.2;font-weight:800;color:#131a4d;">
+                  You left your ticket<br />purchase <span style="color:#22c55e;">unfinished.</span>
+                </h1>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:22px 28px 0 28px;">
+                <img src="{cover_image}" alt="{event.title}" width="544" style="display:block;width:100%;max-width:544px;height:210px;object-fit:cover;border-radius:16px;border:0;" />
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:26px 28px 0 28px;color:#1f2937;font-size:17px;line-height:1.65;">
+                <p style="margin:0 0 16px 0;">Hi {first_name},</p>
+                <p style="margin:0 0 16px 0;">
+                  You started checkout for a <strong style="color:#131a4d;">{ticket_label}</strong> ticket to
+                  <strong style="color:#131a4d;">{event.title}</strong>, but it looks like your payment wasn&rsquo;t completed.
+                </p>
+                <p style="margin:0 0 6px 0;font-size:20px;font-weight:800;color:#131a4d;">
+                  Still interested? We&rsquo;d love to have you there!
+                </p>
+                <p style="margin:0 0 22px 0;">You can still get your ticket below.</p>
+              </td>
+            </tr>
+            <tr>
+              <td align="center" style="padding:0 28px;">
+                <a href="{event_url}" style="display:inline-block;background:#131a4d;color:#ffffff;text-decoration:none;font-size:16px;font-weight:800;letter-spacing:0.5px;padding:16px 42px;border-radius:999px;">
+                  GET YOUR TICKET &nbsp;&rarr;
+                </a>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:18px 28px 0 28px;color:#4b5563;font-size:14px;">
+                <p style="margin:0;text-align:center;">
+                  &#9432;&nbsp; Ticket availability and prices may change.
+                </p>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:22px 28px 0 28px;">
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#e8f8ee;border-radius:14px;">
+                  <tr>
+                    <td style="padding:16px 18px;width:44px;vertical-align:middle;text-align:center;">
+                      <span style="display:inline-block;width:28px;height:28px;line-height:28px;border-radius:50%;background:#22c55e;color:#ffffff;font-size:16px;font-weight:700;">&#10003;</span>
+                    </td>
+                    <td style="padding:16px 18px 16px 4px;color:#131a4d;font-size:15px;font-weight:700;line-height:1.5;vertical-align:middle;">
+                      Already got your ticket or changed your mind?<br />No worries!
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:30px 28px 34px 28px;text-align:center;">
+                <p style="margin:0;font-size:20px;font-weight:800;color:#131a4d;">CirclePass</p>
+                <p style="margin:4px 0 0 0;font-size:14px;font-style:italic;color:#1f2937;">Your Pass to the Next Experience.</p>
+                <div style="height:1px;background:#e5e7eb;margin:18px auto 14px auto;width:70%;"></div>
+                <a href="{unsubscribe_url(buyer_email)}" style="color:#6b7280;font-size:12px;text-decoration:underline;">Unsubscribe</a>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>"""
+
+    msg = EmailMultiAlternatives(
+        subject, text_body, settings.DEFAULT_FROM_EMAIL, [buyer_email],
+    )
+    msg.attach_alternative(html_body, 'text/html')
+    try:
+        msg.send(fail_silently=False)
+    except Exception as exc:
+        logger.error(
+            "Failed to send checkout reminder for order %s: %s", order_id, exc,
+        )
+        return f"Failed: {exc}"
+
+    order.checkout_reminder_sent_at = timezone.now()
+    order.save(update_fields=['checkout_reminder_sent_at'])
+
+    try:
+        from core.models import EmailLog
+        EmailLog.objects.create(recipient=buyer_email, subject=subject, status='Sent')
+    except Exception:
+        pass
+
+    return f"Sent checkout reminder for order {order_id}"
+
 
 @shared_task
 def check_sold_out_and_notify(event_id):

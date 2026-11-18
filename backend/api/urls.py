@@ -9,6 +9,7 @@ from .views_waitlist import (
     WaitlistClaimView,
 )
 from .views_checkout import CheckoutView
+from .views_email import EmailUnsubscribeView
 from .views_payment import (
     PaystackWebhookView, NombaWebhookView, PaymentVerifyView,
     ReconcilePaymentsView, AdminPaymentGatewayView,
@@ -172,6 +173,9 @@ urlpatterns = [
     
     # Newsletter
     path('newsletter/subscribe/', NewsletterSubscribeView.as_view(), name='newsletter_subscribe'),
+
+    # Email preferences (unsubscribe links)
+    path('email/unsubscribe/', EmailUnsubscribeView.as_view(), name='email_unsubscribe'),
     
     # File Upload (Presigned URL)
     path('upload/presigned-url/', PresignedUrlView.as_view(), name='presigned_url'),
