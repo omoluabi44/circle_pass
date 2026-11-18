@@ -470,16 +470,14 @@ class EventViewSet(viewsets.ModelViewSet):
             return Event.objects.filter(status__in=['PUBLISHED', 'LIVE', 'COMPLETED'])
 
         if user.is_authenticated and not is_public:
-            if is_admin_user(user):
-                qs = Event.objects.all().order_by('-id')
-            elif getattr(user, 'role', '') == 'ORGANIZER':
-                qs = Event.objects.filter(organizer__user=user).order_by('-id')
-            else:
-                from core.models import TeamMember
-                qs = Event.objects.filter(
-                    Q(organizer__user=user) |
-                    Q(event_team_members__user=user, event_team_members__status='ACTIVE')
-                ).distinct().order_by('-id')
+            # The organizer workspace is personal: it only ever lists events you
+            # own or actively help run. Admins get the platform-wide view in
+            # /api/admin/events/, not here.
+            from core.models import TeamMember
+            qs = Event.objects.filter(
+                Q(organizer__user=user) |
+                Q(event_team_members__user=user, event_team_members__status='ACTIVE')
+            ).distinct().order_by('-id')
         else:
             if user.is_authenticated and (is_admin_user(user) or getattr(user, 'role', '') == 'ORGANIZER'):
                 # If public request but authenticated as organizer/admin, let them see public events PLUS their own drafts
@@ -638,8 +636,12 @@ class EventViewSet(viewsets.ModelViewSet):
     def get_object(self):
         obj = super().get_object()
         user = self.request.user
-        if self.request.method not in permissions.SAFE_METHODS:
-            if user.is_authenticated and not user_can_manage_event(user, obj):
+        manage_only_actions = {'overview', 'analytics'}
+        if user.is_authenticated and (
+            self.request.method not in permissions.SAFE_METHODS
+            or getattr(self, 'action', None) in manage_only_actions
+        ):
+            if not user_can_manage_event(user, obj):
                 from rest_framework.exceptions import PermissionDenied
                 raise PermissionDenied("You do not have permission to modify this event.")
         return obj
