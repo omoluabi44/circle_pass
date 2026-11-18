@@ -1,7 +1,8 @@
 import logging
 from django.core.mail import send_mail
 from django.conf import settings
-from core.models import EmailLog
+from django.utils import timezone
+from core.models import EmailLog, Order
 
 logger = logging.getLogger(__name__)
 
@@ -202,7 +203,20 @@ def send_organizer_sales_notification(order, tickets):
     """
     Notifies the organizer that tickets have been purchased for their event,
     respecting their sales_notifications preference.
+
+    One order produces one "new sale" email, ever. A ticket that is re-sent
+    because the buyer never received it is not a new sale, so re-running this
+    for the same order does nothing.
     """
+    if getattr(order, 'organizer_sale_notified_at', None):
+        logger.info(
+            "Skipping sales notification for order %s: already sent at %s.",
+            order.id, order.organizer_sale_notified_at,
+        )
+        return
+    if getattr(order, 'status', '') != 'COMPLETED':
+        return
+
     organizer = getattr(order.event, 'organizer', None)
     if not organizer:
         return
@@ -299,6 +313,10 @@ The CirclePass Team
             fail_silently=False,
         )
         EmailLog.objects.create(recipient=recipient, subject=subject, status='Sent')
+        Order.objects.filter(pk=order.pk).update(
+            organizer_sale_notified_at=timezone.now()
+        )
+        order.organizer_sale_notified_at = timezone.now()
     except Exception as e:
         logger.error(f"Failed to send organizer sales notification to {recipient}: {e}")
         EmailLog.objects.create(recipient=recipient, subject=subject, status='Failed')

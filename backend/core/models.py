@@ -293,6 +293,10 @@ class Order(models.Model):
         null=True, blank=True,
         help_text='When the "you left your ticket purchase unfinished" reminder was emailed.',
     )
+    organizer_sale_notified_at = models.DateTimeField(
+        null=True, blank=True,
+        help_text='When the organizer was told about this sale. Resends never repeat it.',
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

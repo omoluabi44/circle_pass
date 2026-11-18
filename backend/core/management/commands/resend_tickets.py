@@ -1,11 +1,12 @@
 """Re-send ticket emails for orders completed on a given day.
 
 Used to recover from a delivery outage (e.g. a mail relay running out of
-credits) without touching orders, tickets or payments.
+credits) without touching orders, tickets or payments. Only the ticket
+recipients are emailed — a resend is not a new sale, so the organizer is never
+told about it.
 
     python manage.py resend_tickets --date 2026-11-10 --dry-run
     python manage.py resend_tickets --date 2026-11-10
-    python manage.py resend_tickets --date 2026-11-10 --organizer-notifications
 """
 from datetime import datetime, timedelta, timezone as dt_timezone
 
@@ -13,10 +14,7 @@ from django.core.management.base import BaseCommand, CommandError
 from django.utils import timezone
 
 from core.models import Order
-from core.utils.notifications import (
-    send_organizer_sales_notification,
-    send_purchase_receipt,
-)
+from core.utils.notifications import send_purchase_receipt
 
 
 class Command(BaseCommand):
@@ -24,10 +22,6 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument('--date', required=True, help='UTC date, YYYY-MM-DD')
-        parser.add_argument(
-            '--organizer-notifications', action='store_true',
-            help='Also re-send the organizer "new ticket sale" notifications.',
-        )
         parser.add_argument(
             '--orders', nargs='*', type=int,
             help='Optional subset of order IDs to resend.',
@@ -64,7 +58,6 @@ class Command(BaseCommand):
         )
 
         ticket_emails = 0
-        organizer_emails = 0
         for order in order_list:
             tickets = list(order.tickets.all())
             if not tickets:
@@ -96,20 +89,9 @@ class Command(BaseCommand):
                 )
             ticket_emails += len(recipients)
 
-            if options.get('organizer_notifications'):
-                if not dry_run:
-                    send_organizer_sales_notification(order, tickets)
-                organizer_emails += 1
-
         if dry_run:
-            self.stdout.write(
-                f'Would send {ticket_emails} ticket email(s)'
-                + (f' and {organizer_emails} organizer notification(s)'
-                   if options.get('organizer_notifications') else '')
-            )
+            self.stdout.write(f'Would send {ticket_emails} ticket email(s)')
         else:
             self.stdout.write(self.style.SUCCESS(
                 f'Done: {ticket_emails} ticket email(s)'
-                + (f' and {organizer_emails} organizer notification(s)'
-                   if options.get('organizer_notifications') else '')
             ))
