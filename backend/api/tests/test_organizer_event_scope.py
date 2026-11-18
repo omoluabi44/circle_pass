@@ -116,9 +116,49 @@ class OrganizerEventScopeTests(TestCase):
         self.theirs.refresh_from_db()
         self.assertEqual(self.theirs.title, 'Their Event')
 
-    def test_admin_can_still_support_organizers(self):
+    def test_admin_cannot_open_another_organizers_overview(self):
         response = self._client(self.admin).get(
             f'/api/events/{self.theirs.id}/overview/',
         )
 
+        self.assertEqual(response.status_code, 403)
+
+    def test_admin_cannot_edit_another_organizers_event(self):
+        response = self._client(self.admin).patch(
+            f'/api/events/{self.theirs.id}/', {'title': 'Admin Override'},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, 403)
+        self.theirs.refresh_from_db()
+        self.assertEqual(self.theirs.title, 'Their Event')
+
+    def test_admin_manages_their_own_event_normally(self):
+        response = self._client(self.admin).get(
+            f'/api/events/{self.admin_event.id}/overview/',
+        )
+
         self.assertEqual(response.status_code, 200, response.data)
+
+    # ── Admin moderation lives in the admin area ─────────────────────────────
+    def test_admin_area_still_lists_every_event(self):
+        response = self._client(self.admin).get('/api/admin/events/')
+
+        self.assertEqual(response.status_code, 200)
+        rows = response.data['results'] if isinstance(response.data, dict) else response.data
+        titles = {row['title'] for row in rows}
+        self.assertTrue({'My Event', 'Their Event', 'Admin Event'} <= titles)
+
+    def test_admin_area_can_still_read_and_edit_any_event(self):
+        client = self._client(self.admin)
+
+        detail = client.get(f'/api/admin/events/{self.theirs.id}/detail/')
+        self.assertEqual(detail.status_code, 200, detail.data)
+
+        edit = client.patch(
+            f'/api/admin/events/{self.theirs.id}/edit/',
+            {'title': 'Corrected by Admin'}, format='json',
+        )
+        self.assertEqual(edit.status_code, 200, edit.data)
+        self.theirs.refresh_from_db()
+        self.assertEqual(self.theirs.title, 'Corrected by Admin')

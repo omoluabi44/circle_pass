@@ -459,8 +459,9 @@ class EventViewSet(viewsets.ModelViewSet):
         # Detail actions (retrieve, overview, analytics, update, partial_update, destroy, submit, etc.)
         if getattr(self, 'detail', False) or self.action in ['retrieve', 'overview', 'analytics', 'update', 'partial_update', 'destroy', 'submit']:
             if user.is_authenticated:
-                if is_admin_user(user):
-                    return Event.objects.all()
+                # Personal scope for everyone: events you own or actively help
+                # run, plus public events (so any event page still opens).
+                # Admins moderate through /api/admin/*, not here.
                 from core.models import TeamMember
                 return Event.objects.filter(
                     Q(organizer__user=user) |

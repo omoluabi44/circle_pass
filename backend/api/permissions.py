@@ -44,15 +44,18 @@ def is_admin_user(user):
 
 def user_can_manage_event(user, event):
     """
-    True if user has permission to view/manage an organizer event:
-      - Super Admin (role ADMIN or is_staff/is_superuser)
+    True if user has permission to manage an organizer event:
       - Event owner (event.organizer.user_id == user.id)
       - Active Team Member with management privileges
+
+    Admin status does NOT grant organizer-side management. Super admins run the
+    platform from the admin area (/api/admin/*), which has its own access
+    checks, and must not be able to edit another organizer's event details,
+    discounts, referrals, announcements, waitlist or analytics from the
+    organizer workspace.
     """
     if not user or not user.is_authenticated:
         return False
-    if is_admin_user(user):
-        return True
     organizer = getattr(event, 'organizer', None)
     if organizer is not None and getattr(organizer, 'user_id', None) == user.id:
         return True
