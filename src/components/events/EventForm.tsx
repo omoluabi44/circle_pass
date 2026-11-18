@@ -55,6 +55,7 @@ export default function EventForm({ initialData, eventId }: { initialData?: any;
     absorb_fees: false,
     cover_image: null as File | null,
     organizer_contact: "",
+    notification_email: "",
     emergency_contact: "",
     age_restriction: "",
     dress_code: "",
@@ -100,6 +101,7 @@ export default function EventForm({ initialData, eventId }: { initialData?: any;
         capacity: initialData.capacity || 0,
         absorb_fees: initialData.absorb_fees || false,
         organizer_contact: initialData.organizer_contact || "",
+        notification_email: initialData.notification_email || "",
         emergency_contact: initialData.emergency_contact || "",
         age_restriction: initialData.age_restriction || "",
         dress_code: initialData.dress_code || "",
@@ -277,8 +279,12 @@ export default function EventForm({ initialData, eventId }: { initialData?: any;
         return false;
       }
     }
-if (!formData.title || !formData.start_time || !formData.end_time || !formData.organizer_contact) {
-      toast.error("Please fill out all required fields (Title, Start Time, End Time, Organizer Contact).");
+if (!formData.title || !formData.start_time || !formData.end_time || !formData.organizer_contact || !formData.notification_email) {
+      toast.error("Please fill out all required fields (Title, Start Time, End Time, Organizer Contact, Event Notification Email).");
+      return false;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.notification_email.trim())) {
+      toast.error("Please enter a valid Event Notification Email.");
       return false;
     }
     const totalTickets = ticketTypes.reduce((acc, curr) => acc + Number(curr.quantity), 0);
@@ -360,6 +366,7 @@ if (!formData.title || !formData.start_time || !formData.end_time || !formData.o
       payload.append('absorb_fees', String(formData.absorb_fees));
       
       payload.append('organizer_contact', formData.organizer_contact);
+      payload.append('notification_email', formData.notification_email.trim());
       payload.append('emergency_contact', formData.emergency_contact);
       payload.append('age_restriction', formData.age_restriction);
       payload.append('dress_code', formData.dress_code);
@@ -590,8 +597,16 @@ if (!formData.title || !formData.start_time || !formData.end_time || !formData.o
 
         {/* Additional Details */}
         <section>
-          <h2 className="text-xl font-semibold text-foreground mb-4 border-b pb-2">Additional Details <span className="text-sm font-normal text-muted-foreground ml-2">(Optional)</span></h2>
+          <h2 className="text-xl font-semibold text-foreground mb-4 border-b pb-2">Additional Details</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-muted-foreground mb-1">Event Notification Email <span className="text-primary">*</span></label>
+              <input type="email" required placeholder="e.g. events@yourbrand.com" className="w-full border border-border rounded-lg p-2.5 outline-none"
+                value={formData.notification_email} onChange={e => setFormData({...formData, notification_email: e.target.value})} />
+              <p className="text-xs text-muted-foreground mt-1.5">
+                This email address will receive all ticket sale notifications and other event-related notifications.
+              </p>
+            </div>
             <div>
               <label className="block text-sm font-medium text-muted-foreground mb-1">Organizer Contact Info <span className="text-primary">*</span></label>
               <input type="text" placeholder="Email or Phone number" className="w-full border border-border rounded-lg p-2.5 outline-none"

@@ -178,6 +178,26 @@ def send_purchase_receipt(order, tickets):
         ) or 'Guest'
         _send_ticket_email(order, group, recipient, name)
 
+def event_notification_recipient(event, organizer=None):
+    """Where event-scoped notifications go.
+
+    Each event can name its own inbox, which keeps e.g. a festival and a
+    workshop out of the same mailbox. Falls back to the organizer's contact
+    email (or sign-in email) for events created before the field existed.
+    """
+    if event is None:
+        return None
+    email = (getattr(event, 'notification_email', '') or '').strip()
+    if email:
+        return email
+    organizer = organizer or getattr(event, 'organizer', None)
+    if not organizer:
+        return None
+    return (organizer.contact_email or '').strip() or (
+        organizer.user.email if organizer.user_id else None
+    )
+
+
 def send_organizer_sales_notification(order, tickets):
     """
     Notifies the organizer that tickets have been purchased for their event,
@@ -192,7 +212,7 @@ def send_organizer_sales_notification(order, tickets):
         logger.info(f"Skipping sales notification for organizer {organizer.id}: sales_notifications is disabled.")
         return
 
-    recipient = organizer.contact_email or (organizer.user.email if organizer.user else None)
+    recipient = event_notification_recipient(order.event, organizer)
     if not recipient:
         return
 
@@ -286,8 +306,11 @@ The CirclePass Team
 def send_event_status_update(event):
     """
     Notifies an organizer that their event has been approved or rejected.
+    Uses the event's own notification inbox when it has one.
     """
-    recipient = event.organizer.user.email
+    recipient = event_notification_recipient(event)
+    if not recipient:
+        return
     subject = f"Event Status Update: {event.title}"
     
     message = f"Hello {event.organizer.company_name},\n\n"
@@ -399,7 +422,7 @@ def send_waitlist_organizer_notification(entry):
     """
     try:
         organizer = entry.event.organizer
-        recipient = organizer.user.email if organizer and organizer.user else None
+        recipient = event_notification_recipient(entry.event, organizer)
         if not recipient:
             return
 

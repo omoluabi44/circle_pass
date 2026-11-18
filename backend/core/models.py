@@ -39,6 +39,11 @@ class OrganizerProfile(models.Model):
     company_name = models.CharField(max_length=255)
     is_verified = models.BooleanField(default=False)
     contact_email = models.EmailField(blank=True)
+    contact_email_updated_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text='When the organizer last changed their contact email. Used to enforce the 7-day change limit.',
+    )
     bio = models.TextField(blank=True)
     website = models.URLField(blank=True)
     instagram_handle = models.CharField(max_length=100, blank=True)
@@ -132,6 +137,14 @@ class Event(models.Model):
     
     # Additional Details
     organizer_contact = models.CharField(max_length=255, blank=True, help_text="Email or phone for attendee inquiries.")
+    notification_email = models.EmailField(
+        blank=True,
+        default='',
+        help_text=(
+            'Event-specific inbox for ticket sale and event notifications. '
+            'Each event can point at a different address.'
+        ),
+    )
     instagram_handle = models.CharField(max_length=100, blank=True, help_text="Instagram handle for the event")
     tiktok_handle = models.CharField(max_length=100, blank=True, help_text="TikTok handle for the event")
     location_name = models.CharField(max_length=255, blank=True, help_text="Optional name of the location")

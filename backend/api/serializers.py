@@ -68,10 +68,14 @@ class OrganizerProfileSerializer(serializers.ModelSerializer):
     organizer_name = serializers.CharField(required=False, allow_blank=True)
     full_name = serializers.SerializerMethodField()
     name_locked = serializers.SerializerMethodField()
+    contact_email_locked = serializers.SerializerMethodField()
+    contact_email_next_change_at = serializers.SerializerMethodField()
+
+    CONTACT_EMAIL_COOLDOWN_DAYS = 7
 
     class Meta:
         model = OrganizerProfile
-        fields = ('id', 'company_name', 'organizer_name', 'full_name', 'first_name', 'last_name', 'name_locked', 'phone_number', 'onboarding_completed', 'is_verified', 'contact_email', 'bio', 'website', 'instagram_handle', 'logo', 'sales_notifications', 'weekly_summary')
+        fields = ('id', 'company_name', 'organizer_name', 'full_name', 'first_name', 'last_name', 'name_locked', 'phone_number', 'onboarding_completed', 'is_verified', 'contact_email', 'contact_email_locked', 'contact_email_next_change_at', 'bio', 'website', 'instagram_handle', 'logo', 'sales_notifications', 'weekly_summary')
 
     def to_representation(self, instance):
         ret = super().to_representation(instance)
@@ -80,6 +84,9 @@ class OrganizerProfileSerializer(serializers.ModelSerializer):
             full = (user.get_full_name() or '').strip()
             ret['organizer_name'] = full or getattr(user, 'username', '')
             ret['full_name'] = full
+            # The contact email always starts as the sign-in address; it is only
+            # stored separately once the organizer changes it.
+            ret['contact_email'] = (instance.contact_email or user.email or '').strip()
         else:
             ret['organizer_name'] = ''
             ret['full_name'] = ''
@@ -93,9 +100,51 @@ class OrganizerProfileSerializer(serializers.ModelSerializer):
         # is then locked, because payout verification depends on it.
         return instance.has_locked_name
 
+    def _next_contact_email_change(self, instance):
+        from datetime import timedelta
+
+        if not instance.contact_email_updated_at:
+            return None
+        return instance.contact_email_updated_at + timedelta(
+            days=self.CONTACT_EMAIL_COOLDOWN_DAYS
+        )
+
+    def get_contact_email_locked(self, instance):
+        from django.utils import timezone
+
+        next_change = self._next_contact_email_change(instance)
+        return bool(next_change and next_change > timezone.now())
+
+    def get_contact_email_next_change_at(self, instance):
+        next_change = self._next_contact_email_change(instance)
+        return next_change.isoformat() if next_change else None
+
     def update(self, instance, validated_data):
         user_data = validated_data.pop('user', {})
         organizer_name = validated_data.pop('organizer_name', None)
+
+        # ── Contact email: one change every 7 days ────────────────────────────
+        submitted_contact = validated_data.get('contact_email', None)
+        if submitted_contact is not None:
+            from django.utils import timezone
+
+            submitted_contact = (submitted_contact or '').strip()
+            effective_current = (
+                instance.contact_email or (instance.user.email or '')
+            ).strip()
+            if not submitted_contact:
+                # Blank means "keep the current address" rather than erase it.
+                validated_data.pop('contact_email', None)
+            elif submitted_contact.lower() != effective_current.lower():
+                next_change = self._next_contact_email_change(instance)
+                if next_change and next_change > timezone.now():
+                    raise serializers.ValidationError({
+                        'contact_email': (
+                            'You can only change your contact email once every 7 days. '
+                            f'Next change available on {next_change:%d %b %Y}.'
+                        ),
+                    })
+                instance.contact_email_updated_at = timezone.now()
 
         current_name = (instance.user.get_full_name() or '').strip()
         requested_name = None
@@ -231,6 +280,7 @@ class EventSerializer(serializers.ModelSerializer):
     category = EventCategorySerializer(read_only=True)
     venue = VenueSerializer(read_only=True)
     tickets_sold_count = serializers.SerializerMethodField()
+    notification_email = serializers.SerializerMethodField()
 
     is_followed = serializers.SerializerMethodField()
     follower_count = serializers.SerializerMethodField()
@@ -244,8 +294,18 @@ class EventSerializer(serializers.ModelSerializer):
             'instagram_handle', 'tiktok_handle', 'age_restriction', 'dress_code', 'lineup', 'personalized_dp_enabled',
             'is_online', 'status', 'absorb_fees', 'start_time', 'end_time', 'ticket_types',
             'sales_paused', 'waitlist_enabled', 'is_followed', 'follower_count',
-            'page_views', 'tickets_sold_count'
+            'page_views', 'tickets_sold_count', 'notification_email'
         )
+
+    def get_notification_email(self, obj):
+        """Only the event owner (or an admin) sees the notification inbox."""
+        request = self.context.get('request')
+        user = getattr(request, 'user', None)
+        if not (user and user.is_authenticated):
+            return None
+        is_owner = obj.organizer_id and obj.organizer.user_id == user.id
+        is_admin = getattr(user, 'role', '') == 'ADMIN' or user.is_staff
+        return obj.notification_email if (is_owner or is_admin) else None
 
     cover_image = serializers.SerializerMethodField()
 
@@ -306,11 +366,36 @@ class EventCreateUpdateSerializer(serializers.ModelSerializer):
         model = Event
         fields = (
             'id', 'category', 'category_name', 'venue', 'venue_name', 'title', 'description', 'cover_image', 'capacity',
-            'event_type', 'country', 'state', 'city', 'location_name', 'organizer_contact', 'emergency_contact', 
+            'event_type', 'country', 'state', 'city', 'location_name', 'organizer_contact', 'notification_email', 'emergency_contact', 
             'instagram_handle', 'tiktok_handle', 'has_onsite_services',
             'age_restriction', 'dress_code', 'lineup', 'personalized_dp_enabled', 'sales_paused', 'waitlist_enabled',
             'is_online', 'status', 'absorb_fees', 'start_time', 'end_time', 'ticket_types',
         )
+
+    def validate_notification_email(self, value):
+        """Each event sends its sale notifications here, so it is compulsory."""
+        value = (value or '').strip().lower()
+        if not value:
+            raise serializers.ValidationError(
+                'An event notification email is required.'
+            )
+        return value
+
+    def validate(self, attrs):
+        attrs = super().validate(attrs)
+        # Compulsory when creating an event. On edits we only reject an explicit
+        # attempt to clear it, so events created before the field existed can
+        # still be edited normally.
+        if self.instance is None:
+            if not (attrs.get('notification_email') or '').strip():
+                raise serializers.ValidationError({
+                    'notification_email': 'An event notification email is required.',
+                })
+        elif 'notification_email' in attrs and not (attrs['notification_email'] or '').strip():
+            raise serializers.ValidationError({
+                'notification_email': 'An event notification email is required.',
+            })
+        return attrs
 
     def validate_title(self, value):
         """The public URL is the event name, so names must be unique.

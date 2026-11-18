@@ -29,6 +29,7 @@ class EventSlugTests(TestCase):
             'capacity': 100,
             'event_type': 'PHYSICAL',
             'organizer_contact': '08000000000',
+            'notification_email': 'events@example.com',
             'emergency_contact': '08000000001',
             'start_time': timezone.now().isoformat(),
             'end_time': (timezone.now() + timezone.timedelta(days=1)).isoformat(),

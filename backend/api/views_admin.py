@@ -63,7 +63,7 @@ class AdminEventSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Event
-        fields = ('id', 'title', 'slug', 'description', 'cover_image', 'capacity', 'event_type', 'is_online', 'venue_name', 'country', 'state', 'city', 'status', 'organizer_name', 'start_time', 'end_time', 'organizer_contact', 'emergency_contact', 'age_restriction', 'dress_code')
+        fields = ('id', 'title', 'slug', 'description', 'cover_image', 'capacity', 'event_type', 'is_online', 'venue_name', 'country', 'state', 'city', 'status', 'organizer_name', 'start_time', 'end_time', 'organizer_contact', 'notification_email', 'emergency_contact', 'age_restriction', 'dress_code')
 
 class AdminPayoutSerializer(serializers.ModelSerializer):
     organizer_name = serializers.CharField(source='wallet.organizer.company_name', read_only=True)
@@ -595,6 +595,7 @@ class AdminEventDetailView2(APIView):
                 'end_time': event.end_time,
                 'capacity': event.capacity,
                 'organizer_contact': event.organizer_contact,
+                'notification_email': event.notification_email,
                 'instagram_handle': event.instagram_handle,
                 'tiktok_handle': event.tiktok_handle,
                 'emergency_contact': event.emergency_contact,
@@ -621,7 +622,7 @@ class AdminEventEditView(APIView):
         'title', 'description', 'cover_image', 'event_type', 'status',
         'country', 'state', 'city', 'location_name',
         'start_time', 'end_time', 'capacity',
-        'organizer_contact', 'instagram_handle', 'tiktok_handle',
+        'organizer_contact', 'notification_email', 'instagram_handle', 'tiktok_handle',
         'emergency_contact', 'age_restriction', 'dress_code', 'lineup',
         'absorb_fees', 'sales_paused', 'waitlist_enabled',
     ]

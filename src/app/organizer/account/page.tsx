@@ -26,6 +26,10 @@ function BusinessDetailsForm() {
   });
   // The personal/legal name is captured at sign-up and then locked.
   const [nameLocked, setNameLocked] = useState(false);
+  // Contact email can only be changed once every 7 days.
+  const [contactEmailLocked, setContactEmailLocked] = useState(false);
+  const [contactEmailNextChange, setContactEmailNextChange] = useState<string | null>(null);
+  const [savedContactEmail, setSavedContactEmail] = useState("");
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [logoFile, setLogoFile] = useState<File | null>(null);
@@ -59,6 +63,9 @@ function BusinessDetailsForm() {
               phone_number: profile.phone_number || '',
             });
             setNameLocked(profile.name_locked === true || !!profile.full_name);
+            setContactEmailLocked(profile.contact_email_locked === true);
+            setContactEmailNextChange(profile.contact_email_next_change_at || null);
+            setSavedContactEmail((profile.contact_email || '').trim().toLowerCase());
             if (profile.logo) {
               setLogoPreview(profile.logo.startsWith('/') ? `${API_URL.replace('/api', '')}${profile.logo}` : profile.logo);
             }
@@ -148,9 +155,22 @@ function BusinessDetailsForm() {
       if (!res.ok) {
         let errData;
         try { errData = await res.json(); } catch(e) {}
-        throw new Error(errData?.error || errData?.detail || errData?.message || "Failed to update profile");
+        const fieldError = errData && typeof errData === 'object'
+          ? Object.values(errData).flat()[0]
+          : null;
+        throw new Error(
+          (typeof fieldError === 'string' && fieldError)
+          || errData?.error || errData?.detail || errData?.message || "Failed to update profile"
+        );
       }
       toast.success("Profile updated successfully!");
+
+      const nextContactEmail = formData.contact_email.trim().toLowerCase();
+      if (nextContactEmail && nextContactEmail !== savedContactEmail) {
+        setSavedContactEmail(nextContactEmail);
+        setContactEmailLocked(true);
+        setContactEmailNextChange(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString());
+      }
 
       // Warn immediately if saved payout accounts no longer match the new name,
       // so the organizer doesn't discover the block at withdrawal time.
@@ -260,14 +280,42 @@ function BusinessDetailsForm() {
           />
         </div>
         <div className="space-y-2">
-          <label className="text-sm font-bold text-foreground">Contact Email</label>
+          <label className="text-sm font-bold text-foreground flex items-center justify-between">
+            <span className="flex items-center gap-2">
+              Contact Email
+              {contactEmailLocked && <Lock className="w-3.5 h-3.5 text-muted-foreground" />}
+            </span>
+            <span className="text-xs font-normal text-muted-foreground">
+              {contactEmailLocked ? "Change limit reached" : "Starts as your sign-in email"}
+            </span>
+          </label>
           <input
             type="email"
             value={formData.contact_email}
             onChange={e => setFormData({ ...formData, contact_email: e.target.value })}
             placeholder="e.g. contact@example.com"
-            className="w-full bg-background border border-border rounded-xl px-4 py-3 focus:outline-none focus:border-primary transition-colors text-foreground"
+            readOnly={contactEmailLocked}
+            disabled={contactEmailLocked}
+            className={`w-full border border-border rounded-xl px-4 py-3 focus:outline-none transition-colors ${
+              contactEmailLocked
+                ? 'bg-secondary/60 text-muted-foreground cursor-not-allowed'
+                : 'bg-background text-foreground focus:border-primary'
+            }`}
           />
+          <p className="text-xs text-muted-foreground">
+            You can change your contact email again in 7 days.
+          </p>
+          {contactEmailLocked && contactEmailNextChange && (
+            <p className="text-xs text-muted-foreground">
+              Next change available on{" "}
+              {new Date(contactEmailNextChange).toLocaleDateString("en-NG", {
+                day: "numeric", month: "short", year: "numeric",
+              })}.
+            </p>
+          )}
+          <p className="text-xs text-muted-foreground">
+            This is separate from each event&apos;s Notification Email.
+          </p>
         </div>
       </div>
 
