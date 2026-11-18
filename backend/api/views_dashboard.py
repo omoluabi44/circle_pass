@@ -2,7 +2,68 @@ from rest_framework import permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.db.models import Sum, Count, Q
-from core.models import Event, Order, Ticket, OrganizerWallet
+from core.models import Event, Order, Ticket, OrganizerWallet, Referral
+
+
+def _referral_summary(events, limit=5):
+    """Referral performance for the dashboard.
+
+    Every saved code is listed, even before it has a sale, so an organizer who
+    just created codes does not see an empty panel. Completed orders are then
+    attached; codes found only on orders (deleted or typed manually) are still
+    counted so no sale disappears from the totals.
+    """
+    rows = []
+    seen = set()
+
+    for referral in Referral.objects.filter(event__in=events).select_related('event'):
+        orders = referral.sales_queryset()
+        totals = orders.aggregate(
+            tickets=Sum('items__quantity'),
+            revenue=Sum('total_amount'),
+        )
+        seen.add((referral.event_id, referral.code.upper()))
+        rows.append({
+            'referral_code': referral.code,
+            'referral_name': referral.name,
+            'event_id': referral.event_id,
+            'event_title': referral.event.title,
+            'is_active': referral.is_active,
+            'sales': orders.count(),
+            'tickets': int(totals['tickets'] or 0),
+            'revenue': int(totals['revenue'] or 0),
+        })
+
+    extra_codes = (
+        Order.objects.filter(event__in=events, status='COMPLETED')
+        .exclude(referral_code='')
+        .values('event_id', 'event__title', 'referral_code')
+        .annotate(
+            sales=Count('id', distinct=True),
+            tickets=Sum('items__quantity'),
+            revenue=Sum('total_amount'),
+        )
+    )
+    for row in extra_codes:
+        key = (row['event_id'], (row['referral_code'] or '').upper())
+        if key in seen:
+            continue
+        seen.add(key)
+        rows.append({
+            'referral_code': row['referral_code'],
+            'referral_name': '',
+            'event_id': row['event_id'],
+            'event_title': row['event__title'],
+            'is_active': False,
+            'sales': row['sales'],
+            'tickets': int(row['tickets'] or 0),
+            'revenue': int(row['revenue'] or 0),
+        })
+
+    # Codes with sales first, then the newest idle codes.
+    rows.sort(key=lambda r: (-r['sales'], -r['tickets'], r['referral_code']))
+    return rows[:limit]
+
 
 class OrganizerDashboardView(APIView):
     """
@@ -84,14 +145,10 @@ class OrganizerDashboardView(APIView):
             followers_count = FollowedOrganizer.objects.filter(organizer__user=user).count()
             
         # 6. Referrals summary
-        referrals_qs = Order.objects.filter(
-            event__in=events, 
-            status='COMPLETED'
-        ).exclude(referral_code='').values('referral_code').annotate(
-            sales=Count('id'),
-            revenue=Sum('total_amount')
-        ).order_by('-sales')[:5]
-        referrals = list(referrals_qs)
+        # Start from the codes the organizer created, so a new code shows up
+        # immediately (at zero) instead of the dashboard looking empty until
+        # the first sale lands. Completed orders are then attached to it.
+        referrals = _referral_summary(events=events)
 
         return Response({
             "available_balance": available_balance,

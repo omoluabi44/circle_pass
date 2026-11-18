@@ -173,7 +173,17 @@ export default function OrganizerDashboard() {
       </div>
 
       {/* Referrals Table */}
-      <h2 className="text-xl font-bold text-foreground mt-12 mb-6">Top Referrals</h2>
+      <div className="flex items-end justify-between mt-12 mb-6 gap-4">
+        <div>
+          <h2 className="text-xl font-bold text-foreground">Top Referrals</h2>
+          <p className="text-sm text-muted-foreground mt-1">
+            Every referral code you have created, with the sales it has generated.
+          </p>
+        </div>
+        <Link href="/organizer/events" className="text-sm font-semibold text-primary hover:underline shrink-0">
+          Manage codes →
+        </Link>
+      </div>
       <div className="bg-background border border-border rounded-xl shadow-sm overflow-hidden mb-12">
                 {data?.referrals && data.referrals.length > 0 ? (
           <>
@@ -181,12 +191,18 @@ export default function OrganizerDashboard() {
             <div className="md:hidden divide-y divide-gray-100">
               {data.referrals.map((ref: any, idx: number) => (
                 <div key={idx} className="p-4 space-y-2 bg-card hover:bg-secondary/50 transition-colors">
-                  <div className="flex justify-between items-center">
-                    <span className="font-bold text-foreground text-base tracking-wide">{ref.referral_code}</span>
-                    <span className="font-semibold text-success">₦{(ref.revenue / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })}</span>
+                  <div className="flex justify-between items-start gap-3">
+                    <div className="min-w-0">
+                      <p className="font-bold text-foreground text-base tracking-wide">
+                        {ref.referral_code}
+                        {ref.referral_name ? <span className="ml-2 text-sm font-medium text-muted-foreground">{ref.referral_name}</span> : null}
+                      </p>
+                      <p className="text-xs text-muted-foreground truncate">{ref.event_title}</p>
+                    </div>
+                    <span className="font-semibold text-success shrink-0">₦{(ref.revenue / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })}</span>
                   </div>
                   <div className="text-sm text-muted-foreground">
-                    Total Sales: <span className="font-medium text-foreground">{ref.sales}</span> ticket(s)
+                    Total Sales: <span className="font-medium text-foreground">{ref.tickets ?? ref.sales}</span> ticket(s)
                   </div>
                 </div>
               ))}
@@ -198,6 +214,7 @@ export default function OrganizerDashboard() {
                 <thead>
                   <tr className="border-b border-border bg-secondary text-muted-foreground text-sm uppercase tracking-wide">
                     <th className="px-6 py-4 font-semibold">Referral Code</th>
+                    <th className="px-6 py-4 font-semibold">Event</th>
                     <th className="px-6 py-4 font-semibold">Total Sales</th>
                     <th className="px-6 py-4 font-semibold">Revenue Generated</th>
                   </tr>
@@ -205,9 +222,13 @@ export default function OrganizerDashboard() {
                 <tbody className="text-sm divide-y divide-gray-100">
                   {data.referrals.map((ref: any, idx: number) => (
                     <tr key={idx} className="hover:bg-secondary/50 transition-colors">
-                      <td className="px-6 py-4 font-semibold text-foreground">{ref.referral_code}</td>
+                      <td className="px-6 py-4">
+                        <span className="font-semibold text-foreground">{ref.referral_code}</span>
+                        {ref.referral_name ? <span className="block text-xs text-muted-foreground mt-0.5">{ref.referral_name}</span> : null}
+                      </td>
+                      <td className="px-6 py-4 text-muted-foreground max-w-[240px] truncate">{ref.event_title}</td>
                       <td className="px-6 py-4 font-medium text-muted-foreground">
-                        {ref.sales} ticket(s)
+                        {ref.tickets ?? ref.sales} ticket(s)
                       </td>
                       <td className="px-6 py-4 font-medium text-muted-foreground">
                         ₦{(ref.revenue / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })}
@@ -220,7 +241,8 @@ export default function OrganizerDashboard() {
           </>
         ) : (
           <div className="p-8 text-center text-muted-foreground">
-            <p>No referral data available yet.</p>
+            <p>No referral codes yet.</p>
+            <p className="text-sm mt-1">Create a referral code from an event&apos;s Promotions page to track who brings in sales.</p>
           </div>
         )}
       </div>
