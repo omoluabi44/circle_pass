@@ -2,8 +2,13 @@ from rest_framework import viewsets, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.decorators import action
+from django.db import transaction
 from django.db.models import Sum, Count, Q
-from core.models import User, OrganizerProfile, Event, Payout, Order, OrganizerVerification, Ticket
+from django.utils import timezone
+from core.models import (
+    User, OrganizerProfile, Event, Payout, Order, OrganizerVerification, Ticket,
+    OrganizerWallet, WalletTransaction,
+)
 from .permissions import IsAdmin
 from core.utils.notifications import send_event_status_update, send_organizer_verification_update
 from rest_framework import serializers
@@ -541,6 +546,119 @@ class AdminOrganizerEditView(APIView):
             organizer.save()
 
         return Response({'success': True, 'message': 'Organizer updated successfully'})
+
+
+class AdminOrganizerWalletView(APIView):
+    """PATCH /api/admin/organizers/<pk>/wallet/ - set an organizer's balance.
+
+    Super admins occasionally have to put a wallet right: money sent outside
+    CirclePass, a balance restored from a backup, or a correction after a
+    failed payout. Only the fields sent are touched, and every change leaves a
+    ledger entry so the organizer's own transaction history explains the new
+    figure.
+
+    Amounts are in kobo, matching every other money field in the API.
+    """
+    permission_classes = [IsAdmin]
+
+    # ₦10bn ceiling: catches someone typing naira into a kobo field, or a
+    # stray keypress adding zeros.
+    MAX_KOBO = 10 ** 12
+    EDITABLE = ('available_balance', 'pending_balance')
+
+    @staticmethod
+    def _wallet_payload(wallet):
+        wallet.refresh_from_db()
+        return {
+            'available_balance': wallet.available_balance,
+            'pending_balance': wallet.pending_balance,
+            'total_earnings': wallet.total_earnings,
+            'total_payouts': wallet.total_payouts,
+        }
+
+    def patch(self, request, pk):
+        organizer = OrganizerProfile.objects.filter(
+            Q(id=pk) | Q(user_id=pk)
+        ).select_related('user').first()
+        if not organizer:
+            return Response({'detail': 'Organizer not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        wallet, _ = OrganizerWallet.objects.get_or_create(organizer=organizer)
+
+        body = request.data or {}
+        wanted = {}
+        for field in self.EDITABLE:
+            if field not in body or body[field] in (None, ''):
+                continue
+            try:
+                value = int(str(body[field]).strip())
+            except (TypeError, ValueError):
+                return Response(
+                    {'detail': f'{field} must be a whole number of kobo.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            if value < 0:
+                return Response(
+                    {'detail': f'{field} cannot be negative.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            if value > self.MAX_KOBO:
+                return Response(
+                    {'detail': f'{field} is too large. Amounts are in kobo (₦1 = 100).'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            wanted[field] = value
+
+        if not wanted:
+            return Response(
+                {'detail': 'Send available_balance (and optionally pending_balance), in kobo.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        reason = (body.get('reason') or '').strip()
+        changes = []
+
+        with transaction.atomic():
+            locked = OrganizerWallet.objects.select_for_update().get(pk=wallet.pk)
+            for field, value in wanted.items():
+                old = getattr(locked, field)
+                if old != value:
+                    changes.append((field, old, value))
+                    setattr(locked, field, value)
+
+            if changes:
+                locked.save(update_fields=[f for f, _, _ in changes] + ['updated_at'])
+
+                stamp = timezone.now()
+                for index, (field, old, value) in enumerate(changes):
+                    delta = value - old
+                    WalletTransaction.objects.create(
+                        wallet=locked,
+                        type='REVERSAL',
+                        amount=abs(delta),
+                        balance_after=locked.available_balance,
+                        reference=f'ADMIN-{request.user.id}-{stamp.strftime("%Y%m%d%H%M%S")}-{index + 1}',
+                        description=(
+                            f'{field.replace("_", " ").capitalize()} adjusted by CirclePass '
+                            f'support ({request.user.email}): ₦{old / 100:,.2f} → '
+                            f'₦{value / 100:,.2f}'
+                            + (f'. Reason: {reason}' if reason else '')
+                        ),
+                    )
+
+        return Response({
+            'success': True,
+            'organizer_id': organizer.id,
+            'wallet': self._wallet_payload(wallet),
+            'changes': [
+                {'field': field, 'from': old, 'to': value}
+                for field, old, value in changes
+            ],
+            'message': (
+                'Balance updated.' if changes
+                else 'No change — the balance was already that value.'
+            ),
+        })
 
 
 class AdminEventDetailView2(APIView):

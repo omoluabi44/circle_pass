@@ -214,6 +214,42 @@ export async function adminEditOrganizer(token: string, id: number, data: Record
   return res.json();
 }
 
+// ─── Admin Edit: Organizer wallet balance ─────────────────────────────────────
+
+/**
+ * Set an organizer's wallet balance. Amounts are in kobo, like every other
+ * money field. The backend records a ledger entry explaining the change.
+ */
+export async function adminSetOrganizerWallet(
+  token: string,
+  organizerId: number | string,
+  data: { available_balance?: number; pending_balance?: number; reason?: string },
+) {
+  const res = await fetchWithAuth(`${API_URL}/admin/organizers/${organizerId}/wallet/`, {
+    method: 'PATCH',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(data),
+  });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(body.detail || body.error || `Failed to update balance (${res.status})`);
+  }
+  return body as {
+    success: boolean;
+    message: string;
+    wallet: {
+      available_balance: number;
+      pending_balance: number;
+      total_earnings: number;
+      total_payouts: number;
+    };
+    changes: { field: string; from: number; to: number }[];
+  };
+}
+
 // ─── Admin Edit: Event ────────────────────────────────────────────────────────
 
 export async function adminGetEventDetail(token: string, id: number) {

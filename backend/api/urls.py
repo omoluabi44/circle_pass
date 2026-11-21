@@ -46,6 +46,7 @@ from .views_admin import (
     AdminOverviewView, AdminUserViewSet, AdminOrganizerVerificationViewSet,
     AdminEventViewSet, AdminPayoutViewSet, AdminReconcilePaymentsView, AdminOrganizerDetailView,
     AdminOrganizerEditView, AdminEventDetailView2, AdminEventEditView,
+    AdminOrganizerWalletView,
     AdminTicketTypeListCreateView, AdminTicketTypeDetailView,
     AdminTicketListView, AdminTicketDetailView, AdminTicketExportView, AdminEventTransferView
 )
@@ -208,6 +209,7 @@ urlpatterns = [
 
     # Admin: Edit endpoints
     path('admin/organizers/<int:pk>/edit/', AdminOrganizerEditView.as_view(), name='admin_organizer_edit'),
+    path('admin/organizers/<int:pk>/wallet/', AdminOrganizerWalletView.as_view(), name='admin_organizer_wallet'),
     path('admin/events/<int:pk>/detail/', AdminEventDetailView2.as_view(), name='admin_event_detail2'),
     path('admin/events/<int:pk>/edit/', AdminEventEditView.as_view(), name='admin_event_edit'),
     path('admin/events/<int:pk>/transfer/', AdminEventTransferView.as_view(), name='admin_event_transfer'),

@@ -8,6 +8,7 @@ import {
   BarChart3, Users, AlertCircle, Pencil, FileText, MapPin, MessageCircle
 } from "lucide-react";
 import EditOrganizerButton from "./EditOrganizerButton";
+import EditWalletBalanceButton from "./EditWalletBalanceButton";
 import TransferOrganizerEventButton from "./TransferOrganizerEventButton";
 
 /** Turn a local Nigerian number into a wa.me link (234… instead of 0…). */
@@ -202,6 +203,13 @@ export default async function AdminOrganizerDashboardPage({
             <div className="text-xs text-muted-foreground">
               Pending: ₦{((wallet.pending_balance || 0) / 100).toLocaleString("en-NG", { minimumFractionDigits: 2 })}
             </div>
+            <EditWalletBalanceButton
+              organizerId={organizer.id}
+              organizerName={organizer.company_name}
+              availableBalance={wallet.available_balance || 0}
+              pendingBalance={wallet.pending_balance || 0}
+              token={(session as any).accessToken}
+            />
           </div>
 
           <div className="bg-card border border-border rounded-xl p-5 shadow-sm space-y-2">
