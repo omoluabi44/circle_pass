@@ -21,11 +21,6 @@ export default function ForgotPasswordPage() {
       });
 
       if (res.ok) {
-        const data = await res.json();
-        console.log("====================================");
-        console.log("PASSWORD RESET LINK:");
-        console.log(data.reset_url);
-        console.log("====================================");
         setStatus("success");
       } else {
         setStatus("error");

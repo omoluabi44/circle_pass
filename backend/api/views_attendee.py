@@ -2,6 +2,7 @@ from rest_framework import generics, permissions, serializers
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from django.utils import timezone
+from django.db.models import Q
 from core.models import AttendeeProfile, User, Ticket, SavedEvent, FollowedOrganizer, Event, WaitlistEntry, OrderItem
 
 class AttendeeProfileSerializer(serializers.ModelSerializer):
@@ -50,8 +51,16 @@ class AttendeeDashboardView(APIView):
         user = request.user
         now = timezone.now()
 
-        # Tickets logic
-        tickets = Ticket.objects.filter(order__attendee__user=user, status__in=['ISSUED', 'ACTIVE'])
+        # Tickets logic: bought with this account, plus guest purchases made with
+        # the same email, so a guest who later signs up sees their passes.
+        conditions = Q(order__attendee__user=user)
+        email = (user.email or '').strip()
+        if email:
+            conditions |= Q(order__guest_email__iexact=email)
+            conditions |= Q(attendee_email__iexact=email)
+        tickets = Ticket.objects.filter(
+            conditions, status__in=['ISSUED', 'ACTIVE']
+        )
         upcoming_tickets = tickets.filter(order__event__start_time__gte=now).select_related('order__event', 'ticket_type').order_by('order__event__start_time')
         
         upcoming_count = upcoming_tickets.count()

@@ -196,11 +196,7 @@ function LoginForm() {
             </p>
           )}
 
-          {/* =========================================================================
-              EMAIL & PASSWORD LOGIN FORM (COMMENTED OUT TEMPORARILY AS REQUESTED)
-              Uncomment this block whenever email/password login is to be re-enabled.
-              ========================================================================= */}
-          {/*
+          {/* Email & password sign-in */}
           <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
             {error && <p className="text-destructive text-sm bg-destructive/10 p-3 rounded-lg border border-destructive/20">{error}</p>}
             
@@ -240,11 +236,17 @@ function LoginForm() {
               </div>
             </div>
 
-            <div>
+            <div className="flex items-center justify-between gap-3">
+              <Link
+                href="/forgot-password"
+                className="text-sm font-semibold text-primary hover:text-primary/80 transition-colors"
+              >
+                Forgot password?
+              </Link>
               <button
                 type="submit"
                 disabled={isLoading}
-                className="group relative flex w-full justify-center rounded-xl border border-transparent bg-primary px-4 py-3.5 text-sm font-bold text-primary-foreground hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 disabled:opacity-50 transition-colors shadow-sm"
+                className="group relative flex justify-center rounded-xl border border-transparent bg-primary px-6 py-3 text-sm font-bold text-primary-foreground hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 disabled:opacity-50 transition-colors shadow-sm"
               >
                 {isLoading ? "Signing in..." : "Sign in"}
               </button>
@@ -259,7 +261,6 @@ function LoginForm() {
               <span className="bg-background px-4 text-muted-foreground font-medium">Or continue with</span>
             </div>
           </div>
-          */}
 
           {/* Google Sign-In Button */}
           <div className="mt-8 space-y-4">

@@ -205,20 +205,61 @@ class CustomUserViewSet(UserViewSet):
 
         return Response({"message": "Activation resent"}, status=status.HTTP_200_OK)
 
+    @staticmethod
+    def _claim_guest_account(email):
+        """Give a guest buyer an account so a password reset can reach them.
+
+        Guest checkout intentionally does not create a user, so "forgot
+        password" used to answer "User with given email does not exist" to
+        people who had paid for tickets. Only emails that actually appear on an
+        order are claimed, and the random password is never shared - the reset
+        link is what sets the real one.
+        """
+        if not email or User.objects.filter(email__iexact=email).exists():
+            return
+
+        from core.models import Order
+        if not Order.objects.filter(guest_email__iexact=email).exclude(
+            status='FAILED'
+        ).exists():
+            return
+
+        import uuid
+        base = (email.split('@')[0] or 'user').strip()[:120] or 'user'
+        username, suffix = base, 1
+        while User.objects.filter(username__iexact=username).exists():
+            suffix += 1
+            username = f"{base}-{suffix}"
+
+        user = User(
+            email=email, username=username, role='ATTENDEE', is_active=True,
+        )
+        user.set_password(uuid.uuid4().hex)
+        user.save()
+
     @action(["post"], detail=False)
     def reset_password(self, request, *args, **kwargs):
+        email = str(request.data.get("email") or "").strip().lower()
+        self._claim_guest_account(email)
+
         response = super().reset_password(request, *args, **kwargs)
         if response.status_code == 204:
-            email = request.data.get("email")
-            try:
-                user = User.objects.get(email=email)
-                uid = utils.encode_uid(user.pk)
-                token = default_token_generator.make_token(user)
-                reset_url = f"https://thecirclepass.com/reset-password/{uid}/{token}"
-                return Response({"message": "Password reset sent", "reset_url": reset_url}, status=status.HTTP_200_OK)
-            except User.DoesNotExist:
-                # Djoser handles this gracefully, but just in case
-                pass
+            from django.conf import settings
+            # The token used to be returned in the response body, which let
+            # anyone reset any account by email. Only reveal it in DEBUG.
+            if settings.DEBUG:
+                user = User.objects.filter(email__iexact=email).first()
+                if user:
+                    uid = utils.encode_uid(user.pk)
+                    token = default_token_generator.make_token(user)
+                    return Response({
+                        "message": "Password reset sent",
+                        "reset_url": f"https://thecirclepass.com/reset-password/{uid}/{token}",
+                    }, status=status.HTTP_200_OK)
+            return Response(
+                {"message": "If that email has an account, a reset link is on its way."},
+                status=status.HTTP_200_OK,
+            )
         return response
 
     @action(["delete", "post"], detail=False, permission_classes=[permissions.IsAuthenticated])

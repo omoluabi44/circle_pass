@@ -34,6 +34,7 @@ from .views_engagement import (
     FollowOrganizerToggleView, FollowedOrganizerListView,
 )
 from .views_attendee import AttendeeProfileView, AttendeeDashboardView
+from .views_auth import EmailLoginView
 
 from .views_discount import EventDiscountListCreateView, EventDiscountDetailView, EventDiscountValidateView
 from .views_referral import EventReferralListCreateView, EventReferralDetailView
@@ -93,6 +94,8 @@ urlpatterns = [
     
     # Auth (Djoser + SimpleJWT + Social Auth)
     path('auth/', include('djoser.urls')),
+    # Same URL as Djoser's JWT create; declared first so ours wins.
+    path('auth/jwt/create/', EmailLoginView.as_view(), name='email_login'),
     path('auth/', include('djoser.urls.jwt')),
     path('auth/social/', include('social_django.urls', namespace='social')),
     path('auth/google/', google_auth, name='google_auth'),
