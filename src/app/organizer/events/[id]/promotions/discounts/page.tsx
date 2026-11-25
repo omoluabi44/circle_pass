@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { ArrowLeft, ArrowRight, Plus, RefreshCw } from "lucide-react";
+import { ArrowLeft, ArrowRight, Pencil, Plus, RefreshCw } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { useSession } from "@/context/AuthContext";
 import { getEventById, getEventDiscounts } from "@/lib/api/events";
@@ -103,16 +103,18 @@ export default function DiscountCodeListPage() {
               .map((tid: number) => ticketClasses.find((t: any) => t.id === tid)?.name)
               .filter(Boolean);
             return (
-              <Link
+              <div
                 key={discount.id}
-                href={`${base}/discounts/${discount.id}`}
                 className="group bg-card border border-border rounded-2xl p-5 shadow-sm hover:border-primary/50 hover:shadow-md transition-all flex flex-col"
               >
                 <div className="flex justify-between items-start mb-4 gap-2">
                   <div className="min-w-0">
-                    <h3 className="text-lg font-bold text-foreground truncate">
+                    <Link
+                      href={`${base}/discounts/${discount.id}`}
+                      className="text-lg font-bold text-foreground truncate hover:text-primary transition-colors block"
+                    >
                       {discount.code}
-                    </h3>
+                    </Link>
                     <p className="text-sm text-muted-foreground">
                       {(discount.type || discount.discount_type) === "PERCENTAGE"
                         ? `${discount.value}% Off`
@@ -183,11 +185,23 @@ export default function DiscountCodeListPage() {
                   )}
                 </div>
 
-                <div className="mt-5 pt-4 border-t border-border flex items-center justify-between text-sm font-medium text-primary">
-                  View Details
-                  <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+                <div className="mt-5 pt-4 border-t border-border flex items-center justify-between text-sm font-medium">
+                  <Link
+                    href={`${base}/discounts/${discount.id}`}
+                    className="text-primary inline-flex items-center gap-1"
+                  >
+                    View Details
+                    <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+                  </Link>
+                  <Link
+                    href={`${base}/discounts/${discount.id}/edit`}
+                    className="text-muted-foreground hover:text-primary inline-flex items-center gap-1.5 transition-colors"
+                  >
+                    <Pencil className="w-4 h-4" />
+                    Edit
+                  </Link>
                 </div>
-              </Link>
+              </div>
             );
           })}
         </div>

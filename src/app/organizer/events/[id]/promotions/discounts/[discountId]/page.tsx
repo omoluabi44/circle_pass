@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import {
-  ArrowLeft, PauseCircle, Percent, PlayCircle, Trash2,
+  ArrowLeft, PauseCircle, Pencil, Percent, PlayCircle, Trash2,
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { useSession } from "@/context/AuthContext";
@@ -223,14 +223,23 @@ export default function DiscountDetailPage() {
             {isActive ? <PauseCircle className="w-4 h-4" /> : <PlayCircle className="w-4 h-4" />}
             {isActive ? "Pause Discount" : "Resume Discount"}
           </button>
-          <button
-            onClick={remove}
-            disabled={busy}
-            className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium border border-destructive/40 text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-50"
-          >
-            <Trash2 className="w-4 h-4" />
-            Delete
-          </button>
+          <div className="flex flex-col sm:flex-row gap-2">
+            <Link
+              href={`${base}/${discount.id}/edit`}
+              className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+            >
+              <Pencil className="w-4 h-4" />
+              Edit Discount
+            </Link>
+            <button
+              onClick={remove}
+              disabled={busy}
+              className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium border border-destructive/40 text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-50"
+            >
+              <Trash2 className="w-4 h-4" />
+              Delete
+            </button>
+          </div>
         </div>
       </section>
 

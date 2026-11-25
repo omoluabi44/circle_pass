@@ -4,33 +4,74 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Calendar, ChevronDown } from "lucide-react";
 import { toast } from "react-hot-toast";
-import { createEventDiscount } from "@/lib/api/events";
+import { createEventDiscount, updateEventDiscount } from "@/lib/api/events";
 
 type Props = {
   token?: string;
   eventId: string;
   ticketClasses: any[];
-  onCreated?: () => void;
+  /** Present when editing an existing code; omitted when creating one. */
+  discount?: any;
+  onSaved?: () => void;
 };
 
-/**
- * The single discount creation form. Used by the Create Discount Code page so
- * the fields, order and validation live in exactly one place.
- */
-export default function DiscountForm({ token, eventId, ticketClasses, onCreated }: Props) {
-  const router = useRouter();
+/** ISO timestamp -> the value a datetime-local input expects (local time). */
+function toLocalInput(iso?: string | null) {
+  if (!iso) return "";
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "";
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(
+    date.getHours(),
+  )}:${pad(date.getMinutes())}`;
+}
 
-  const [code, setCode] = useState("");
-  const [type, setType] = useState("PERCENTAGE");
-  const [value, setValue] = useState("");
-  const [usageLimit, setUsageLimit] = useState("0");
+/**
+ * The single discount form. Used by both the create and edit pages, so the
+ * fields, order and validation live in exactly one place.
+ */
+export default function DiscountForm({
+  token,
+  eventId,
+  ticketClasses,
+  discount,
+  onSaved,
+}: Props) {
+  const router = useRouter();
+  const editing = Boolean(discount?.id);
+
+  const initialType =
+    (discount?.type || discount?.discount_type) === "FIXED" ? "FIXED" : "PERCENTAGE";
+  const initialValue = discount
+    ? initialType === "FIXED"
+      ? String(Number(discount.value || 0) / 100)
+      : String(discount.value ?? "")
+    : "";
+
+  const [code, setCode] = useState(discount?.code || "");
+  const [type, setType] = useState(initialType);
+  const [value, setValue] = useState(initialValue);
+  const [usageLimit, setUsageLimit] = useState(
+    discount ? String(discount.usage_limit ?? 0) : "0",
+  );
   // Empty = every ticket class
-  const [ticketTypeIds, setTicketTypeIds] = useState<number[]>([]);
-  const [allowMultiple, setAllowMultiple] = useState("yes");
-  const [expiry, setExpiry] = useState("");
+  const [ticketTypeIds, setTicketTypeIds] = useState<number[]>(
+    Array.isArray(discount?.ticket_type_ids) ? discount.ticket_type_ids : [],
+  );
+  const [allowMultiple, setAllowMultiple] = useState(
+    discount?.allow_multiple_per_user === false ? "no" : "yes",
+  );
+  const [expiry, setExpiry] = useState(toLocalInput(discount?.valid_until));
   const [submitting, setSubmitting] = useState(false);
 
-  const handleCreate = async () => {
+  const goBack = () =>
+    router.push(
+      editing
+        ? `/organizer/events/${eventId}/promotions/discounts/${discount.id}`
+        : `/organizer/events/${eventId}/promotions/discounts`,
+    );
+
+  const handleSave = async () => {
     const trimmedCode = code.trim().toUpperCase();
     const numericValue = Number(value);
 
@@ -51,22 +92,37 @@ export default function DiscountForm({ token, eventId, ticketClasses, onCreated 
       return;
     }
 
+    const payload = {
+      code: trimmedCode,
+      type,
+      value:
+        type === "FIXED" ? Math.round(numericValue * 100) : Math.round(numericValue),
+      usage_limit: usageLimit ? Number(usageLimit) : 0,
+      ticket_type_ids: ticketTypeIds,
+      allow_multiple_per_user: allowMultiple === "yes",
+      valid_until: expiry ? new Date(expiry).toISOString() : null,
+    };
+
     setSubmitting(true);
     try {
-      await createEventDiscount(token as string, eventId, {
-        code: trimmedCode,
-        type,
-        value: type === "FIXED" ? Math.round(numericValue * 100) : Math.round(numericValue),
-        usage_limit: usageLimit ? Number(usageLimit) : 0,
-        ticket_type_ids: ticketTypeIds,
-        allow_multiple_per_user: allowMultiple === "yes",
-        valid_until: expiry ? new Date(expiry).toISOString() : null,
-      });
-      toast.success("Discount created successfully");
-      if (onCreated) onCreated();
-      else router.push(`/organizer/events/${eventId}/promotions/discounts`);
+      if (editing) {
+        await updateEventDiscount(token as string, eventId, discount.id, payload);
+        toast.success("Discount updated successfully");
+      } else {
+        await createEventDiscount(token as string, eventId, payload);
+        toast.success("Discount created successfully");
+      }
+      if (onSaved) onSaved();
+      else
+        router.push(
+          editing
+            ? `/organizer/events/${eventId}/promotions/discounts/${discount.id}`
+            : `/organizer/events/${eventId}/promotions/discounts`,
+        );
     } catch (err: any) {
-      toast.error(err.message || "Failed to create discount");
+      toast.error(
+        err.message || (editing ? "Failed to update discount" : "Failed to create discount"),
+      );
     } finally {
       setSubmitting(false);
     }
@@ -86,6 +142,11 @@ export default function DiscountForm({ token, eventId, ticketClasses, onCreated 
             className="w-full bg-background border border-border rounded-xl px-3 py-2 text-foreground uppercase focus:outline-none focus:ring-2 focus:ring-primary/40"
             placeholder="e.g. SUMMER50"
           />
+          {editing && (
+            <p className="mt-1 text-xs text-muted-foreground">
+              Changing the code means buyers can no longer use the old one.
+            </p>
+          )}
         </div>
 
         <div>
@@ -225,18 +286,20 @@ export default function DiscountForm({ token, eventId, ticketClasses, onCreated 
 
       <div className="mt-6 flex justify-end gap-3">
         <button
-          onClick={() => router.push(`/organizer/events/${eventId}/promotions/discounts`)}
+          onClick={goBack}
           disabled={submitting}
           className="px-4 py-2 text-muted-foreground hover:bg-secondary rounded-xl transition-colors text-sm font-medium"
         >
           Cancel
         </button>
         <button
-          onClick={handleCreate}
+          onClick={handleSave}
           disabled={submitting}
           className="px-4 py-2 bg-primary text-primary-foreground rounded-xl text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
         >
-          {submitting ? "Creating..." : "Create"}
+          {submitting
+            ? (editing ? "Saving..." : "Creating...")
+            : (editing ? "Save changes" : "Create")}
         </button>
       </div>
     </div>

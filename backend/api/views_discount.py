@@ -197,6 +197,16 @@ class EventDiscountDetailView(APIView):
                 return Response({'error': 'Discount type must be Percentage or Amount'}, status=400)
             discount.type = requested_type
 
+        if 'code' in request.data:
+            new_code = (request.data.get('code') or '').strip().upper()
+            if not new_code:
+                return Response({'error': 'Discount code is required'}, status=400)
+            if Discount.objects.filter(
+                event=discount.event, code=new_code
+            ).exclude(pk=discount.pk).exists():
+                return Response({'error': 'This code already exists for this event'}, status=400)
+            discount.code = new_code
+
         if 'value' in request.data:
             try:
                 discount.value = int(float(request.data.get('value') or 0))
@@ -205,7 +215,7 @@ class EventDiscountDetailView(APIView):
 
         if 'usage_limit' in request.data:
             try:
-                discount.usage_limit = int(float(request.data.get('usage_limit') or 0))
+                discount.usage_limit = max(0, int(float(request.data.get('usage_limit') or 0)))
             except (TypeError, ValueError):
                 discount.usage_limit = 0
 
