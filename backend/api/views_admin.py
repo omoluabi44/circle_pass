@@ -296,6 +296,21 @@ class AdminReconcilePaymentsView(APIView):
         })
 
 
+def _organizer_by_ref(pk):
+    """Resolve an organizer dashboard from an OrganizerProfile id or a user id.
+
+    The admin UI links with the OrganizerProfile id, and only falls back to a
+    user id when a profile is missing. Those two id spaces overlap (profile 27
+    and user 27 are different people), so the old
+    ``filter(Q(id=pk) | Q(user_id=pk)).first()`` could open a different
+    organizer's dashboard. Exact profile id wins; user id is a last resort.
+    """
+    return (
+        OrganizerProfile.objects.select_related('user').filter(pk=pk).first()
+        or OrganizerProfile.objects.select_related('user').filter(user_id=pk).first()
+    )
+
+
 class AdminOrganizerDetailView(APIView):
     """
     GET /api/admin/organizers/<pk>/
@@ -306,7 +321,7 @@ class AdminOrganizerDetailView(APIView):
     permission_classes = [IsAdmin]
 
     def get(self, request, pk):
-        organizer = OrganizerProfile.objects.filter(Q(id=pk) | Q(user_id=pk)).first()
+        organizer = _organizer_by_ref(pk)
         if not organizer:
             return Response({"detail": "Organizer not found."}, status=status.HTTP_404_NOT_FOUND)
 
@@ -577,9 +592,7 @@ class AdminOrganizerWalletView(APIView):
         }
 
     def patch(self, request, pk):
-        organizer = OrganizerProfile.objects.filter(
-            Q(id=pk) | Q(user_id=pk)
-        ).select_related('user').first()
+        organizer = _organizer_by_ref(pk)
         if not organizer:
             return Response({'detail': 'Organizer not found.'}, status=status.HTTP_404_NOT_FOUND)
 

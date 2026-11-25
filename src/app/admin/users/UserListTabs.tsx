@@ -146,9 +146,9 @@ export default function UserListTabs({ users: initialUsers }: { users: User[] })
                   </td>
                   <td className="px-4 py-3 text-right whitespace-nowrap">
                     <div className="flex items-center justify-end gap-2">
-                      {(u.role === 'ORGANIZER' || u.organizer_id) && (
+                      {u.organizer_id && (
                         <Link
-                          href={`/admin/organizers/${u.organizer_id || u.id}`}
+                          href={`/admin/organizers/${u.organizer_id}`}
                           className="px-2.5 py-1.5 bg-primary/10 text-primary hover:bg-primary/20 text-xs font-bold rounded-lg transition-colors inline-flex items-center gap-1.5"
                           title="View Organizer Dashboard"
                         >
