@@ -51,36 +51,47 @@ class TeamMemberManagementView(APIView):
         event = get_object_or_404(Event, id=event_id)
         if not check_event_admin_access(event, request.user):
             return Response({'detail': 'No Event matches the given query.'}, status=status.HTTP_404_NOT_FOUND)
-        email = request.data.get('email')
+        email = str(request.data.get('email') or '').strip().lower()
         role = request.data.get('role', 'SCANNER_STAFF')
         scope = request.data.get('scope', 'event') # 'event' or 'all'
 
         if not email:
             return Response({"detail": "Email is required."}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Generate a unique invite token
-        token = get_random_string(64)
-        
         target_event = event if scope == 'event' else None
 
-        # Create the team member record
-        member, created = TeamMember.objects.get_or_create(
+        # Reuse the existing row when this address was invited before. Emails are
+        # matched case-insensitively ("Ada@X.com" == "ada@x.com") because sign-in
+        # normalises them to lower case and the invitee must be able to accept
+        # with the account they actually log in with.
+        member = TeamMember.objects.filter(
             organizer=event.organizer,
-            email=email,
             event=target_event,
-            defaults={
-                'role': role,
-                'token': token,
-                'status': 'PENDING'
-            }
-        )
+            email__iexact=email,
+        ).first()
 
-        if not created:
-            # Update token and role if already exists but pending
-            member.token = token
+        if member is None:
+            member = TeamMember(
+                organizer=event.organizer,
+                event=target_event,
+                email=email,
+                token=get_random_string(64),
+                role=role,
+                status='PENDING',
+            )
+        else:
+            # Keep the existing token so links already sitting in the invitee's
+            # inbox keep working. Only backfill one for legacy rows without it.
+            if not member.token:
+                member.token = get_random_string(64)
+            member.email = email
             member.role = role
-            member.status = 'PENDING'
-            member.save()
+            # Re-inviting must not lock an already-active scanner out.
+            if member.status != 'ACTIVE':
+                member.status = 'PENDING'
+
+        member.save()
+        token = member.token
 
         # Send invite email
         # Use a fallback URL if settings.FRONTEND_URL isn't defined
@@ -196,23 +207,53 @@ class AcceptTeamInviteView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
-        token = request.data.get('token')
+        token = str(request.data.get('token') or '').strip()
         if not token:
             return Response({"detail": "Token is required."}, status=status.HTTP_400_BAD_REQUEST)
-        
-        member = get_object_or_404(TeamMember, token=token)
-        
-        if member.status == 'ACTIVE':
-            return Response({"detail": "This invitation has already been accepted."}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Ensure the logged in user matches the invited email
-        if request.user.email != member.email:
-            return Response({"detail": f"Please log in with the email {member.email} to accept this invite."}, status=status.HTTP_400_BAD_REQUEST)
+        member = TeamMember.objects.filter(token=token).first()
+        if member is None:
+            return Response(
+                {"detail": "This invitation link is no longer valid. Ask the organizer to send a fresh invitation."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        user_email = (request.user.email or '').strip().lower()
+        invited_email = (member.email or '').strip().lower()
+
+        # Already accepted by this same account — a repeat click (including the
+        # second shot React StrictMode fires in development) is a success, not
+        # an error.
+        if member.status == 'ACTIVE' and member.user_id == request.user.id:
+            return Response({
+                "detail": "You already have access to this team.",
+                "organizer": member.organizer.company_name,
+                "event_id": member.event_id,
+                "already_accepted": True,
+            })
+
+        if member.status == 'ACTIVE' and member.user_id:
+            return Response(
+                {"detail": "This invitation has already been accepted by another account."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Ensure the logged in user matches the invited email. Compare
+        # case-insensitively/trimmed because auth lower-cases emails.
+        if user_email != invited_email:
+            return Response(
+                {"detail": (
+                    f"This invitation was sent to {member.email}, but you are signed in as "
+                    f"{request.user.email}. Sign out and sign in with {member.email} to accept it."
+                )},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         member.user = request.user
         member.status = 'ACTIVE'
+        member.email = invited_email
         # Token is retained for idempotency to prevent React Strict Mode 404s
-        member.save()
+        member.save(update_fields=['user', 'status', 'email'])
 
         return Response({
             "detail": "Invitation accepted successfully.", 

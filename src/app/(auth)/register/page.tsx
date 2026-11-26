@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import Cookies from "js-cookie";
@@ -10,7 +10,24 @@ import { Eye, EyeOff } from "lucide-react";
 import { emailSuggestion } from "@/lib/email";
 
 export default function RegisterPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center bg-background">
+          <div className="w-8 h-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+        </div>
+      }
+    >
+      <RegisterForm />
+    </Suspense>
+  );
+}
+
+function RegisterForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const callbackUrl =
+    searchParams.get("callbackUrl") || searchParams.get("redirect") || "";
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -19,6 +36,17 @@ export default function RegisterPage() {
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [showResend, setShowResend] = useState(false);
+
+  // Carry the original destination (e.g. /invite?token=...) all the way through
+  // email verification so a newly invited user lands back on the invitation.
+  const withNext = (path: string) =>
+    callbackUrl
+      ? `${path}${path.includes("?") ? "&" : "?"}next=${encodeURIComponent(callbackUrl)}`
+      : path;
+
+  const loginHref = callbackUrl
+    ? `/login?callbackUrl=${encodeURIComponent(callbackUrl)}`
+    : "/login";
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,7 +78,7 @@ export default function RegisterPage() {
         }
         setIsLoading(false);
       } else {
-        router.push(`/verify-email?email=${encodeURIComponent(email)}`);
+        router.push(withNext(`/verify-email?email=${encodeURIComponent(email)}`));
       }
     } catch (err) {
       setError("An unexpected error occurred. Please try again.");
@@ -72,7 +100,7 @@ export default function RegisterPage() {
       if (!res.ok) {
         setError(data.error || "Failed to resend verification email");
       } else {
-        router.push(`/verify-email?email=${encodeURIComponent(email)}&resent=true`);
+        router.push(withNext(`/verify-email?email=${encodeURIComponent(email)}&resent=true`));
       }
     } catch (err) {
       setError("Failed to resend verification email. Please try again later.");
@@ -247,7 +275,7 @@ export default function RegisterPage() {
             <button
               onClick={() => {
                 Cookies.set('oauth_role', role, { expires: 1 });
-                const target = role === "ORGANIZER" ? "/organizer" : "/dashboard";
+                const target = callbackUrl || (role === "ORGANIZER" ? "/organizer" : "/dashboard");
                 const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "413688429189-q9elgjdcbqptpk89hea90rq6ceuv5ccm.apps.googleusercontent.com";
                 const redirectUri = `${window.location.origin}/api/auth/callback/google`;
                 window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=token&scope=email%20profile&state=${encodeURIComponent(target)}`;
@@ -265,7 +293,7 @@ export default function RegisterPage() {
           </div>
 
           <div className="text-sm text-center flex justify-center mt-8">
-            <Link href="/login" className="font-semibold text-primary hover:text-primary/80 transition-colors">
+            <Link href={loginHref} className="font-semibold text-primary hover:text-primary/80 transition-colors">
               Already have an account? Sign in
             </Link>
           </div>

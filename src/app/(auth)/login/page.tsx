@@ -55,6 +55,13 @@ function LoginForm() {
     }
   };
 
+  // Keep the post-auth destination (e.g. an invitation link) when the visitor
+  // switches from "sign in" to "create account".
+  const callbackParam = searchParams.get("callbackUrl") || searchParams.get("redirect");
+  const registerHref = callbackParam
+    ? `/register?callbackUrl=${encodeURIComponent(callbackParam)}`
+    : "/register";
+
   const getTargetDestination = (role: string, fallback: string) => {
     if (role === "ORGANIZER") return "/organizer";
     if (role === "ADMIN") return "/admin";
@@ -294,7 +301,7 @@ function LoginForm() {
           </div>
 
           <div className="text-sm text-center flex flex-col sm:flex-row justify-center gap-4 sm:gap-8 mt-8">
-            <Link href="/register" className="font-semibold text-primary hover:text-primary/80 transition-colors">
+            <Link href={registerHref} className="font-semibold text-primary hover:text-primary/80 transition-colors">
               Don&apos;t have an account? Sign up
             </Link>
           </div>

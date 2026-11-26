@@ -15,6 +15,9 @@ function VerifyEmailContent() {
   const router = useRouter();
   const { setSession } = useAuth();
   const email = searchParams.get("email");
+  const nextParam = searchParams.get("next");
+  // Only ever follow same-site paths.
+  const next = nextParam && nextParam.startsWith("/") && !nextParam.startsWith("//") ? nextParam : null;
   
   const [code, setCode] = useState(["", "", "", ""]);
   const [isLoading, setIsLoading] = useState(false);
@@ -94,6 +97,13 @@ function VerifyEmailContent() {
       // Auto login using the tokens returned from our backend
       setSession(data.access, data.refresh, data.user);
       
+      // Return to where the user was headed (e.g. an invitation link) now that
+      // they are signed in.
+      if (next) {
+        router.push(next);
+        return;
+      }
+
       const userRole = data.user?.role;
       if (userRole === "ORGANIZER") {
         router.push("/organizer");

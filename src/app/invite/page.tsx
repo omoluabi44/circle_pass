@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { useSession } from "@/context/AuthContext";
+import { useSession, signOut } from "@/context/AuthContext";
 import { API_URL } from "@/lib/api/config";
 import { CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 import Link from 'next/link';
@@ -87,13 +87,13 @@ function InviteContent() {
             </p>
             <div className="flex flex-col gap-3">
               <Link 
-                href={`/login?callbackUrl=/invite?token=${token}`}
+                href={`/login?callbackUrl=${encodeURIComponent(`/invite?token=${token}`)}`}
                 className="w-full bg-[#6366f1] text-white rounded-xl py-3.5 font-semibold hover:bg-[#5046e5] transition-colors"
               >
                 Log In
               </Link>
               <Link 
-                href={`/register?callbackUrl=/invite?token=${token}`}
+                href={`/register?callbackUrl=${encodeURIComponent(`/invite?token=${token}`)}`}
                 className="w-full bg-white border-2 border-gray-200 text-gray-700 rounded-xl py-3.5 font-semibold hover:bg-gray-50 transition-colors"
               >
                 Create Account
@@ -125,14 +125,24 @@ function InviteContent() {
             <div className="mx-auto w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-4">
               <AlertCircle className="w-8 h-8 text-red-600" />
             </div>
-            <h2 className="text-2xl font-bold font-heading text-gray-900 mb-2">Invalid Invitation</h2>
-            <p className="text-gray-600 mb-8">{message}</p>
-            <Link 
-              href="/"
-              className="block w-full bg-gray-100 text-gray-700 rounded-xl py-3.5 font-semibold hover:bg-gray-200 transition-colors"
-            >
-              Return Home
-            </Link>
+            <h2 className="text-2xl font-bold font-heading text-gray-900 mb-2">Invitation Not Accepted</h2>
+            <p className="text-gray-600 mb-6">{message}</p>
+            <div className="flex flex-col gap-3">
+              {status === 'authenticated' && token && (
+                <button
+                  onClick={() => signOut({ callbackUrl: `/invite?token=${encodeURIComponent(token)}` })}
+                  className="block w-full bg-[#6366f1] text-white rounded-xl py-3.5 font-semibold hover:bg-[#5046e5] transition-colors"
+                >
+                  Sign in with a different account
+                </button>
+              )}
+              <Link 
+                href="/"
+                className="block w-full bg-gray-100 text-gray-700 rounded-xl py-3.5 font-semibold hover:bg-gray-200 transition-colors"
+              >
+                Return Home
+              </Link>
+            </div>
           </div>
         )}
       </div>
