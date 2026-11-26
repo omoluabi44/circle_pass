@@ -12,11 +12,14 @@ interface Ticket {
   attendee_email: string;
   status: string;
   ticket_type: string;
+  event_id?: number;
+  event_title?: string;
   qr_token_snippet: string;
 }
 
 interface ManualSearchProps {
-  eventId: string;
+  /** Event to search within. Admins may omit it to search every event. */
+  eventId?: string;
   onSuccess: () => void;
 }
 
@@ -30,16 +33,24 @@ export function ManualSearch({ eventId, onSuccess }: ManualSearchProps) {
   // Debounced search
   useEffect(() => {
     const timer = setTimeout(() => {
+      // Searching every event needs a term first; otherwise this would list
+      // 20 arbitrary passes from the whole platform.
+      if (!eventId && !query.trim()) {
+        setTickets([]);
+        return;
+      }
       searchTickets();
     }, 500);
     return () => clearTimeout(timer);
-  }, [query]);
+  }, [query, eventId]);
 
   const searchTickets = async () => {
     try {
       setLoading(true);
       const token = (session as any)?.accessToken;
-      const res = await fetch(`${API_URL}/check-in/search/?event_id=${eventId}&q=${encodeURIComponent(query)}`, {
+      const params = new URLSearchParams({ q: query });
+      if (eventId) params.set('event_id', eventId);
+      const res = await fetch(`${API_URL}/check-in/search/?${params.toString()}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -65,7 +76,10 @@ export function ManualSearch({ eventId, onSuccess }: ManualSearchProps) {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ ticket_id: ticketId, event_id: eventId })
+        body: JSON.stringify({
+          ticket_id: ticketId,
+          ...(eventId ? { event_id: eventId } : {}),
+        })
       });
       
       const data = await res.json();
@@ -143,6 +157,9 @@ export function ManualSearch({ eventId, onSuccess }: ManualSearchProps) {
                   </td>
                   <td className="px-6 py-5 whitespace-nowrap">
                     <div className="text-sm font-medium text-gray-900">{ticket.ticket_type}</div>
+                    {ticket.event_title && (
+                      <div className="text-xs text-gray-600 mt-0.5">{ticket.event_title}</div>
+                    )}
                     <div className="text-xs text-gray-400 font-mono mt-0.5">{ticket.qr_token_snippet}</div>
                   </td>
                   <td className="px-6 py-5 whitespace-nowrap">

@@ -6,12 +6,16 @@ from django.db.models import Q
 
 from core.models import Ticket, CheckIn, TeamMember
 from core.utils.qr import verify_qr_token
-from .permissions import IsOrganizerOrTeamMember
+from .permissions import IsOrganizerOrTeamMember, is_admin_user
 
 class CheckInScanView(APIView):
     """
     PassControl Check-in endpoint for organizers.
+
     Verifies the QR token securely and atomically transitions the ticket to USED.
+    Admins may scan any ticket on the platform and can leave out event_id: the
+    event is then taken from the ticket itself, so a gate scanner never has to
+    know which event a pass belongs to.
     """
     permission_classes = [permissions.IsAuthenticated, IsOrganizerOrTeamMember]
 
@@ -19,11 +23,12 @@ class CheckInScanView(APIView):
         qr_token = request.data.get('qr_token')
         ticket_id = request.data.get('ticket_id')
         event_id = request.data.get('event_id')
+        admin = is_admin_user(request.user)
         
         if not qr_token and not ticket_id:
             return Response({"detail": "QR token or ticket ID is required."}, status=status.HTTP_400_BAD_REQUEST)
             
-        if not event_id:
+        if not event_id and not admin:
             return Response({"detail": "Event ID is required to verify ticket context."}, status=status.HTTP_400_BAD_REQUEST)
 
         # 1. Cryptographically verify the token (signature check) if using QR
@@ -40,14 +45,22 @@ class CheckInScanView(APIView):
             except Ticket.DoesNotExist:
                 return Response({"detail": "Ticket not found."}, status=status.HTTP_404_NOT_FOUND)
                 
-            # Verify the ticket belongs to the specified event
-            if str(ticket.order.event_id) != str(event_id):
-                return Response({"detail": "Wrong Event: This ticket is for a different event."}, status=status.HTTP_400_BAD_REQUEST)
+            # Verify the ticket belongs to the specified event. Admins scanning
+            # without an event skip this: the ticket's own event is authoritative.
+            event_obj = ticket.order.event
+            if event_id and str(event_obj.id) != str(event_id):
+                return Response({
+                    "detail": "Wrong Event: This ticket is for a different event.",
+                    "status": "Wrong Event",
+                    "event_id": event_obj.id,
+                    "event_title": event_obj.title,
+                    "attendee_name": ticket.attendee_name,
+                    "ticket_tier": ticket.ticket_type.name,
+                }, status=status.HTTP_400_BAD_REQUEST)
                 
             # Verify the user has permission to scan tickets for this event
             has_permission = False
-            event_obj = ticket.order.event
-            if event_obj.organizer.user == request.user or request.user.role == "ADMIN":
+            if admin or event_obj.organizer.user_id == request.user.id:
                 has_permission = True
             else:
                 # Check if user is an active team member for this organizer, either globally or specifically for this event
@@ -100,7 +113,9 @@ class CheckInScanView(APIView):
                 "status": scan_status,
                 "detail": response_detail,
                 "ticket_tier": ticket.ticket_type.name,
-                "attendee_name": ticket.attendee_name
+                "attendee_name": ticket.attendee_name,
+                "event_id": event_obj.id,
+                "event_title": event_obj.title,
             }, status=http_status)
 
 
@@ -110,32 +125,39 @@ from .serializers import TicketSerializer
 class CheckInManualSearchView(APIView):
     """
     Manual search for tickets by name, email, or token string.
+
+    Admins can search the whole platform by leaving event_id out; organizers
+    and team members stay scoped to the event they pass in.
     """
     permission_classes = [permissions.IsAuthenticated, IsOrganizerOrTeamMember]
 
     def get(self, request, *args, **kwargs):
         event_id = request.query_params.get('event_id')
         query = request.query_params.get('q', '').strip()
+        admin = is_admin_user(request.user)
 
-        if not event_id:
+        if not event_id and not admin:
             return Response({"detail": "event_id is required."}, status=status.HTTP_400_BAD_REQUEST)
 
         from django.shortcuts import get_object_or_404
         from core.models import Event
         
-        # Check permissions for this event
-        event_obj = get_object_or_404(Event, id=event_id)
-        if event_obj.organizer.user != request.user and request.user.role != "ADMIN":
-            has_permission = TeamMember.objects.filter(
-                user=request.user,
-                organizer=event_obj.organizer,
-                status='ACTIVE'
-            ).filter(Q(event=event_obj) | Q(event__isnull=True)).exists()
-            if not has_permission:
-                return Response({"detail": "Forbidden"}, status=status.HTTP_403_FORBIDDEN)
+        # Check permissions for this event (admins may search everything)
+        if event_id:
+            event_obj = get_object_or_404(Event, id=event_id)
+            if not admin and event_obj.organizer.user_id != request.user.id:
+                has_permission = TeamMember.objects.filter(
+                    user=request.user,
+                    organizer=event_obj.organizer,
+                    status='ACTIVE'
+                ).filter(Q(event=event_obj) | Q(event__isnull=True)).exists()
+                if not has_permission:
+                    return Response({"detail": "Forbidden"}, status=status.HTTP_403_FORBIDDEN)
 
-        # Basic search
-        tickets = Ticket.objects.filter(order__event_id=event_id)
+            # Basic search
+            tickets = Ticket.objects.filter(order__event_id=event_id)
+        else:
+            tickets = Ticket.objects.all()
 
         if query:
             tickets = tickets.filter(
@@ -145,7 +167,7 @@ class CheckInManualSearchView(APIView):
             )
 
         # Limit to 20 for performance
-        tickets = tickets[:20]
+        tickets = tickets.select_related('order__event', 'ticket_type')[:20]
 
         # Use existing ticket serializer or just return raw data
         data = [{
@@ -154,6 +176,8 @@ class CheckInManualSearchView(APIView):
             "attendee_email": t.attendee_email,
             "status": t.status,
             "ticket_type": t.ticket_type.name,
+            "event_id": t.order.event_id,
+            "event_title": t.order.event.title,
             "qr_token_snippet": t.qr_token[:8] + "..."
         } for t in tickets]
 

@@ -8,7 +8,8 @@ import { useSession } from "@/context/AuthContext";
 import { API_URL } from "@/lib/api/config";
 
 interface QRScannerProps {
-  eventId: string;
+  /** Event to check the ticket against. Admins may omit it to accept any event. */
+  eventId?: string;
   onSuccess: () => void;
 }
 
@@ -78,7 +79,10 @@ export function QRScanner({ eventId, onSuccess }: QRScannerProps) {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
-        body: JSON.stringify({ qr_token: decodedText, event_id: eventId }),
+        body: JSON.stringify({
+          qr_token: decodedText,
+          ...(eventId ? { event_id: eventId } : {}),
+        }),
       });
 
       const data = await response.json();
@@ -223,6 +227,13 @@ export function QRScanner({ eventId, onSuccess }: QRScannerProps) {
                 
                 <p className="text-sm text-gray-500 uppercase tracking-wide font-semibold mt-4">Ticket Type</p>
                 <p className="font-medium text-lg text-gray-900">{scanResult.data.ticket_tier}</p>
+
+                {scanResult.data.event_title && (
+                  <>
+                    <p className="text-sm text-gray-500 uppercase tracking-wide font-semibold mt-4">Event</p>
+                    <p className="font-medium text-lg text-gray-900">{scanResult.data.event_title}</p>
+                  </>
+                )}
               </div>
             </div>
           ) : (
@@ -236,6 +247,11 @@ export function QRScanner({ eventId, onSuccess }: QRScannerProps) {
                 {scanResult.data.status || 'Invalid Ticket'}
               </h2>
               <p className="text-gray-600 mt-2">{scanResult.data.detail}</p>
+              {scanResult.data.event_title && (
+                <p className="text-sm text-gray-500 mt-3">
+                  This pass is for <span className="font-semibold text-gray-700">{scanResult.data.event_title}</span>
+                </p>
+              )}
             </div>
           )}
 
